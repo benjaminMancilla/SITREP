@@ -16,7 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.http import HttpResponse
+
+def health_check(request):
+    return HttpResponse("SITREP en linea y operativo.", status=200)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', health_check),
 ]
