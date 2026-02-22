@@ -23,5 +23,6 @@ def health_check(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', health_check),
+    path('', dashboard_view, name='dashboard'),
+    path('ping', ping_view, name='ping'),
 ]

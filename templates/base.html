@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITREP | Panel Operativo</title>
+    
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center">
+
+    <main class="w-full max-w-4xl p-6 bg-slate-800 rounded-lg shadow-xl border border-slate-700">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+</html>
