@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path
 from django.http import HttpResponse
 
+from inventory.views import dashboard_view, ping_view
+
 def health_check(request):
     return HttpResponse("SITREP en linea y operativo.", status=200)
 
