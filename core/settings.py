@@ -33,6 +33,10 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 railway_domain = os.getenv('RAILWAY_PUBLIC_DOMAIN', 'web-production-5356a.up.railway.app')
 ALLOWED_HOSTS = [railway_domain, 'localhost', '127.0.0.1']
 
+CSRF_TRUSTED_ORIGINS = [
+    f'https://{railway_domain}',
+]
+
 
 # Application definition
 
