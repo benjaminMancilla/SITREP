@@ -126,6 +126,8 @@ class Tripulacion(models.Model):
     class Meta:
         # Un marinero no puede ser asignado dos veces a la misma nave
         unique_together = ('usuario', 'nave')
+        verbose_name = "Tripulación"
+        verbose_name_plural = "Tripulaciones"
 
     def __str__(self):
         return f"{self.usuario.rut} -> {self.nave.nombre}"
@@ -156,8 +158,12 @@ class Proposito(models.Model):
         ]
     )
 
+    class Meta:
+        verbose_name = "Propósito"
+        verbose_name_plural = "Propósitos"
+
     def __str__(self):
-        return f"{self.nombre} ({self.categoria})"
+        return f" {self.tipo} de {self.nombre} ({self.categoria})"
 
 
 class Periodicidad(models.Model):
@@ -270,6 +276,8 @@ class MatrizNaveRecurso(models.Model):
     class Meta:
         # Constraint de integridad crítico
         unique_together = ('nave', 'recurso')
+        verbose_name = "Matriz Nave-Recurso"
+        verbose_name_plural = "Matriz Nave-Recurso"
 
     def __str__(self):
         return f"{self.nave.nombre} - {self.recurso.nombre}: {self.cantidad} unidades"
@@ -291,6 +299,10 @@ class PeriodoRevision(models.Model):
     
     ESTADOS = [('abierto', 'Abierto'), ('cerrado', 'Cerrado'), ('vencido', 'Vencido')]
     estado = models.CharField(max_length=20, choices=ESTADOS, default='abierto')
+    
+    class Meta:
+        verbose_name = "Periodo de Revisión"
+        verbose_name_plural = "Periodos de Revisión"
 
     def __str__(self):
         return f"{self.nave.nombre} | {self.periodicidad.nombre} ({self.fecha_inicio} al {self.fecha_termino})"
@@ -322,6 +334,8 @@ class FichaRegistro(models.Model):
     class Meta:
         # Una ficha única por recurso dentro de un periodo específico
         unique_together = ('periodo', 'recurso')
+        verbose_name = "Ficha de Registro"
+        verbose_name_plural = "Fichas de Registro"
 
     def __str__(self):
         estado = "OK" if self.estado_operativo else "FALLA"
