@@ -178,8 +178,13 @@ class Periodicidad(models.Model):
     Se suele usar la visibilidad para ocultar recursos que solo tierra debe ver a los de mar.
     """
     nombre = models.CharField(max_length=100)
-    responsabilidad = models.CharField(max_length=20, choices=[('mar', 'Mar'), ('tierra', 'Tierra')])
-    visibilidad = models.CharField(max_length=20, choices=[('mar', 'Mar'), ('tierra', 'Tierra')])
+    OPCIONES_AUDITORIA = [('mar', 'Mar'), ('tierra', 'Tierra'), ('todos', 'Todos'), ('ninguno', 'Ninguno')]
+    responsabilidad = models.CharField(max_length=20, choices=OPCIONES_AUDITORIA)
+    visibilidad = models.CharField(max_length=20, choices=OPCIONES_AUDITORIA)
+
+    class Meta:
+        verbose_name = "Periodicidad"
+        verbose_name_plural = "Periodicidades"
 
     def __str__(self):
         return self.nombre
