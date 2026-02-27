@@ -1,4 +1,5 @@
 import uuid
+import secrets
 
 from django.db import models
 from django.db.models import Q, UniqueConstraint
@@ -167,10 +168,25 @@ class Dispositivo(models.Model):
     
     nombre = models.CharField(max_length=100, help_text="Ej: Tablet Puente Mando, PC Sala Máquinas")
     # Este token se inyectará en el navegador del dispositivo físico
-    token_autorizacion = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    token_hash = models.CharField(max_length=128, blank=True, null=True, help_text="Hash criptográfico del token físico")
     
     is_active = models.BooleanField(default=True, help_text="Apagar si la tablet se pierde o se daña")
     creado_en = models.DateTimeField(auto_now_add=True)
+    
+    def generar_nuevo_token(self):
+        """
+        Genera un token seguro, guarda su hash y retorna el token plano UNA SOLA VEZ.
+        Esta función se llamará exclusivamente en la vista de aprovisionamiento.
+        """
+        token_plano = secrets.token_urlsafe(32)
+        self.token_hash = make_password(token_plano)
+        return token_plano
+    
+    def verificar_token(self, token_plano):
+        """Devuelve True si el token de la tablet coincide con el hash."""
+        if not self.token_hash:
+            return False
+        return check_password(token_plano, self.token_hash)
 
     def __str__(self):
         ubicacion = self.nave.nombre if self.nave else "Tierra"

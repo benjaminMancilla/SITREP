@@ -133,3 +133,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Inyección del Custom User Model para soporte Multi-Tenant
 AUTH_USER_MODEL = 'inventory.Usuario'
+
+# Auntenticación personalizada para cada vector (Tierra y Mar) y admin
+AUTHENTICATION_BACKENDS = [
+    'inventory.backends.WebTenantBackend',
+    'inventory.backends.KioscoTenantBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
