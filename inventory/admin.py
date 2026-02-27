@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (
-    Naviera, Usuario, Nave, Tripulacion, 
+    Naviera, Usuario, Nave, Tripulacion, Dispositivo,
     Proposito, Periodicidad, Recurso, 
     MatrizNaveRecurso, PeriodoRevision, FichaRegistro
 )
@@ -22,6 +22,7 @@ class CustomUserAdmin(UserAdmin):
 admin.site.register(Naviera)
 admin.site.register(Nave)
 admin.site.register(Tripulacion)
+admin.site.register(Dispositivo)
 admin.site.register(Proposito)
 admin.site.register(Periodicidad)
 admin.site.register(Recurso)

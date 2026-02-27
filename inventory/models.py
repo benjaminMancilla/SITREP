@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 from django.contrib.auth.models import AbstractUser
@@ -131,6 +133,27 @@ class Tripulacion(models.Model):
 
     def __str__(self):
         return f"{self.usuario.rut} -> {self.nave.nombre}"
+
+    
+class Dispositivo(models.Model):
+    """
+    HARDWARE BINDING: Representa un equipo físico autorizado (Tablet, PC) 
+    instalado en una nave o instalación de la naviera.
+    """
+    naviera = models.ForeignKey(Naviera, on_delete=models.CASCADE, related_name='dispositivos')
+    nave = models.ForeignKey(Nave, on_delete=models.CASCADE, null=True, blank=True, related_name='dispositivos')
+    
+    nombre = models.CharField(max_length=100, help_text="Ej: Tablet Puente Mando, PC Sala Máquinas")
+    # Este token se inyectará en el navegador del dispositivo físico
+    token_autorizacion = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    
+    is_active = models.BooleanField(default=True, help_text="Apagar si la tablet se pierde o se daña")
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        ubicacion = self.nave.nombre if self.nave else "Tierra"
+        estado = "" if self.is_active else " [BLOQUEADO]"
+        return f"[{ubicacion}] {self.nombre}{estado}"
     
 # ==========================================
 # DICCIONARIOS Y CATÁLOGO HÍBRIDO
