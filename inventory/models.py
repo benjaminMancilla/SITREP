@@ -20,6 +20,13 @@ class Naviera(models.Model):
     nombre = models.CharField(max_length=255)
     rut = models.CharField(max_length=10, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    slug = models.SlugField(
+        max_length=50, 
+        unique=True, 
+        null=True, 
+        blank=True, 
+        help_text="Identificador único para la URL (ej. transmarko)"
+    )
 
     def __str__(self):
         return self.nombre

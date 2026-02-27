@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Aprovisionamiento de Hardware - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 h-screen flex items-center justify-center">
+    <div class="bg-slate-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-slate-700">
+        <h2 class="text-2xl font-bold mb-6 text-emerald-400">Registrar Nuevo Kiosco</h2>
+        
+        <form method="POST" action="">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Nombre del Dispositivo</label>
+                <input type="text" name="nombre_dispositivo" required placeholder="Ej: Tablet Puente Mando" 
+                       class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-emerald-500 outline-none">
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Asignar a Nave (Opcional)</label>
+                <select name="nave_id" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none">
+                    <option value="">-- Kiosco de Tierra --</option>
+                    {% for nave in naves %}
+                        <option value="{{ nave.id }}">{{ nave.nombre }} ({{ nave.matricula }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded transition-colors">
+                Generar Token Criptográfico
+            </button>
+        </form>
+    </div>
+</body>
+</html>
