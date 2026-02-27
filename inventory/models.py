@@ -4,6 +4,8 @@ from django.db import models
 from django.db.models import Q, UniqueConstraint
 from django.contrib.auth.models import AbstractUser
 
+from django.contrib.auth.hashers import make_password, check_password
+
 # ==========================================
 # CORE & AISLAMIENTO MULTI-TENANT
 # ==========================================
@@ -38,10 +40,18 @@ class Usuario(AbstractUser):
         choices=[
             ('admin_sitrep', 'Admin SITREP'),
             ('admin_naviera', 'Admin Naviera'),
+            ('capitan', 'Admin Nave'),
             ('tierra', 'Tierra'),
             ('mar', 'Mar'),
         ],
         default='mar'
+    )
+    
+    pin_kiosco = models.CharField(
+        max_length=128, 
+        null=True, 
+        blank=True, 
+        help_text="PIN cifrado para acceso en Kiosco"
     )
     
     class Meta:
@@ -67,6 +77,18 @@ class Usuario(AbstractUser):
         """
         self.is_active = False
         self.save()
+        
+    def set_pin(self, raw_pin):
+        """
+        Método para establecer el PIN del kiosco, cifrándolo antes de guardarlo.
+        """
+        self.pin_kiosco = make_password(raw_pin)
+        
+    def check_pin(self, raw_pin):
+        """Devuelve True si el PIN ingresado coincide con el hash guardado."""
+        if not self.pin_kiosco:
+            return False
+        return check_password(raw_pin, self.pin_kiosco)
     
     def __str__(self):
         nombre_tenant = self.naviera.nombre if self.naviera else "SITREP Global"
