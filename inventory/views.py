@@ -1,16 +1,12 @@
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from .models import Nave, Dispositivo
+from .decorators import tenant_member_required, requiere_rol
 
-@login_required
-def setup_kiosco(request):
-    usuario = request.user
-    
-    # 1. EL ESCUDO DE RANGOS: Un marinero raso no puede aprovisionar hardware
-    if usuario.rol not in ['admin_sitrep', 'admin_naviera', 'capitan']:
-        print(usuario.rol)
-        return HttpResponseForbidden("Violación de Seguridad: Rango insuficiente para aprovisionar hardware.")
+@tenant_member_required
+@requiere_rol('admin_sitrep', 'admin_naviera', 'capitan')
+def setup_kiosco(request, slug):
+    naviera = request.naviera
 
     # 2. PROCESAMIENTO DEL PAYLOAD (POST)
     if request.method == 'POST':
@@ -21,13 +17,13 @@ def setup_kiosco(request):
         nave = None
         if nave_id:
             try:
-                nave = Nave.objects.get(id=nave_id, naviera=usuario.naviera)
+                nave = Nave.objects.get(id=nave_id, naviera=naviera)
             except Nave.DoesNotExist:
                 return HttpResponseForbidden("Intento de Brecha: La nave solicitada no pertenece a su tenant.")
 
         # Fabricación del Hardware Binding
         dispositivo = Dispositivo(
-            naviera=usuario.naviera,
+            naviera=naviera,
             nave=nave,
             nombre=nombre_dispositivo
         )
@@ -42,5 +38,5 @@ def setup_kiosco(request):
         return render(request, 'inventory/kiosco_tatuado.html', contexto)
 
     # 3. RENDERIZADO DEL FORMULARIO (GET)
-    naves = Nave.objects.filter(naviera=usuario.naviera, is_active=True)
+    naves = Nave.objects.filter(naviera=naviera, is_active=True)
     return render(request, 'inventory/kiosco_setup.html', {'naves': naves})

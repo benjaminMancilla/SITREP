@@ -22,7 +22,18 @@ from django.http import HttpResponse
 def health_check(request):
     return HttpResponse("SITREP en linea y operativo.", status=200)
 
+
+def login_tierra_placeholder(request, slug):
+    return HttpResponse(f"Tierra login placeholder para {slug}.", status=200)
+
+
+def login_kiosco_placeholder(request, slug):
+    return HttpResponse(f"Kiosco login placeholder para {slug}.", status=200)
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('inventory.urls')), 
+    path('<slug:slug>/login/', login_tierra_placeholder, name='login_tierra'),
+    path('<slug:slug>/kiosco/login/', login_kiosco_placeholder, name='login_kiosco'),
+    path('<slug:slug>/', include('inventory.urls')),
 ]
