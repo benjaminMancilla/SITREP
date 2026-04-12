@@ -19,6 +19,12 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ('rut', 'username', 'email')
     list_filter = ('naviera', 'rol', 'is_active')
 
+    def save_model(self, request, obj, form, change):
+        pin_raw = form.cleaned_data.get("pin_kiosco")
+        if pin_raw and not pin_raw.startswith("pbkdf2_"):
+            obj.set_pin(pin_raw)
+        super().save_model(request, obj, form, change)
+
 admin.site.register(Naviera)
 admin.site.register(Nave)
 admin.site.register(Tripulacion)
