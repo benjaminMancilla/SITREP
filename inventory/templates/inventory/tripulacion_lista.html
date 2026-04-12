@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tripulación - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
+    <div class="max-w-5xl mx-auto space-y-6">
+        <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+            <h1 class="text-2xl font-bold text-emerald-400">Tripulación de {{ nave.nombre }}</h1>
+            <p class="mt-1 text-sm text-slate-400">Matrícula: {{ nave.matricula }}</p>
+        </div>
+
+        <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+            <h2 class="mb-4 text-lg font-semibold text-white">Agregar Tripulante</h2>
+            <form method="post" action="{% url 'inventory:agregar_tripulante' slug=slug nave_id=nave.id %}" class="flex flex-col gap-3 sm:flex-row">
+                {% csrf_token %}
+                <select
+                    name="usuario_id"
+                    required
+                    class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500 sm:flex-1"
+                >
+                    <option value="">Seleccionar usuario disponible</option>
+                    {% for usuario in usuarios_disponibles %}
+                        <option value="{{ usuario.id }}">
+                            {{ usuario.rut }}{% if usuario.first_name or usuario.last_name %} - {{ usuario.first_name }} {{ usuario.last_name }}{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500"
+                >
+                    Agregar
+                </button>
+            </form>
+        </div>
+
+        <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-800 text-slate-300">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+                        <th class="px-4 py-3 text-left font-semibold">RUT</th>
+                        <th class="px-4 py-3 text-left font-semibold">Rol</th>
+                        <th class="px-4 py-3 text-left font-semibold">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700">
+                    {% for asignacion in tripulacion %}
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="px-4 py-3 text-white">
+                                {% if asignacion.usuario.first_name or asignacion.usuario.last_name %}
+                                    {{ asignacion.usuario.first_name }} {{ asignacion.usuario.last_name }}
+                                {% else %}
+                                    <span class="text-slate-400">Sin nombre</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">{{ asignacion.usuario.rut }}</td>
+                            <td class="px-4 py-3">{{ asignacion.usuario.rol }}</td>
+                            <td class="px-4 py-3">
+                                <form method="post" action="{% url 'inventory:remover_tripulante' slug=slug nave_id=nave.id tripulacion_id=asignacion.id %}">
+                                    {% csrf_token %}
+                                    <button
+                                        type="submit"
+                                        onclick="return confirm('¿Remover a este tripulante de la nave?')"
+                                        class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
+                                    >
+                                        Remover
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                                No hay tripulantes asignados a esta nave.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Usuario - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
+    <div class="mx-auto w-full max-w-2xl rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-xl">
+        <h1 class="mb-6 text-2xl font-bold text-emerald-400">Crear Usuario</h1>
+
+        {% if error %}
+            <div class="mb-6 rounded-md border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-200">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label for="rut" class="mb-2 block text-sm font-medium">RUT</label>
+                <input id="rut" name="rut" type="text" value="{{ form_data.rut }}" required class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label for="email" class="mb-2 block text-sm font-medium">Email (opcional)</label>
+                <input id="email" name="email" type="email" value="{{ form_data.email }}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+            </div>
+
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                    <label for="first_name" class="mb-2 block text-sm font-medium">Nombre (opcional)</label>
+                    <input id="first_name" name="first_name" type="text" value="{{ form_data.first_name }}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label for="last_name" class="mb-2 block text-sm font-medium">Apellido (opcional)</label>
+                    <input id="last_name" name="last_name" type="text" value="{{ form_data.last_name }}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+                </div>
+            </div>
+
+            <div>
+                <label for="rol" class="mb-2 block text-sm font-medium">Rol</label>
+                <select id="rol" name="rol" required class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+                    <option value="admin_naviera" {% if form_data.rol == "admin_naviera" or not form_data.rol %}selected{% endif %}>Admin Naviera</option>
+                    <option value="tierra" {% if form_data.rol == "tierra" %}selected{% endif %}>Tierra</option>
+                    <option value="capitan" {% if form_data.rol == "capitan" %}selected{% endif %}>Capitán</option>
+                    <option value="mar" {% if form_data.rol == "mar" %}selected{% endif %}>Mar</option>
+                </select>
+            </div>
+
+            <div id="pin-container" class="hidden">
+                <label for="pin" class="mb-2 block text-sm font-medium">PIN (4 dígitos)</label>
+                <input id="pin" name="pin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+            </div>
+
+            <div id="password-container">
+                <label for="password" class="mb-2 block text-sm font-medium">Contraseña</label>
+                <input id="password" name="password" type="password" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+            </div>
+
+            <div class="flex flex-col gap-3 pt-2 sm:flex-row">
+                <button type="submit" class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500">
+                    Crear Usuario
+                </button>
+                <a href="/{{ slug }}/usuarios/" class="inline-flex items-center justify-center rounded-md border border-slate-600 px-4 py-2 font-semibold text-slate-200 transition-colors hover:bg-slate-700">
+                    Volver al listado
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const rolSelect = document.getElementById("rol");
+        const pinContainer = document.getElementById("pin-container");
+        const pinInput = document.getElementById("pin");
+        const passwordContainer = document.getElementById("password-container");
+        const passwordInput = document.getElementById("password");
+
+        function actualizarCredencialesPorRol() {
+            const requierePin = rolSelect.value === "mar" || rolSelect.value === "capitan";
+
+            pinContainer.classList.toggle("hidden", !requierePin);
+            passwordContainer.classList.toggle("hidden", requierePin);
+
+            pinInput.required = requierePin;
+            passwordInput.required = !requierePin;
+        }
+
+        rolSelect.addEventListener("change", actualizarCredencialesPorRol);
+        actualizarCredencialesPorRol();
+    </script>
+</body>
+</html>

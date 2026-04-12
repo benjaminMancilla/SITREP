@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cambiar PIN - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
+    <div class="mx-auto w-full max-w-md rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-xl">
+        <h1 class="mb-2 text-2xl font-bold text-emerald-400">Cambiar PIN</h1>
+        <p class="mb-6 text-sm text-slate-300">
+            Usuario: <span class="font-semibold text-white">{{ usuario.first_name }} {{ usuario.last_name }}</span>
+            <span class="text-slate-400">({{ usuario.rut }})</span>
+        </p>
+
+        {% if error %}
+            <div class="mb-5 rounded-md border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-200">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="" class="space-y-5">
+            {% csrf_token %}
+            <div>
+                <label for="pin" class="mb-2 block text-sm font-medium">PIN (4 dígitos)</label>
+                <input
+                    id="pin"
+                    name="pin"
+                    type="password"
+                    inputmode="numeric"
+                    maxlength="4"
+                    pattern="[0-9]{4}"
+                    required
+                    class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
+                >
+            </div>
+            <div class="flex flex-col gap-3 sm:flex-row">
+                <button type="submit" class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500">
+                    Guardar PIN
+                </button>
+                <a href="/{{ slug }}/usuarios/" class="inline-flex items-center justify-center rounded-md border border-slate-600 px-4 py-2 font-semibold text-slate-200 transition-colors hover:bg-slate-700">
+                    Volver
+                </a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
