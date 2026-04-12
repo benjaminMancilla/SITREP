@@ -1,9 +1,15 @@
 from django.contrib.auth import authenticate, login
-from django.http import HttpResponse, HttpResponseForbidden
+from django.db import IntegrityError
+from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from .decorators import requiere_rol, tenant_member_required
-from .models import Dispositivo, Nave
+from .models import Dispositivo, Tripulacion, Usuario
+from .services import TenantQueryService
+
+
+def _pin_valido_4_digitos(raw_pin):
+    return bool(raw_pin) and len(raw_pin) == 4 and raw_pin.isdigit()
 
 
 def tenant_home_placeholder(request, slug):
@@ -62,6 +68,13 @@ def login_kiosco(request, slug):
             login(request, usuario)
             return redirect(f"/{slug}/kiosco/")
 
+        if getattr(request, "_dispositivo_revocado", False):
+            return render(
+                request,
+                "inventory/login_kiosco.html",
+                {"limpiar_token": True},
+            )
+
         return render(
             request,
             "inventory/login_kiosco.html",
@@ -74,8 +87,6 @@ def login_kiosco(request, slug):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan")
 def setup_kiosco(request, slug):
-    naviera = request.naviera
-
     # 2. PROCESAMIENTO DEL PAYLOAD (POST)
     if request.method == "POST":
         nombre_dispositivo = request.POST.get("nombre_dispositivo")
@@ -85,13 +96,10 @@ def setup_kiosco(request, slug):
             return HttpResponseForbidden("Debe asignar el dispositivo a una nave.")
 
         # Validación de Jurisdicción (Previene IDOR)
-        try:
-            nave = Nave.objects.get(id=nave_id, naviera=naviera)
-        except Nave.DoesNotExist:
-            return HttpResponseForbidden("Intento de Brecha: La nave solicitada no pertenece a su tenant.")
+        nave = TenantQueryService.get_nave(request.naviera, nave_id)
 
         # Fabricación del Hardware Binding
-        dispositivo = Dispositivo(naviera=naviera, nave=nave, nombre=nombre_dispositivo)
+        dispositivo = Dispositivo(naviera=request.naviera, nave=nave, nombre=nombre_dispositivo)
         token_plano = dispositivo.generar_nuevo_token()
         dispositivo.save()
 
@@ -100,5 +108,248 @@ def setup_kiosco(request, slug):
         return render(request, "inventory/kiosco_tatuado.html", contexto)
 
     # 3. RENDERIZADO DEL FORMULARIO (GET)
-    naves = Nave.objects.filter(naviera=naviera, is_active=True)
+    naves = TenantQueryService.get_naves_activas(request.naviera)
     return render(request, "inventory/kiosco_setup.html", {"naves": naves})
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+def listar_dispositivos(request, slug):
+    dispositivos = TenantQueryService.get_dispositivos(request.naviera).order_by("nave__nombre", "nombre")
+
+    contexto = {
+        "dispositivos": dispositivos,
+        "slug": slug,
+    }
+    return render(request, "inventory/dispositivos_lista.html", contexto)
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+def revocar_dispositivo(request, slug, id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    dispositivo = TenantQueryService.get_dispositivo(request.naviera, id)
+
+    if not dispositivo.is_active:
+        return redirect(f"/{slug}/kiosco/hardware/")
+
+    dispositivo.is_active = False
+    dispositivo.save(update_fields=["is_active"])
+
+    return redirect(f"/{slug}/kiosco/hardware/")
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera")
+def listar_usuarios(request, slug):
+    usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera)
+    return render(
+        request,
+        "inventory/usuarios_lista.html",
+        {
+            "usuarios": usuarios,
+            "slug": slug,
+        },
+    )
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera")
+def crear_usuario(request, slug):
+    if request.method == "GET":
+        return render(
+            request,
+            "inventory/usuario_form.html",
+            {
+                "slug": slug,
+                "form_data": {},
+            },
+        )
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["GET", "POST"])
+
+    rut = (request.POST.get("rut") or "").strip()
+    email = (request.POST.get("email") or "").strip() or None
+    rol = (request.POST.get("rol") or "").strip()
+    first_name = (request.POST.get("first_name") or "").strip()
+    last_name = (request.POST.get("last_name") or "").strip()
+    raw_pin = (request.POST.get("pin") or "").strip()
+    form_data = {
+        "rut": rut,
+        "email": email or "",
+        "rol": rol,
+        "first_name": first_name,
+        "last_name": last_name,
+    }
+
+    if Usuario.objects.filter(naviera=request.naviera, rut=rut).exists():
+        return render(
+            request,
+            "inventory/usuario_form.html",
+            {
+                "error": "El RUT ya existe en esta naviera.",
+                "slug": slug,
+                "form_data": form_data,
+            },
+        )
+
+    requiere_pin = rol in {"mar", "capitan"}
+    if requiere_pin and not raw_pin:
+        return render(
+            request,
+            "inventory/usuario_form.html",
+            {
+                "error": "El PIN es obligatorio para este rol.",
+                "slug": slug,
+                "form_data": form_data,
+            },
+        )
+
+    if requiere_pin and not _pin_valido_4_digitos(raw_pin):
+        return render(
+            request,
+            "inventory/usuario_form.html",
+            {
+                "error": "El PIN debe ser de 4 dígitos numéricos.",
+                "slug": slug,
+                "form_data": form_data,
+            },
+        )
+
+    usuario = Usuario(
+        naviera=request.naviera,
+        rut=rut,
+        email=email,
+        rol=rol,
+        first_name=first_name,
+        last_name=last_name,
+    )
+
+    if requiere_pin:
+        usuario.set_pin(raw_pin)
+        usuario.set_unusable_password()
+    else:
+        raw_password = (request.POST.get("password") or "").strip()
+        if not raw_password:
+            return render(
+                request,
+                "inventory/usuario_form.html",
+                {
+                    "error": "La contraseña es obligatoria para este rol.",
+                    "slug": slug,
+                    "form_data": form_data,
+                },
+            )
+        usuario.set_password(raw_password)
+
+    usuario.save()
+    return redirect(f"/{slug}/usuarios/")
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera")
+def desactivar_usuario(request, slug, id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    usuario = TenantQueryService.get_usuario_del_tenant(request.naviera, id)
+    if request.user == usuario:
+        return HttpResponseForbidden("No puedes desactivarte a ti mismo.")
+
+    usuario.delete()
+    return redirect(f"/{slug}/usuarios/")
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+def cambiar_pin(request, slug, id):
+    if request.user.rol == "capitan" and request.user.id != id:
+        return HttpResponseForbidden("Acceso denegado.")
+
+    usuario = TenantQueryService.get_usuario_del_tenant(request.naviera, id)
+
+    if request.method == "GET":
+        return render(
+            request,
+            "inventory/cambiar_pin.html",
+            {"usuario": usuario, "slug": slug},
+        )
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["GET", "POST"])
+
+    raw_pin = (request.POST.get("pin") or "").strip()
+    if not _pin_valido_4_digitos(raw_pin):
+        return render(
+            request,
+            "inventory/cambiar_pin.html",
+            {
+                "usuario": usuario,
+                "slug": slug,
+                "error": "El PIN debe ser de 4 dígitos numéricos.",
+            },
+        )
+
+    usuario.set_pin(raw_pin)
+    usuario.save(update_fields=["pin_kiosco"])
+    return redirect(f"/{slug}/usuarios/")
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+def listar_tripulacion(request, slug, nave_id):
+    nave = TenantQueryService.get_nave(request.naviera, nave_id)
+    tripulacion = TenantQueryService.get_tripulacion_activa_de_nave(request.naviera, nave_id)
+    usuarios_asignados_ids = tripulacion.values_list("usuario_id", flat=True)
+    usuarios_disponibles = TenantQueryService.get_usuarios_del_tenant(request.naviera).exclude(
+        id__in=usuarios_asignados_ids
+    )
+
+    return render(
+        request,
+        "inventory/tripulacion_lista.html",
+        {
+            "nave": nave,
+            "tripulacion": tripulacion,
+            "usuarios_disponibles": usuarios_disponibles,
+            "slug": slug,
+        },
+    )
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+def agregar_tripulante(request, slug, nave_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    nave = TenantQueryService.get_nave(request.naviera, nave_id)
+    usuario_id = request.POST.get("usuario_id")
+    usuario = TenantQueryService.get_usuario_del_tenant(request.naviera, usuario_id)
+
+    try:
+        Tripulacion.objects.create(usuario=usuario, nave=nave)
+    except IntegrityError:
+        pass
+
+    return redirect(f"/{slug}/naves/{nave_id}/tripulacion/")
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+def remover_tripulante(request, slug, nave_id, tripulacion_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    nave = TenantQueryService.get_nave(request.naviera, nave_id)
+
+    try:
+        tripulacion = Tripulacion.objects.get(id=tripulacion_id, nave=nave)
+    except Tripulacion.DoesNotExist as exc:
+        raise Http404("Recurso no encontrado.") from exc
+
+    tripulacion.delete()
+    return redirect(f"/{slug}/naves/{nave_id}/tripulacion/")
