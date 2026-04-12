@@ -16,9 +16,9 @@
             TOKEN_HASH: {{ dispositivo.token_hash|truncatechars:30 }}...
         </div>
 
-        <button onclick="window.location.href='/kiosco/login/'" class="bg-slate-700 hover:bg-slate-600 py-2 px-6 rounded font-bold text-white transition-colors">
+        <a href="{% url 'inventory:login_kiosco' slug=request.naviera.slug %}" class="inline-block bg-slate-700 hover:bg-slate-600 py-2 px-6 rounded font-bold text-white transition-colors">
             Ir a Pantalla de Operación
-        </button>
+        </a>
     </div>
 
     <script>
