@@ -35,6 +35,11 @@ class TenantQueryService:
         return Nave.objects.filter(naviera=naviera, is_active=True)
 
     @staticmethod
+    def get_naves_del_tenant(naviera):
+        """Retorna queryset de todas las naves del tenant (activas e inactivas)."""
+        return Nave.objects.filter(naviera=naviera).order_by("is_active", "nombre")
+
+    @staticmethod
     def get_dispositivos(naviera):
         """Retorna queryset de dispositivos del tenant con select_related('nave')."""
         return Dispositivo.objects.filter(naviera=naviera).select_related("nave")
