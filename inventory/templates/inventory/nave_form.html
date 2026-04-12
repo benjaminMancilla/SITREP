@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if editando %}Editar Nave{% else %}Crear Nave{% endif %} - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
+    <div class="mx-auto w-full max-w-2xl rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-xl">
+        <h1 class="mb-6 text-2xl font-bold text-emerald-400">
+            {% if editando %}Editar Nave{% else %}Crear Nave{% endif %}
+        </h1>
+
+        {% if error %}
+            <div class="mb-6 rounded-md border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-200">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label for="nombre" class="mb-2 block text-sm font-medium">Nombre</label>
+                <input
+                    id="nombre"
+                    name="nombre"
+                    type="text"
+                    value="{{ form_data.nombre }}"
+                    required
+                    class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
+                >
+            </div>
+
+            <div>
+                <label for="matricula" class="mb-2 block text-sm font-medium">Matricula</label>
+                <input
+                    id="matricula"
+                    name="matricula"
+                    type="text"
+                    value="{{ form_data.matricula }}"
+                    {% if editando %}disabled{% else %}required{% endif %}
+                    class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                {% if editando %}
+                    <p class="mt-2 text-xs text-slate-400">La matricula no se puede modificar.</p>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                    <label for="eslora" class="mb-2 block text-sm font-medium">Eslora (m)</label>
+                    <input
+                        id="eslora"
+                        name="eslora"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value="{{ form_data.eslora }}"
+                        required
+                        class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
+                    >
+                </div>
+                <div>
+                    <label for="arqueo_bruto" class="mb-2 block text-sm font-medium">Arqueo Bruto</label>
+                    <input
+                        id="arqueo_bruto"
+                        name="arqueo_bruto"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value="{{ form_data.arqueo_bruto }}"
+                        required
+                        class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
+                    >
+                </div>
+            </div>
+
+            <div>
+                <label for="capacidad_personas" class="mb-2 block text-sm font-medium">Capacidad de Personas</label>
+                <input
+                    id="capacidad_personas"
+                    name="capacidad_personas"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value="{{ form_data.capacidad_personas }}"
+                    required
+                    class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
+                >
+            </div>
+
+            <div class="flex flex-col gap-3 pt-2 sm:flex-row">
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500"
+                >
+                    Guardar
+                </button>
+                <a
+                    href="/{{ slug }}/naves/"
+                    class="inline-flex items-center justify-center rounded-md border border-slate-600 px-4 py-2 font-semibold text-slate-200 transition-colors hover:bg-slate-700"
+                >
+                    Volver a Naves
+                </a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

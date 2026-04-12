@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naves - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
+    <div class="max-w-6xl mx-auto space-y-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 class="text-3xl font-bold text-emerald-400">Gestion de Naves</h1>
+            <a
+                href="{% url 'inventory:crear_nave' slug=slug %}"
+                class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500"
+            >
+                Agregar Nave
+            </a>
+        </div>
+
+        <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-800 text-slate-300">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+                        <th class="px-4 py-3 text-left font-semibold">Matricula</th>
+                        <th class="px-4 py-3 text-left font-semibold">Eslora (m)</th>
+                        <th class="px-4 py-3 text-left font-semibold">Arqueo Bruto</th>
+                        <th class="px-4 py-3 text-left font-semibold">Cap. Personas</th>
+                        <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                        <th class="px-4 py-3 text-left font-semibold">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700">
+                    {% for nave in naves %}
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="px-4 py-3 text-white">{{ nave.nombre }}</td>
+                            <td class="px-4 py-3">{{ nave.matricula }}</td>
+                            <td class="px-4 py-3">{{ nave.eslora }}</td>
+                            <td class="px-4 py-3">{{ nave.arqueo_bruto }}</td>
+                            <td class="px-4 py-3">{{ nave.capacidad_personas }}</td>
+                            <td class="px-4 py-3">
+                                {% if nave.is_active %}
+                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+                                        Activa
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300">
+                                        Inactiva
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if nave.is_active %}
+                                    <div class="flex flex-wrap gap-2">
+                                        <a
+                                            href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
+                                            class="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-500"
+                                        >
+                                            Editar
+                                        </a>
+                                        <form method="post" action="{% url 'inventory:desactivar_nave' slug=slug nave_id=nave.id %}">
+                                            {% csrf_token %}
+                                            <button
+                                                type="submit"
+                                                onclick="return confirm('Confirmar desactivacion de nave?')"
+                                                class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
+                                            >
+                                                Desactivar
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-slate-400">
+                                No hay naves registradas para esta naviera.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
