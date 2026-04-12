@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Tierra - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen flex items-center justify-center px-4">
+    <div class="bg-slate-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-slate-700">
+        <h1 class="text-2xl font-bold mb-6 text-emerald-400">Acceso Tierra</h1>
+
+        {% if error %}
+            <p class="text-red-400 text-sm mb-4">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST" action="" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label for="email" class="block text-sm font-medium mb-2">Email</label>
+                <input
+                    id="email"
+                    type="email"
+                    name="email"
+                    required
+                    autocomplete="email"
+                    class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-emerald-500 outline-none"
+                >
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium mb-2">Contraseña</label>
+                <input
+                    id="password"
+                    type="password"
+                    name="password"
+                    required
+                    autocomplete="current-password"
+                    class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-emerald-500 outline-none"
+                >
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded transition-colors">
+                Ingresar
+            </button>
+        </form>
+    </div>
+</body>
+</html>

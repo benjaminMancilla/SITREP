@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Kiosco - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-slate-800 p-8 rounded-xl shadow-xl w-full max-w-lg border border-slate-700">
+        <h1 class="text-3xl font-bold mb-6 text-emerald-400">Acceso Kiosco</h1>
+
+        {% if error %}
+            <p class="text-red-400 text-base mb-4">{{ error }}</p>
+        {% endif %}
+
+        <p id="token-error" class="text-red-400 text-base mb-4 hidden">
+            Dispositivo no autorizado. Contacte a su supervisor.
+        </p>
+
+        <form id="kiosco-form" method="POST" action="" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label for="rut" class="block text-lg font-medium mb-2">RUT</label>
+                <input
+                    id="rut"
+                    name="rut"
+                    type="text"
+                    required
+                    autocomplete="username"
+                    class="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-xl text-white focus:border-emerald-500 outline-none"
+                    placeholder="12.345.678-9"
+                >
+            </div>
+
+            <div>
+                <label for="pin" class="block text-lg font-medium mb-2">PIN</label>
+                <input
+                    id="pin"
+                    name="pin"
+                    type="password"
+                    required
+                    inputmode="numeric"
+                    pattern="[0-9]{1,4}"
+                    maxlength="4"
+                    autocomplete="current-password"
+                    class="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-xl tracking-[0.3em] text-white focus:border-emerald-500 outline-none"
+                    placeholder="••••"
+                >
+            </div>
+
+            <input id="dispositivo_token" name="dispositivo_token" type="hidden">
+
+            <button
+                id="submit-btn"
+                type="submit"
+                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xl py-4 px-6 rounded-lg transition-colors"
+            >
+                Ingresar
+            </button>
+        </form>
+    </div>
+
+    <script>
+        (function () {
+            var token = window.localStorage.getItem("sitrep_kiosco_token");
+            var tokenInput = document.getElementById("dispositivo_token");
+            var tokenError = document.getElementById("token-error");
+            var form = document.getElementById("kiosco-form");
+
+            if (token) {
+                tokenInput.value = token;
+                return;
+            }
+
+            tokenError.classList.remove("hidden");
+            var controls = form.querySelectorAll("input, button");
+            controls.forEach(function (control) {
+                control.disabled = true;
+            });
+        })();
+    </script>
+</body>
+</html>

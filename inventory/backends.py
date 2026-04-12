@@ -10,11 +10,17 @@ class WebTenantBackend(ModelBackend):
     Se basa en el conocimiento (Email + Contraseña Fuerte).
     """
     def authenticate(self, request, email=None, password=None, **kwargs):
-        if not email or not password:
+        if not email:
+            return None
+
+        if not password:
             return None
             
         try:
             usuario = Usuario.objects.get(email=email)
+
+            if usuario.naviera != getattr(request, "naviera", None):
+                return None
             
             # EL ESCUDO DE ROLES: Un marinero raso tiene estrictamente prohibido entrar a la web
             if usuario.rol == 'mar':
@@ -24,7 +30,7 @@ class WebTenantBackend(ModelBackend):
             if usuario.check_password(password) and self.user_can_authenticate(usuario):
                 return usuario
                 
-        except Usuario.DoesNotExist:
+        except (Usuario.DoesNotExist, Usuario.MultipleObjectsReturned):
             return None
             
         return None
@@ -36,6 +42,8 @@ class KioscoTenantBackend(ModelBackend):
     Se basa en posesión (Tablet física) y conocimiento (RUT + PIN).
     """
     def authenticate(self, request, rut=None, pin=None, naviera_id=None, dispositivo_token=None, **kwargs):
+        naviera_id = getattr(getattr(request, "naviera", None), "id", None)
+
         # Filtro de Integridad de la Petición
         if not rut or not pin or not naviera_id:
             return None
@@ -47,13 +55,13 @@ class KioscoTenantBackend(ModelBackend):
 
         dispositivos_activos = Dispositivo.objects.filter(naviera_id=naviera_id, is_active=True)
         
-        dispositivo_valido = False
+        dispositivo_autenticado = None
         for dispositivo in dispositivos_activos:
             if dispositivo.verificar_token(dispositivo_token):
-                dispositivo_valido = True
+                dispositivo_autenticado = dispositivo
                 break
                 
-        if not dispositivo_valido:
+        if not dispositivo_autenticado:
             return None
 
         # VERIFICACIÓN DE IDENTIDAD Y SECRETO
@@ -63,9 +71,10 @@ class KioscoTenantBackend(ModelBackend):
             
             # Verificamos que el PIN ingresado coincida con el hash
             if usuario.check_pin(pin) and self.user_can_authenticate(usuario):
+                usuario._dispositivo_autenticado = dispositivo_autenticado
                 return usuario
                 
-        except Usuario.DoesNotExist:
+        except (Usuario.DoesNotExist, Usuario.MultipleObjectsReturned):
             return None
             
         return None

@@ -13,6 +13,10 @@ def revocar_dispositivo_placeholder(request, slug, id):
 
 
 urlpatterns = [
+    path('login/', views.login_tierra, name='login_tierra'),
+    path('kiosco/login/', views.login_kiosco, name='login_kiosco'),
+    path('', views.tenant_home_placeholder, name='tenant_home'),
+    path('kiosco/', views.kiosco_home_placeholder, name='kiosco_home'),
     path('kiosco/hardware/setup/', views.setup_kiosco, name='setup_kiosco'),
     path(
         'kiosco/hardware/<int:id>/revocar/',

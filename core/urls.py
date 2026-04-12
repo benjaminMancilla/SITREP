@@ -15,25 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
-from django.http import HttpResponse
-
-
-def health_check(request):
-    return HttpResponse("SITREP en linea y operativo.", status=200)
-
-
-def login_tierra_placeholder(request, slug):
-    return HttpResponse(f"Tierra login placeholder para {slug}.", status=200)
-
-
-def login_kiosco_placeholder(request, slug):
-    return HttpResponse(f"Kiosco login placeholder para {slug}.", status=200)
-
+from django.urls import include, path
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('<slug:slug>/login/', login_tierra_placeholder, name='login_tierra'),
-    path('<slug:slug>/kiosco/login/', login_kiosco_placeholder, name='login_kiosco'),
-    path('<slug:slug>/', include('inventory.urls')),
+    path("admin/", admin.site.urls),
+    path("<slug:slug>/", include("inventory.urls", namespace="inventory")),
 ]
