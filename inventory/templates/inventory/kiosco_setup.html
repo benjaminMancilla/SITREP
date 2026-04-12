@@ -18,9 +18,8 @@
             </div>
             
             <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Asignar a Nave (Opcional)</label>
-                <select name="nave_id" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none">
-                    <option value="">-- Kiosco de Tierra --</option>
+                <label class="block text-sm font-medium mb-2">Asignar a Nave</label>
+                <select name="nave_id" required class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none">
                     {% for nave in naves %}
                         <option value="{{ nave.id }}">{{ nave.nombre }} ({{ nave.matricula }})</option>
                     {% endfor %}

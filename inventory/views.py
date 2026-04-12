@@ -81,13 +81,14 @@ def setup_kiosco(request, slug):
         nombre_dispositivo = request.POST.get("nombre_dispositivo")
         nave_id = request.POST.get("nave_id")
 
+        if not nave_id:
+            return HttpResponseForbidden("Debe asignar el dispositivo a una nave.")
+
         # Validación de Jurisdicción (Previene IDOR)
-        nave = None
-        if nave_id:
-            try:
-                nave = Nave.objects.get(id=nave_id, naviera=naviera)
-            except Nave.DoesNotExist:
-                return HttpResponseForbidden("Intento de Brecha: La nave solicitada no pertenece a su tenant.")
+        try:
+            nave = Nave.objects.get(id=nave_id, naviera=naviera)
+        except Nave.DoesNotExist:
+            return HttpResponseForbidden("Intento de Brecha: La nave solicitada no pertenece a su tenant.")
 
         # Fabricación del Hardware Binding
         dispositivo = Dispositivo(naviera=naviera, nave=nave, nombre=nombre_dispositivo)

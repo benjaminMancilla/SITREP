@@ -171,7 +171,7 @@ class Dispositivo(models.Model):
     instalado en una nave o instalación de la naviera.
     """
     naviera = models.ForeignKey(Naviera, on_delete=models.CASCADE, related_name='dispositivos')
-    nave = models.ForeignKey(Nave, on_delete=models.CASCADE, null=True, blank=True, related_name='dispositivos')
+    nave = models.ForeignKey(Nave, on_delete=models.CASCADE, related_name='dispositivos')
     
     nombre = models.CharField(max_length=100, help_text="Ej: Tablet Puente Mando, PC Sala Máquinas")
     # Este token se inyectará en el navegador del dispositivo físico
