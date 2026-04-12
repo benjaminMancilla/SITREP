@@ -9,10 +9,10 @@ from .models import (
 @admin.register(Usuario)
 class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
-        ('Contexto Multi-Tenant', {'fields': ('naviera', 'rut', 'rol')}),
+        ("Contexto Multi-Tenant", {"fields": ("naviera", "rut", "rol", "pin_kiosco")}),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('Contexto Multi-Tenant', {'fields': ('naviera', 'rut', 'rol')}),
+        ("Contexto Multi-Tenant", {"fields": ("naviera", "rut", "rol", "pin_kiosco")}),
     )
     
     list_display = ('rut', 'username', 'naviera', 'rol', 'is_active')
