@@ -98,7 +98,7 @@ def setup_kiosco(request, slug):
             return HttpResponseForbidden("Debe asignar el dispositivo a una nave.")
 
         # Validación de Jurisdicción (Previene IDOR)
-        nave = TenantQueryService.get_nave(request.naviera, nave_id)
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
 
         # Fabricación del Hardware Binding
         dispositivo = Dispositivo(naviera=request.naviera, nave=nave, nombre=nombre_dispositivo)
@@ -223,7 +223,7 @@ def crear_nave(request, slug):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera")
 def editar_nave(request, slug, nave_id):
-    nave = TenantQueryService.get_nave(request.naviera, nave_id)
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
 
     if request.method == "GET":
         return render(
@@ -426,7 +426,7 @@ def cambiar_pin(request, slug, id):
     if request.user.rol == "capitan" and request.user.id != id:
         return HttpResponseForbidden("Acceso denegado.")
 
-    usuario = TenantQueryService.get_usuario_del_tenant(request.naviera, id)
+    usuario = TenantQueryService.get_usuario_activo_del_tenant(request.naviera, id)
 
     if request.method == "GET":
         return render(
@@ -458,7 +458,7 @@ def cambiar_pin(request, slug, id):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan")
 def listar_tripulacion(request, slug, nave_id):
-    nave = TenantQueryService.get_nave(request.naviera, nave_id)
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
     tripulacion = TenantQueryService.get_tripulacion_activa_de_nave(request.naviera, nave_id)
     usuarios_asignados_ids = tripulacion.values_list("usuario_id", flat=True)
     usuarios_disponibles = TenantQueryService.get_usuarios_del_tenant(request.naviera).exclude(
@@ -483,9 +483,9 @@ def agregar_tripulante(request, slug, nave_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
-    nave = TenantQueryService.get_nave(request.naviera, nave_id)
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
     usuario_id = request.POST.get("usuario_id")
-    usuario = TenantQueryService.get_usuario_del_tenant(request.naviera, usuario_id)
+    usuario = TenantQueryService.get_usuario_activo_del_tenant(request.naviera, usuario_id)
 
     try:
         Tripulacion.objects.create(usuario=usuario, nave=nave)
@@ -501,7 +501,7 @@ def remover_tripulante(request, slug, nave_id, tripulacion_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
-    nave = TenantQueryService.get_nave(request.naviera, nave_id)
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
 
     try:
         tripulacion = Tripulacion.objects.get(id=tripulacion_id, nave=nave)

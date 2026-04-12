@@ -22,6 +22,14 @@ class TenantQueryService:
             raise Http404("Recurso no encontrado.") from exc
 
     @staticmethod
+    def get_nave_activa(naviera, nave_id):
+        """Retorna la nave activa si pertenece al tenant. Http404 si está inactiva o no existe."""
+        nave = TenantQueryService.get_nave(naviera, nave_id)
+        if not nave.is_active:
+            raise Http404("Recurso no encontrado.")
+        return nave
+
+    @staticmethod
     def get_dispositivo(naviera, dispositivo_id):
         """Retorna el dispositivo si pertenece al tenant. Http404 si no."""
         try:
@@ -53,6 +61,14 @@ class TenantQueryService:
             raise Http404("Recurso no encontrado.") from exc
 
     @staticmethod
+    def get_usuario_activo_del_tenant(naviera, usuario_id):
+        """Retorna usuario activo del tenant. Http404 si está inactivo o no existe."""
+        usuario = TenantQueryService.get_usuario_del_tenant(naviera, usuario_id)
+        if not usuario.is_active:
+            raise Http404("Recurso no encontrado.")
+        return usuario
+
+    @staticmethod
     def get_usuarios_del_tenant(naviera):
         """Retorna queryset de usuarios activos del tenant, excluyendo superusuarios."""
         return Usuario.objects.filter(naviera=naviera, is_active=True, is_superuser=False)
@@ -60,13 +76,13 @@ class TenantQueryService:
     @staticmethod
     def get_tripulacion_de_nave(naviera, nave_id):
         """Retorna queryset de tripulantes de una nave, validando que la nave sea del tenant."""
-        nave = TenantQueryService.get_nave(naviera, nave_id)
+        nave = TenantQueryService.get_nave_activa(naviera, nave_id)
         return Tripulacion.objects.filter(nave=nave)
 
     @staticmethod
     def get_tripulacion_activa_de_nave(naviera, nave_id):
         """Retorna queryset de Tripulacion de una nave del tenant, con select_related('usuario')."""
-        nave = TenantQueryService.get_nave(naviera, nave_id)
+        nave = TenantQueryService.get_nave_activa(naviera, nave_id)
         return Tripulacion.objects.filter(
             nave=nave,
             usuario__is_active=True,
