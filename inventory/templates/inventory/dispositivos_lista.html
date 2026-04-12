@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispositivos - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
+    <div class="max-w-6xl mx-auto space-y-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 class="text-3xl font-bold text-emerald-400">Hardware de Kiosco</h1>
+            <a
+                href="{% url 'inventory:setup_kiosco' slug=slug %}"
+                class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500"
+            >
+                Ir a Setup de Hardware
+            </a>
+        </div>
+
+        <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-800 text-slate-300">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold">Nombre</th>
+                        <th class="px-4 py-3 text-left font-semibold">Nave asignada</th>
+                        <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                        <th class="px-4 py-3 text-left font-semibold">Fecha de creación</th>
+                        <th class="px-4 py-3 text-left font-semibold">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700">
+                    {% for dispositivo in dispositivos %}
+                        <tr class="hover:bg-slate-700/30">
+                            <td class="px-4 py-3 text-white">{{ dispositivo.nombre }}</td>
+                            <td class="px-4 py-3">
+                                {% if dispositivo.nave %}
+                                    {{ dispositivo.nave.nombre }}
+                                {% else %}
+                                    Tierra
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if dispositivo.is_active %}
+                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+                                        Activo
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300">
+                                        Bloqueado
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">{{ dispositivo.creado_en|date:"d/m/Y H:i" }}</td>
+                            <td class="px-4 py-3">
+                                {% if dispositivo.is_active %}
+                                    <form method="post" action="{% url 'inventory:revocar_dispositivo' slug=slug id=dispositivo.id %}">
+                                        {% csrf_token %}
+                                        <button
+                                            type="submit"
+                                            onclick="return confirm('¿Confirmar revocación?')"
+                                            class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
+                                        >
+                                            Revocar
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-xs text-slate-500">Sin acción</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-slate-400">
+                                No hay dispositivos registrados para esta naviera.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

@@ -64,6 +64,10 @@
 
     <script>
         (function () {
+            {% if limpiar_token %}
+            window.localStorage.removeItem("sitrep_kiosco_token");
+            {% endif %}
+
             var token = window.localStorage.getItem("sitrep_kiosco_token");
             var tokenInput = document.getElementById("dispositivo_token");
             var tokenError = document.getElementById("token-error");

@@ -53,11 +53,15 @@ class KioscoTenantBackend(ModelBackend):
         if not dispositivo_token:
             return None
 
-        dispositivos_activos = Dispositivo.objects.filter(naviera_id=naviera_id, is_active=True)
+        dispositivos = Dispositivo.objects.filter(naviera_id=naviera_id).order_by("-is_active")
         
         dispositivo_autenticado = None
-        for dispositivo in dispositivos_activos:
+        for dispositivo in dispositivos:
             if dispositivo.verificar_token(dispositivo_token):
+                if not dispositivo.is_active:
+                    if request is not None:
+                        request._dispositivo_revocado = True
+                    return None
                 dispositivo_autenticado = dispositivo
                 break
                 
