@@ -1,6 +1,72 @@
 import operator
 from django.db import transaction
-from .models import Recurso, MatrizNaveRecurso
+from django.http import Http404
+
+from .models import (
+    Dispositivo,
+    MatrizNaveRecurso,
+    Nave,
+    Recurso,
+    Tripulacion,
+    Usuario,
+)
+
+
+class TenantQueryService:
+    @staticmethod
+    def get_nave(naviera, nave_id):
+        """Retorna la nave si pertenece al tenant. Http404 si no existe o es de otro tenant."""
+        try:
+            return Nave.objects.get(id=nave_id, naviera=naviera)
+        except Nave.DoesNotExist as exc:
+            raise Http404("Recurso no encontrado.") from exc
+
+    @staticmethod
+    def get_dispositivo(naviera, dispositivo_id):
+        """Retorna el dispositivo si pertenece al tenant. Http404 si no."""
+        try:
+            return Dispositivo.objects.get(id=dispositivo_id, naviera=naviera)
+        except Dispositivo.DoesNotExist as exc:
+            raise Http404("Recurso no encontrado.") from exc
+
+    @staticmethod
+    def get_naves_activas(naviera):
+        """Retorna queryset de naves activas del tenant."""
+        return Nave.objects.filter(naviera=naviera, is_active=True)
+
+    @staticmethod
+    def get_dispositivos(naviera):
+        """Retorna queryset de dispositivos del tenant con select_related('nave')."""
+        return Dispositivo.objects.filter(naviera=naviera).select_related("nave")
+
+    @staticmethod
+    def get_usuario_del_tenant(naviera, usuario_id):
+        """Retorna el usuario si pertenece al tenant. Http404 si no."""
+        try:
+            return Usuario.objects.get(id=usuario_id, naviera=naviera)
+        except Usuario.DoesNotExist as exc:
+            raise Http404("Recurso no encontrado.") from exc
+
+    @staticmethod
+    def get_usuarios_del_tenant(naviera):
+        """Retorna queryset de usuarios activos del tenant, excluyendo superusuarios."""
+        return Usuario.objects.filter(naviera=naviera, is_active=True, is_superuser=False)
+
+    @staticmethod
+    def get_tripulacion_de_nave(naviera, nave_id):
+        """Retorna queryset de tripulantes de una nave, validando que la nave sea del tenant."""
+        nave = TenantQueryService.get_nave(naviera, nave_id)
+        return Tripulacion.objects.filter(nave=nave)
+
+    @staticmethod
+    def get_tripulacion_activa_de_nave(naviera, nave_id):
+        """Retorna queryset de Tripulacion de una nave del tenant, con select_related('usuario')."""
+        nave = TenantQueryService.get_nave(naviera, nave_id)
+        return Tripulacion.objects.filter(
+            nave=nave,
+            usuario__is_active=True,
+        ).select_related("usuario")
+
 
 class MotorReglasSITREP:
     """
