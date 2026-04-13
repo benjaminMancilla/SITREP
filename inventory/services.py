@@ -1,11 +1,15 @@
 import operator
+from datetime import timedelta
 from django.db import transaction
 from django.http import Http404
+from django.utils import timezone
 
 from .models import (
     Dispositivo,
     MatrizNaveRecurso,
     Nave,
+    Periodicidad,
+    PeriodoRevision,
     Recurso,
     Tripulacion,
     Usuario,
@@ -164,3 +168,82 @@ class MotorReglasSITREP:
                     matriz_obj.cantidad = cantidad_calc
                     matriz_obj.es_visible = visible_calc
                     matriz_obj.save(update_fields=['cantidad', 'es_visible'])
+
+
+class MotorPeriodos:
+    @classmethod
+    def _crear_periodo_abierto(cls, nave, periodicidad, fecha_inicio):
+        fecha_termino = fecha_inicio + timedelta(days=periodicidad.duracion_dias - 1)
+        return PeriodoRevision.objects.create(
+            nave=nave,
+            periodicidad=periodicidad,
+            fecha_inicio=fecha_inicio,
+            fecha_termino=fecha_termino,
+            estado='abierto',
+        )
+
+    @classmethod
+    def _determinar_estado_cierre(cls, periodo):
+        """
+        Determina el estado final de un período que expiró.
+        PLACEHOLDER: Siempre retorna 'vencido'.
+        En el futuro evaluará si todas las fichas están completas para retornar 'cerrado'.
+        """
+        return 'vencido'
+
+    @classmethod
+    def sincronizar_periodos_nave(cls, nave):
+        """
+        Garantiza que exista un periodo abierto por periodicidad para la nave.
+        Si el periodo abierto está vencido, lo marca vencido y crea uno nuevo.
+        """
+        stats = {
+            'periodos_creados': 0,
+            'periodos_vencidos': 0,
+        }
+        hoy = timezone.localdate()
+
+        with transaction.atomic():
+            for periodicidad in Periodicidad.objects.all():
+                periodo_abierto = (
+                    PeriodoRevision.objects
+                    .filter(nave=nave, periodicidad=periodicidad, estado='abierto')
+                    .select_related('periodicidad')
+                    .order_by('-fecha_inicio', '-id')
+                    .first()
+                )
+
+                if periodo_abierto is None:
+                    cls._crear_periodo_abierto(nave, periodicidad, hoy)
+                    stats['periodos_creados'] += 1
+                    continue
+
+                fecha_expiracion = periodo_abierto.fecha_termino + timedelta(
+                    days=periodo_abierto.periodicidad.offset_dias
+                )
+                if fecha_expiracion < hoy:
+                    periodo_abierto.estado = cls._determinar_estado_cierre(periodo_abierto)
+                    periodo_abierto.save(update_fields=['estado'])
+                    stats['periodos_vencidos'] += 1
+
+                    cls._crear_periodo_abierto(nave, periodicidad, hoy)
+                    stats['periodos_creados'] += 1
+
+        return stats
+
+    @classmethod
+    def sincronizar_todas_las_naves(cls):
+        stats = {
+            'naves_procesadas': 0,
+            'periodos_creados': 0,
+            'periodos_vencidos': 0,
+        }
+        naves = Nave.objects.filter(is_active=True).select_related('naviera')
+
+        for nave in naves:
+            nave_stats = cls.sincronizar_periodos_nave(nave)
+            stats['naves_procesadas'] += 1
+            stats['periodos_creados'] += nave_stats['periodos_creados']
+            stats['periodos_vencidos'] += nave_stats['periodos_vencidos']
+
+        return stats

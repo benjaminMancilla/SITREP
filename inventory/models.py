@@ -250,6 +250,10 @@ class Periodicidad(models.Model):
         default=30,
         help_text="Duración del período en días. Ej: 7 para semanal, 30 para mensual."
     )
+    offset_dias = models.PositiveIntegerField(
+        default=1,
+        help_text="Días de margen tras fecha_termino antes de vencer el período. Ej: 1 para semanal, 3 para mensual."
+    )
     OPCIONES_AUDITORIA = [('mar', 'Mar'), ('tierra', 'Tierra'), ('todos', 'Todos'), ('ninguno', 'Ninguno')]
     responsabilidad = models.CharField(max_length=20, choices=OPCIONES_AUDITORIA)
     visibilidad = models.CharField(max_length=20, choices=OPCIONES_AUDITORIA)
