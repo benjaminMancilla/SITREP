@@ -141,5 +141,3 @@ AUTHENTICATION_BACKENDS = [
     'inventory.backends.KioscoTenantBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
-
-CRON_SECRET = os.getenv('CRON_SECRET', '')

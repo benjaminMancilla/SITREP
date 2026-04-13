@@ -16,10 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from inventory import views as views_cron
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("cron/sincronizar-periodos/", views_cron.cron_sincronizar_periodos, name="cron_sincronizar_periodos"),
     path("<slug:slug>/", include("inventory.urls", namespace="inventory")),
 ]
