@@ -1,13 +1,17 @@
+import secrets
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import authenticate, login
 from django.db import IntegrityError
-from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
+from django.conf import settings
+from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from .decorators import requiere_rol, tenant_member_required
 from .models import Dispositivo, Nave, Tripulacion, Usuario
-from .services import TenantQueryService
+from .services import MotorPeriodos, TenantQueryService
 
 
 def _pin_valido_4_digitos(raw_pin):
@@ -510,3 +514,23 @@ def remover_tripulante(request, slug, nave_id, tripulacion_id):
 
     tripulacion.delete()
     return redirect(f"/{slug}/naves/{nave_id}/tripulacion/")
+
+
+@csrf_exempt
+@require_POST
+def cron_sincronizar_periodos(request):
+    cron_secret = settings.CRON_SECRET
+    if not cron_secret:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    auth_header = request.headers.get('Authorization', '')
+    prefijo = 'Bearer '
+    if not auth_header.startswith(prefijo):
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    token = auth_header[len(prefijo):]
+    if not secrets.compare_digest(token, cron_secret):
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    estadisticas = MotorPeriodos.sincronizar_todas_las_naves()
+    return JsonResponse(estadisticas, status=200)
