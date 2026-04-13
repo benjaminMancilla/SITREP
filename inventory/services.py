@@ -1,4 +1,5 @@
 import operator
+import logging
 from datetime import timedelta
 from django.db import transaction
 from django.http import Http404
@@ -14,6 +15,8 @@ from .models import (
     Tripulacion,
     Usuario,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TenantQueryService:
@@ -235,15 +238,24 @@ class MotorPeriodos:
     def sincronizar_todas_las_naves(cls):
         stats = {
             'naves_procesadas': 0,
+            'naves_con_error': 0,
             'periodos_creados': 0,
             'periodos_vencidos': 0,
         }
         naves = Nave.objects.filter(is_active=True).select_related('naviera')
 
         for nave in naves:
-            nave_stats = cls.sincronizar_periodos_nave(nave)
-            stats['naves_procesadas'] += 1
-            stats['periodos_creados'] += nave_stats['periodos_creados']
-            stats['periodos_vencidos'] += nave_stats['periodos_vencidos']
+            try:
+                nave_stats = cls.sincronizar_periodos_nave(nave)
+                stats['naves_procesadas'] += 1
+                stats['periodos_creados'] += nave_stats['periodos_creados']
+                stats['periodos_vencidos'] += nave_stats['periodos_vencidos']
+
+            except Exception as e:
+                logger.error(
+                    f"Error processing nave {nave.id} (Naviera: {nave.naviera_id}): {str(e)}",
+                    exc_info=True
+                )
+                stats['naves_con_error'] += 1
 
         return stats
