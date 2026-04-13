@@ -246,6 +246,10 @@ class Periodicidad(models.Model):
     Se suele usar la visibilidad para ocultar recursos que solo tierra debe ver a los de mar.
     """
     nombre = models.CharField(max_length=100)
+    duracion_dias = models.PositiveIntegerField(
+        default=30,
+        help_text="Duración del período en días. Ej: 7 para semanal, 30 para mensual."
+    )
     OPCIONES_AUDITORIA = [('mar', 'Mar'), ('tierra', 'Tierra'), ('todos', 'Todos'), ('ninguno', 'Ninguno')]
     responsabilidad = models.CharField(max_length=20, choices=OPCIONES_AUDITORIA)
     visibilidad = models.CharField(max_length=20, choices=OPCIONES_AUDITORIA)
