@@ -1,12 +1,25 @@
 from django.core.management.base import BaseCommand
+from django.db import connections
+from django.db import OperationalError
+import time
 
 from inventory.services import MotorPeriodos
-
 
 class Command(BaseCommand):
     help = "Sincroniza periodos de revision para todas las naves activas."
 
     def handle(self, *args, **options):
+        for attempt in range(6):
+            try:
+                connections['default'].ensure_connection()
+                break
+            except OperationalError:
+                if attempt == 5:
+                    self.stdout.write(self.style.ERROR("BD no disponible tras 60s. Abortando."))
+                    return
+                self.stdout.write(f"BD no disponible, reintentando en 10s... ({intento + 1}/6)")
+                time.sleep(15)
+
         self.stdout.write("Iniciando motor de sincronización de períodos...")
         stats = MotorPeriodos.sincronizar_todas_las_naves()
 
