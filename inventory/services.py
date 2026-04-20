@@ -147,30 +147,56 @@ class MotorReglasSITREP:
         Genera o actualiza la matriz de la nave.
         RESPETA LA BANDERA DE AUDITORÍA (modificado_manualmente).
         """
+        stats = {
+            'recursos_creados': 0,
+            'recursos_actualizados': 0,
+            'recursos_omitidos': 0,
+            'recursos_con_error': 0,
+        }
         recursos_aplicables = Recurso.objects.filter(
             naviera__isnull=True
         ) | Recurso.objects.filter(
             naviera=nave.naviera
         )
 
-        with transaction.atomic():
-            for recurso in recursos_aplicables:
-                cantidad_calc, visible_calc = cls.evaluar_regla(nave, recurso.regla_aplicacion)
-                
-                matriz_obj, created = MatrizNaveRecurso.objects.get_or_create(
-                    nave=nave,
-                    recurso=recurso,
-                    defaults={
-                        'cantidad': cantidad_calc,
-                        'es_visible': visible_calc,
-                        'modificado_manualmente': False
-                    }
-                )
+        for recurso in recursos_aplicables:
+            try:
+                with transaction.atomic():
+                    cantidad_calc, visible_calc = cls.evaluar_regla(nave, recurso.regla_aplicacion)
 
-                if not created and not matriz_obj.modificado_manualmente:
+                    matriz_obj, created = MatrizNaveRecurso.objects.get_or_create(
+                        nave=nave,
+                        recurso=recurso,
+                        defaults={
+                            'cantidad': cantidad_calc,
+                            'es_visible': visible_calc,
+                            'modificado_manualmente': False
+                        }
+                    )
+
+                    if created:
+                        stats['recursos_creados'] += 1
+                        continue
+
+                    if matriz_obj.modificado_manualmente:
+                        stats['recursos_omitidos'] += 1
+                        continue
+
                     matriz_obj.cantidad = cantidad_calc
                     matriz_obj.es_visible = visible_calc
                     matriz_obj.save(update_fields=['cantidad', 'es_visible'])
+                    stats['recursos_actualizados'] += 1
+            except Exception as e:
+                logger.error(
+                    (
+                        f"Error processing recurso {recurso.id} for nave {nave.id} "
+                        f"(Naviera: {nave.naviera_id}): {str(e)}"
+                    ),
+                    exc_info=True
+                )
+                stats['recursos_con_error'] += 1
+
+        return stats
 
 
 class MotorPeriodos:

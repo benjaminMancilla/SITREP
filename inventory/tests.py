@@ -1,6 +1,7 @@
 from django.http import Http404
 from django.test import TestCase
 from django.urls import reverse
+from unittest.mock import patch
 
 from .models import (
     Dispositivo,
@@ -421,3 +422,91 @@ class TestMotorReglasSITREP(TestCase):
                 recurso=recurso_otro_tenant,
             ).exists()
         )
+
+    def test_sincronizar_matriz_nave_retorna_estadisticas(self):
+        """Retorna estadisticas de creados, actualizados, omitidos y errores"""
+        recurso_creado = self._crear_recurso(
+            nombre="Recurso Creado",
+            regla_aplicacion=self.regla_semanal,
+            naviera=None,
+        )
+        recurso_actualizado = self._crear_recurso(
+            nombre="Recurso Actualizado",
+            regla_aplicacion=self.regla_semanal,
+            naviera=None,
+        )
+        recurso_omitido = self._crear_recurso(
+            nombre="Recurso Omitido",
+            regla_aplicacion=self.regla_semanal,
+            naviera=None,
+        )
+
+        MatrizNaveRecurso.objects.create(
+            nave=self.nave,
+            recurso=recurso_actualizado,
+            cantidad=1,
+            es_visible=False,
+            modificado_manualmente=False,
+        )
+        MatrizNaveRecurso.objects.create(
+            nave=self.nave,
+            recurso=recurso_omitido,
+            cantidad=99,
+            es_visible=False,
+            modificado_manualmente=True,
+        )
+
+        stats = MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        self.assertEqual(
+            stats,
+            {
+                "recursos_creados": 1,
+                "recursos_actualizados": 1,
+                "recursos_omitidos": 1,
+                "recursos_con_error": 0,
+            },
+        )
+        self.assertTrue(
+            MatrizNaveRecurso.objects.filter(nave=self.nave, recurso=recurso_creado).exists()
+        )
+
+    def test_sincronizar_matriz_nave_continua_si_un_recurso_falla(self):
+        """Si un recurso falla, los demás recursos deben seguir procesándose"""
+        recurso_ok = self._crear_recurso(
+            nombre="Recurso OK",
+            regla_aplicacion=self.regla_semanal,
+            naviera=None,
+        )
+        recurso_falla = self._crear_recurso(
+            nombre="Recurso Falla",
+            regla_aplicacion=self.regla_semanal,
+            naviera=None,
+        )
+
+        original_get_or_create = MatrizNaveRecurso.objects.get_or_create
+
+        def get_or_create_con_fallo(*args, **kwargs):
+            if kwargs.get("recurso") == recurso_falla:
+                raise RuntimeError("fallo simulado de recurso")
+            return original_get_or_create(*args, **kwargs)
+
+        with patch.object(
+            MatrizNaveRecurso.objects,
+            "get_or_create",
+            side_effect=get_or_create_con_fallo,
+        ):
+            with self.assertLogs("inventory.services", level="ERROR") as logs:
+                stats = MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        self.assertEqual(stats["recursos_con_error"], 1)
+        self.assertEqual(stats["recursos_creados"], 1)
+        self.assertEqual(stats["recursos_actualizados"], 0)
+        self.assertEqual(stats["recursos_omitidos"], 0)
+        self.assertTrue(
+            MatrizNaveRecurso.objects.filter(nave=self.nave, recurso=recurso_ok).exists()
+        )
+        self.assertFalse(
+            MatrizNaveRecurso.objects.filter(nave=self.nave, recurso=recurso_falla).exists()
+        )
+        self.assertTrue(any("Error processing recurso" in linea for linea in logs.output))
