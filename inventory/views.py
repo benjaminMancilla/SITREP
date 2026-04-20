@@ -2,16 +2,50 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import authenticate, login
 from django.db import IntegrityError
-from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
+from django.db.models import Count
+from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
 
 from .decorators import requiere_rol, tenant_member_required
-from .models import Dispositivo, Nave, Tripulacion, Usuario
+from .models import Dispositivo, FichaRegistro, MatrizNaveRecurso, Nave, PeriodoRevision, Tripulacion, Usuario
 from .services import TenantQueryService
 
 
 def _pin_valido_4_digitos(raw_pin):
     return bool(raw_pin) and len(raw_pin) == 4 and raw_pin.isdigit()
+
+
+ROLES_API_KIOSCO = {"mar", "capitan", "tierra", "admin_naviera", "admin_sitrep"}
+
+
+def _json_error(mensaje, status):
+    return JsonResponse({"error": mensaje}, status=status)
+
+
+def _validar_rol_api_kiosco(request):
+    if getattr(request.user, "rol", None) not in ROLES_API_KIOSCO:
+        return _json_error("Acceso denegado: rango insuficiente.", 403)
+    return None
+
+
+def _obtener_nave_activa_desde_sesion(request):
+    nave_id = request.session.get("nave_id")
+    if not nave_id:
+        return None, _json_error("Sesión de nave no disponible.", 403)
+
+    try:
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    except Http404:
+        return None, _json_error("Nave no encontrada.", 404)
+
+    return nave, None
+
+
+def _obtener_periodo_de_nave(nave, periodo_id):
+    try:
+        return PeriodoRevision.objects.select_related("periodicidad").get(id=periodo_id, nave=nave)
+    except PeriodoRevision.DoesNotExist:
+        return None
 
 
 def tenant_home_placeholder(request, slug):
@@ -510,3 +544,189 @@ def remover_tripulante(request, slug, nave_id, tripulacion_id):
 
     tripulacion.delete()
     return redirect(f"/{slug}/naves/{nave_id}/tripulacion/")
+
+
+@tenant_member_required
+def api_periodos_nave(request, slug):
+    if request.method != "GET":
+        return _json_error("Método no permitido.", 405)
+
+    error = _validar_rol_api_kiosco(request)
+    if error:
+        return error
+
+    nave, error = _obtener_nave_activa_desde_sesion(request)
+    if error:
+        return error
+
+    periodos = list(TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id"))
+    periodicidad_ids = [periodo.periodicidad_id for periodo in periodos]
+    periodo_ids = [periodo.id for periodo in periodos]
+
+    recursos_por_periodicidad = {}
+    if periodicidad_ids:
+        recursos_por_periodicidad = {
+            row["recurso__periodicidad_id"]: row["total"]
+            for row in (
+                MatrizNaveRecurso.objects.filter(
+                    nave=nave,
+                    es_visible=True,
+                    recurso__periodicidad_id__in=periodicidad_ids,
+                )
+                .values("recurso__periodicidad_id")
+                .annotate(total=Count("id"))
+            )
+        }
+
+    fichas_por_periodo = {}
+    if periodo_ids:
+        fichas_por_periodo = {
+            row["periodo_id"]: row["total"]
+            for row in (
+                FichaRegistro.objects.filter(periodo_id__in=periodo_ids)
+                .values("periodo_id")
+                .annotate(total=Count("id"))
+            )
+        }
+
+    payload = {
+        "nave": {
+            "id": nave.id,
+            "nombre": nave.nombre,
+            "matricula": nave.matricula,
+        },
+        "periodos": [
+            {
+                "id": periodo.id,
+                "periodicidad": periodo.periodicidad.nombre,
+                "fecha_inicio": periodo.fecha_inicio.isoformat(),
+                "fecha_termino": periodo.fecha_termino.isoformat(),
+                "estado": periodo.estado,
+                "total_recursos": recursos_por_periodicidad.get(periodo.periodicidad_id, 0),
+                "fichas_completadas": fichas_por_periodo.get(periodo.id, 0),
+            }
+            for periodo in periodos
+        ],
+    }
+    return JsonResponse(payload, status=200)
+
+
+@tenant_member_required
+def api_recursos_periodo(request, slug, periodo_id):
+    if request.method != "GET":
+        return _json_error("Método no permitido.", 405)
+
+    error = _validar_rol_api_kiosco(request)
+    if error:
+        return error
+
+    nave, error = _obtener_nave_activa_desde_sesion(request)
+    if error:
+        return error
+
+    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    if periodo is None:
+        return _json_error("Período no encontrado.", 404)
+
+    recursos = []
+    matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+        "recurso__nombre",
+        "id",
+    )
+    for matriz in matrices:
+        ficha = TenantQueryService.get_ficha_de_periodo_y_recurso(periodo, matriz.recurso)
+        recursos.append(
+            {
+                "matriz_id": matriz.id,
+                "recurso_id": matriz.recurso_id,
+                "nombre": matriz.recurso.nombre,
+                "tipo": matriz.recurso.proposito.tipo,
+                "categoria": matriz.recurso.proposito.categoria,
+                "cantidad": matriz.cantidad,
+                "requerimientos": matriz.recurso.requerimientos or [],
+                "tiene_ficha": ficha is not None,
+                "estado_operativo": ficha.estado_operativo if ficha else None,
+                "observacion_general": ficha.observacion_general if ficha else "",
+            }
+        )
+
+    payload = {
+        "periodo": {
+            "id": periodo.id,
+            "periodicidad": periodo.periodicidad.nombre,
+            "fecha_inicio": periodo.fecha_inicio.isoformat(),
+            "fecha_termino": periodo.fecha_termino.isoformat(),
+        },
+        "recursos": recursos,
+    }
+    return JsonResponse(payload, status=200)
+
+
+@tenant_member_required
+def api_detalle_recurso(request, slug, periodo_id, recurso_id):
+    if request.method != "GET":
+        return _json_error("Método no permitido.", 405)
+
+    error = _validar_rol_api_kiosco(request)
+    if error:
+        return error
+
+    nave, error = _obtener_nave_activa_desde_sesion(request)
+    if error:
+        return error
+
+    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    if periodo is None:
+        return _json_error("Período no encontrado.", 404)
+
+    try:
+        matriz = MatrizNaveRecurso.objects.select_related(
+            "recurso",
+            "recurso__proposito",
+            "recurso__periodicidad",
+        ).get(
+            nave=nave,
+            recurso_id=recurso_id,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        )
+    except MatrizNaveRecurso.DoesNotExist:
+        return _json_error("Recurso no encontrado en la matriz visible de la nave.", 404)
+
+    ficha = TenantQueryService.get_ficha_de_periodo_y_recurso(periodo, matriz.recurso)
+    usuario_ficha = None
+    estado_operativo = None
+    observacion_general = ""
+    payload_checklist = {}
+    fecha_revision = None
+
+    if ficha:
+        estado_operativo = ficha.estado_operativo
+        observacion_general = ficha.observacion_general
+        payload_checklist = ficha.payload_checklist or {}
+        fecha_revision = ficha.fecha_revision.isoformat() if ficha.fecha_revision else None
+
+        nombre_completo = f"{ficha.usuario.first_name} {ficha.usuario.last_name}".strip()
+        if not nombre_completo:
+            nombre_completo = ficha.usuario.rut
+        usuario_ficha = f"{nombre_completo} ({ficha.usuario.rut})"
+
+    payload = {
+        "recurso": {
+            "id": matriz.recurso.id,
+            "nombre": matriz.recurso.nombre,
+            "tipo": matriz.recurso.proposito.tipo,
+            "categoria": matriz.recurso.proposito.categoria,
+            "cantidad_requerida": matriz.cantidad,
+            "requerimientos": matriz.recurso.requerimientos or [],
+        },
+        "ficha": {
+            "existe": ficha is not None,
+            "estado_operativo": estado_operativo,
+            "observacion_general": observacion_general,
+            "payload_checklist": payload_checklist,
+            "fecha_revision": fecha_revision,
+            "usuario": usuario_ficha,
+        },
+    }
+    return JsonResponse(payload, status=200)
