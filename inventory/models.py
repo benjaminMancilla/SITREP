@@ -411,6 +411,19 @@ class FichaRegistro(models.Model):
     
     # DETALLE DINÁMICO
     payload_checklist = models.JSONField(default=dict)
+    modificado_por = models.ForeignKey(
+        Usuario,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='fichas_modificadas',
+        help_text="Usuario que realizó la última modificación. Null si nunca fue modificada."
+    )
+    modificado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp de la última modificación."
+    )
 
     class Meta:
         # Una ficha única por recurso dentro de un periodo específico
