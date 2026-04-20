@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import authenticate, login
@@ -7,8 +8,8 @@ from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpRespon
 from django.shortcuts import redirect, render
 
 from .decorators import requiere_rol, tenant_member_required
-from .models import Dispositivo, FichaRegistro, MatrizNaveRecurso, Nave, PeriodoRevision, Tripulacion, Usuario
-from .services import TenantQueryService
+from .models import Dispositivo, FichaRegistro, MatrizNaveRecurso, Nave, PeriodoRevision, Recurso, Tripulacion, Usuario
+from .services import MotorFichas, TenantQueryService
 
 
 def _pin_valido_4_digitos(raw_pin):
@@ -46,6 +47,33 @@ def _obtener_periodo_de_nave(nave, periodo_id):
         return PeriodoRevision.objects.select_related("periodicidad").get(id=periodo_id, nave=nave)
     except PeriodoRevision.DoesNotExist:
         return None
+
+
+def _extraer_payload_ficha_desde_json(request):
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None, _json_error("JSON inválido.", 400)
+
+    if not isinstance(payload, dict):
+        return None, _json_error("El body debe ser un objeto JSON.", 400)
+
+    estado_operativo = payload.get("estado_operativo")
+    observacion_general = payload.get("observacion_general", "")
+    payload_checklist = payload.get("payload_checklist", {})
+
+    if type(estado_operativo) is not bool:
+        return None, _json_error("estado_operativo debe ser booleano.", 400)
+    if not isinstance(observacion_general, str):
+        return None, _json_error("observacion_general debe ser texto.", 400)
+    if not isinstance(payload_checklist, dict):
+        return None, _json_error("payload_checklist debe ser un objeto JSON.", 400)
+
+    return {
+        "estado_operativo": estado_operativo,
+        "observacion_general": observacion_general,
+        "payload_checklist": payload_checklist,
+    }, None
 
 
 def tenant_home_placeholder(request, slug):
@@ -730,3 +758,84 @@ def api_detalle_recurso(request, slug, periodo_id, recurso_id):
         },
     }
     return JsonResponse(payload, status=200)
+
+
+@tenant_member_required
+def api_crear_ficha(request, slug, periodo_id, recurso_id):
+    if request.method != "POST":
+        return _json_error("Método no permitido.", 405)
+
+    error = _validar_rol_api_kiosco(request)
+    if error:
+        return error
+
+    nave, error = _obtener_nave_activa_desde_sesion(request)
+    if error:
+        return error
+
+    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    if periodo is None:
+        return _json_error("Período no encontrado.", 404)
+
+    try:
+        recurso = Recurso.objects.get(id=recurso_id)
+    except Recurso.DoesNotExist:
+        return _json_error("Recurso no encontrado.", 404)
+
+    data, error = _extraer_payload_ficha_desde_json(request)
+    if error:
+        return error
+
+    try:
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=request.user,
+            estado_operativo=data["estado_operativo"],
+            observacion_general=data["observacion_general"],
+            payload_checklist=data["payload_checklist"],
+        )
+    except ValueError as exc:
+        return _json_error(str(exc), 400)
+
+    return JsonResponse({"id": ficha.id, "created": True}, status=201)
+
+
+@tenant_member_required
+def api_modificar_ficha(request, slug, periodo_id, recurso_id):
+    if request.method != "PATCH":
+        return _json_error("Método no permitido.", 405)
+
+    error = _validar_rol_api_kiosco(request)
+    if error:
+        return error
+
+    nave, error = _obtener_nave_activa_desde_sesion(request)
+    if error:
+        return error
+
+    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    if periodo is None:
+        return _json_error("Período no encontrado.", 404)
+
+    try:
+        ficha = FichaRegistro.objects.get(periodo=periodo, recurso_id=recurso_id)
+    except FichaRegistro.DoesNotExist:
+        return _json_error("Ficha no encontrada para este recurso y período.", 404)
+
+    data, error = _extraer_payload_ficha_desde_json(request)
+    if error:
+        return error
+
+    try:
+        ficha = MotorFichas.modificar_ficha(
+            ficha=ficha,
+            usuario_modificador=request.user,
+            estado_operativo=data["estado_operativo"],
+            observacion_general=data["observacion_general"],
+            payload_checklist=data["payload_checklist"],
+        )
+    except ValueError as exc:
+        return _json_error(str(exc), 400)
+
+    return JsonResponse({"id": ficha.id, "modified": True}, status=200)

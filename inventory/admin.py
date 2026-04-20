@@ -82,10 +82,23 @@ class NaveAdmin(admin.ModelAdmin):
     sincronizar_matriz.short_description = "Sincronizar MatrizNaveRecurso"
 
 
+@admin.register(FichaRegistro)
+class FichaRegistroAdmin(admin.ModelAdmin):
+    list_display = ("recurso", "periodo", "usuario", "estado_operativo", "fecha_revision", "fue_modificada")
+    list_filter = ("estado_operativo", "periodo__nave__naviera", "periodo__nave")
+    search_fields = ("recurso__nombre", "usuario__rut")
+    readonly_fields = ("fecha_revision", "modificado_en")
+
+    def fue_modificada(self, obj):
+        return obj.modificado_por is not None
+
+    fue_modificada.boolean = True
+    fue_modificada.short_description = "Modificada"
+
+
 admin.site.register(Naviera)
 admin.site.register(Tripulacion)
 admin.site.register(Dispositivo)
 admin.site.register(Proposito)
 admin.site.register(Periodicidad)
 admin.site.register(PeriodoRevision)
-admin.site.register(FichaRegistro)
