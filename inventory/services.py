@@ -1,7 +1,7 @@
 import operator
 import logging
 from datetime import timedelta
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.utils import timezone
 
@@ -322,3 +322,106 @@ class MotorPeriodos:
                 stats['naves_con_error'] += 1
 
         return stats
+
+
+class MotorFichas:
+    @classmethod
+    def validar_payload_checklist(cls, recurso, payload_checklist):
+        """
+        Valida que el payload incluya todos los requerimientos del recurso como keys.
+        Retorna (es_valido, faltantes).
+        """
+        requerimientos = recurso.requerimientos or []
+        if not requerimientos:
+            return True, []
+
+        if not isinstance(payload_checklist, dict):
+            payload_checklist = {}
+
+        faltantes = [req for req in requerimientos if req not in payload_checklist]
+        if faltantes:
+            return False, faltantes
+        return True, []
+
+    @classmethod
+    def crear_ficha(
+        cls,
+        periodo,
+        recurso,
+        usuario,
+        estado_operativo,
+        observacion_general,
+        payload_checklist,
+    ):
+        with transaction.atomic():
+            if periodo.estado != "abierto":
+                raise ValueError("No se puede registrar en un período cerrado o vencido.")
+
+            recurso_asignado = MatrizNaveRecurso.objects.filter(
+                nave=periodo.nave,
+                recurso=recurso,
+                es_visible=True,
+            ).exists()
+            if not recurso_asignado:
+                raise ValueError("El recurso no está asignado a esta nave.")
+
+            es_valido, faltantes = cls.validar_payload_checklist(recurso, payload_checklist)
+            if not es_valido:
+                raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
+
+            if FichaRegistro.objects.filter(periodo=periodo, recurso=recurso).exists():
+                raise ValueError(
+                    "Ya existe una ficha para este recurso en este período. Use modificar_ficha()."
+                )
+
+            try:
+                ficha = FichaRegistro.objects.create(
+                    periodo=periodo,
+                    recurso=recurso,
+                    usuario=usuario,
+                    estado_operativo=estado_operativo,
+                    observacion_general=observacion_general,
+                    payload_checklist=payload_checklist if payload_checklist is not None else {},
+                )
+            except IntegrityError as exc:
+                raise ValueError(
+                    "Ya existe una ficha para este recurso en este período. Use modificar_ficha()."
+                ) from exc
+
+            return ficha
+
+    @classmethod
+    def modificar_ficha(
+        cls,
+        ficha,
+        usuario_modificador,
+        estado_operativo,
+        observacion_general,
+        payload_checklist,
+    ):
+        with transaction.atomic():
+            if ficha.periodo.estado != "abierto":
+                raise ValueError("No se puede registrar en un período cerrado o vencido.")
+
+            es_valido, faltantes = cls.validar_payload_checklist(
+                ficha.recurso,
+                payload_checklist,
+            )
+            if not es_valido:
+                raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
+
+            ficha.estado_operativo = estado_operativo
+            ficha.observacion_general = observacion_general
+            ficha.payload_checklist = payload_checklist if payload_checklist is not None else {}
+            ficha.modificado_por = usuario_modificador
+            ficha.modificado_en = timezone.now()
+            ficha.save(
+                update_fields=[
+                    "estado_operativo",
+                    "observacion_general",
+                    "payload_checklist",
+                    "modificado_por",
+                    "modificado_en",
+                ]
+            )
+            return ficha
