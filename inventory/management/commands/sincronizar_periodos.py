@@ -17,7 +17,7 @@ class Command(BaseCommand):
                 if attempt == 5:
                     self.stdout.write(self.style.ERROR("BD no disponible tras 60s. Abortando."))
                     return
-                self.stdout.write(f"BD no disponible, reintentando en 10s... ({intento + 1}/6)")
+                self.stdout.write(f"BD no disponible, reintentando en 10s... ({attempt + 1}/6)")
                 time.sleep(15)
 
         self.stdout.write("Iniciando motor de sincronización de períodos...")
