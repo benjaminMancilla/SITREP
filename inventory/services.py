@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from .models import (
     Dispositivo,
+    FichaRegistro,
     MatrizNaveRecurso,
     Nave,
     Periodicidad,
@@ -94,6 +95,42 @@ class TenantQueryService:
             nave=nave,
             usuario__is_active=True,
         ).select_related("usuario")
+
+    @staticmethod
+    def get_periodos_abiertos_de_nave(nave):
+        """Retorna queryset de PeriodoRevision abiertos de la nave, con select_related."""
+        return PeriodoRevision.objects.filter(
+            nave=nave,
+            estado="abierto",
+        ).select_related("periodicidad")
+
+    @staticmethod
+    def get_recursos_visibles_de_nave_en_periodo(nave, periodo):
+        """
+        Retorna queryset de MatrizNaveRecurso visibles de la nave
+        cuya periodicidad coincide con la del periodo dado.
+        Incluye select_related('recurso', 'recurso__proposito', 'recurso__periodicidad').
+        """
+        return MatrizNaveRecurso.objects.filter(
+            nave=nave,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        ).select_related(
+            "recurso",
+            "recurso__proposito",
+            "recurso__periodicidad",
+        )
+
+    @staticmethod
+    def get_ficha_de_periodo_y_recurso(periodo, recurso):
+        """
+        Retorna la FichaRegistro si existe para ese periodo+recurso, o None.
+        Nunca lanza excepción — usa filter().first().
+        """
+        return FichaRegistro.objects.filter(
+            periodo=periodo,
+            recurso=recurso,
+        ).first()
 
 
 class MotorReglasSITREP:
