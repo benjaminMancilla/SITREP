@@ -8,8 +8,9 @@ urlpatterns = [
     path('login/', views.login_tierra, name='login_tierra'),
     path('logout/', views.logout_tierra, name='logout_tierra'),
     path('kiosco/login/', views.login_kiosco, name='login_kiosco'),
+    path('kiosco/logout/', views.logout_kiosco, name='logout_kiosco'),
     path('', views.dashboard_tierra, name='tenant_home'),
-    path('kiosco/', views.kiosco_home_placeholder, name='kiosco_home'),
+    path('kiosco/', views.dashboard_kiosco, name='kiosco_home'),
     # Usuarios
     path('usuarios/', views.listar_usuarios, name='listar_usuarios'),
     path('usuarios/crear/', views.crear_usuario, name='crear_usuario'),

@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from django.db.models import Count
-from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
+from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -128,8 +128,48 @@ def dashboard_tierra(request, slug):
     )
 
 
-def kiosco_home_placeholder(request, slug):
-    return HttpResponse(f"Kiosco home placeholder para {slug}.", status=200)
+@tenant_member_required
+@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+def dashboard_kiosco(request, slug):
+    nave_id = request.session.get("nave_id")
+    if not nave_id:
+        return redirect(f"/{slug}/kiosco/login/")
+
+    try:
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    except Http404:
+        return redirect(f"/{slug}/kiosco/login/")
+
+    periodos_abiertos = TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id")
+
+    periodos_resumen = []
+    # TODO: optimizar con annotate() en Fase 4
+    for periodo in periodos_abiertos:
+        total_recursos = MatrizNaveRecurso.objects.filter(
+            nave=nave,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        ).count()
+        fichas_completadas = FichaRegistro.objects.filter(periodo=periodo).count()
+        periodos_resumen.append(
+            {
+                "periodo": periodo,
+                "total_recursos": total_recursos,
+                "fichas_completadas": fichas_completadas,
+                "completado": fichas_completadas >= total_recursos,
+            }
+        )
+
+    return render(
+        request,
+        "inventory/kiosco_dashboard.html",
+        {
+            "nave": nave,
+            "periodos_resumen": periodos_resumen,
+            "slug": slug,
+            "usuario": request.user,
+        },
+    )
 
 
 def login_tierra(request, slug):
@@ -194,6 +234,15 @@ def login_kiosco(request, slug):
         )
 
     return render(request, "inventory/login_kiosco.html")
+
+
+def logout_kiosco(request, slug):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    logout(request)
+    request.session.flush()
+    return redirect(f"/{slug}/kiosco/login/")
 
 
 @tenant_member_required
