@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.db.models import Count
 from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from .decorators import requiere_rol, tenant_member_required
 from .models import Dispositivo, FichaRegistro, MatrizNaveRecurso, Nave, PeriodoRevision, Recurso, Tripulacion, Usuario
@@ -76,8 +77,40 @@ def _extraer_payload_ficha_desde_json(request):
     }, None
 
 
-def tenant_home_placeholder(request, slug):
-    return HttpResponse(f"Home tenant placeholder para {slug}.", status=200)
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+def dashboard_tierra(request, slug):
+    naves_activas = TenantQueryService.get_naves_activas(request.naviera)
+    total_usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera).count()
+    total_dispositivos = Dispositivo.objects.filter(naviera=request.naviera, is_active=True).count()
+
+    naves_resumen = []
+    # TODO: optimizar con annotate() en Fase 4 para reducir queries por nave.
+    for nave in naves_activas:
+        periodos_abiertos = PeriodoRevision.objects.filter(nave=nave, estado="abierto").count()
+        fichas_hoy = FichaRegistro.objects.filter(
+            periodo__nave=nave,
+            fecha_revision__date=timezone.localdate(),
+        ).count()
+        naves_resumen.append(
+            {
+                "nave": nave,
+                "periodos_abiertos": periodos_abiertos,
+                "fichas_hoy": fichas_hoy,
+            }
+        )
+
+    return render(
+        request,
+        "inventory/dashboard_tierra.html",
+        {
+            "naves_resumen": naves_resumen,
+            "total_usuarios": total_usuarios,
+            "total_dispositivos": total_dispositivos,
+            "slug": slug,
+            "naviera": request.naviera,
+        },
+    )
 
 
 def kiosco_home_placeholder(request, slug):
