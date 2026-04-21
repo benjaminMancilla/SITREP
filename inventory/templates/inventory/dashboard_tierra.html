@@ -7,65 +7,63 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-900 p-6 text-slate-200">
-    <div class="mx-auto max-w-6xl space-y-6">
-        <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-            <h1 class="text-3xl font-bold text-emerald-400">Dashboard de Tierra</h1>
-            <p class="mt-2 text-sm text-slate-400">Naviera: {{ naviera.nombre }}</p>
-        </div>
+    <div class="mx-auto max-w-7xl space-y-6">
+        <header class="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-emerald-400">{{ naviera.nombre }}</h1>
+                <p class="mt-2 text-sm text-slate-300">
+                    {% if request.user.first_name or request.user.last_name %}
+                        {{ request.user.first_name }} {{ request.user.last_name }}
+                    {% else %}
+                        {{ request.user.rut }}
+                    {% endif %}
+                    - {{ request.user.rol }}
+                </p>
+            </div>
+            <form method="post" action="{% url 'inventory:logout_tierra' slug=slug %}">
+                {% csrf_token %}
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
+                >
+                    Cerrar sesión
+                </button>
+            </form>
+        </header>
 
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <p class="text-sm uppercase tracking-wide text-slate-400">Naves activas</p>
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+                <p class="text-sm uppercase tracking-wide text-slate-400">Total naves activas</p>
                 <p class="mt-2 text-3xl font-bold text-white">{{ naves_resumen|length }}</p>
-            </div>
-            <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <p class="text-sm uppercase tracking-wide text-slate-400">Usuarios activos</p>
+            </article>
+            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+                <p class="text-sm uppercase tracking-wide text-slate-400">Total usuarios activos</p>
                 <p class="mt-2 text-3xl font-bold text-white">{{ total_usuarios }}</p>
-            </div>
-            <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <p class="text-sm uppercase tracking-wide text-slate-400">Dispositivos activos</p>
+            </article>
+            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+                <p class="text-sm uppercase tracking-wide text-slate-400">Total dispositivos activos</p>
                 <p class="mt-2 text-3xl font-bold text-white">{{ total_dispositivos }}</p>
-            </div>
-        </div>
+            </article>
+            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+                <p class="text-sm uppercase tracking-wide text-slate-400">Fichas registradas hoy</p>
+                <p class="mt-2 text-3xl font-bold text-white">{{ fichas_hoy_total }}</p>
+            </article>
+        </section>
 
-        {% if request.user.rol != "tierra" %}
-            <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <h2 class="text-lg font-semibold text-white">Gestión</h2>
-                <div class="mt-4 flex flex-wrap gap-3">
-                    {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
-                        <a
-                            href="{% url 'inventory:listar_usuarios' slug=slug %}"
-                            class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                        >
-                            Gestionar Usuarios
-                        </a>
-                        <a
-                            href="{% url 'inventory:listar_naves' slug=slug %}"
-                            class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                        >
-                            Gestionar Naves
-                        </a>
-                    {% endif %}
-                    {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" or request.user.rol == "capitan" %}
-                        <a
-                            href="{% url 'inventory:listar_dispositivos' slug=slug %}"
-                            class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                        >
-                            Gestionar Dispositivos
-                        </a>
-                    {% endif %}
-                </div>
+        <section class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
+            <div class="border-b border-slate-700 px-4 py-3">
+                <h2 class="text-lg font-semibold text-white">Estado de la Flota</h2>
             </div>
-        {% endif %}
-
-        <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
             <table class="min-w-full text-sm">
                 <thead class="bg-slate-800 text-slate-300">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold">Nave</th>
                         <th class="px-4 py-3 text-left font-semibold">Matrícula</th>
-                        <th class="px-4 py-3 text-left font-semibold">Períodos Abiertos</th>
-                        <th class="px-4 py-3 text-left font-semibold">Fichas Completadas Hoy</th>
+                        <th class="px-4 py-3 text-left font-semibold">Períodos abiertos activos</th>
+                        <th class="px-4 py-3 text-left font-semibold">Fichas registradas hoy</th>
+                        {% if request.user.rol != "tierra" %}
+                            <th class="px-4 py-3 text-left font-semibold">Acciones</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-700">
@@ -74,32 +72,102 @@
                             <td class="px-4 py-3 text-white">{{ item.nave.nombre }}</td>
                             <td class="px-4 py-3">{{ item.nave.matricula }}</td>
                             <td class="px-4 py-3">
-                                {% if item.periodos_abiertos > 0 %}
-                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                        {{ item.periodos_abiertos }}
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex rounded-full border border-slate-500/40 bg-slate-500/20 px-3 py-1 text-xs font-semibold text-slate-300">
-                                        0
-                                    </span>
-                                {% endif %}
+                                <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+                                    {{ item.periodos_abiertos }}
+                                </span>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex rounded-full border border-blue-500/40 bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">
                                     {{ item.fichas_hoy }}
                                 </span>
                             </td>
+                            {% if request.user.rol != "tierra" %}
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-wrap gap-2">
+                                        <a
+                                            href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=item.nave.id %}"
+                                            class="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-100 transition-colors hover:bg-slate-600"
+                                        >
+                                            Ver Tripulación
+                                        </a>
+                                        {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
+                                            <a
+                                                href="{% url 'inventory:editar_nave' slug=slug nave_id=item.nave.id %}"
+                                                class="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-500"
+                                            >
+                                                Editar
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            {% endif %}
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="4" class="px-4 py-8 text-center text-slate-400">
-                                No hay naves activas registradas para esta naviera.
-                            </td>
+                            {% if request.user.rol != "tierra" %}
+                                <td colspan="5" class="px-4 py-8 text-center text-slate-400">
+                                    No hay naves activas registradas para esta naviera.
+                                </td>
+                            {% else %}
+                                <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                                    No hay naves activas registradas para esta naviera.
+                                </td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
+        </section>
+
+        {% if request.user.rol == "admin_naviera" or request.user.rol == "admin_sitrep" %}
+            <section class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+                <h2 class="text-lg font-semibold text-white">Navegación rápida</h2>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a
+                        href="{% url 'inventory:listar_usuarios' slug=slug %}"
+                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+                    >
+                        Gestión de Usuarios
+                    </a>
+                    <a
+                        href="{% url 'inventory:listar_naves' slug=slug %}"
+                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+                    >
+                        Gestión de Naves
+                    </a>
+                    <a
+                        href="{% url 'inventory:listar_dispositivos' slug=slug %}"
+                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+                    >
+                        Hardware Kiosco
+                    </a>
+                </div>
+            </section>
+        {% elif request.user.rol == "capitan" %}
+            <section class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+                <h2 class="text-lg font-semibold text-white">Navegación rápida</h2>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a
+                        href="{% url 'inventory:listar_dispositivos' slug=slug %}"
+                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+                    >
+                        Hardware Kiosco
+                    </a>
+                    {% for nave in naves_capitan %}
+                        <a
+                            href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=nave.id %}"
+                            class="inline-flex items-center justify-center rounded-md bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-600"
+                        >
+                            Tripulación {{ nave.nombre }}
+                        </a>
+                    {% empty %}
+                        <span class="inline-flex items-center rounded-md border border-slate-600 bg-slate-900 px-4 py-2 text-sm text-slate-400">
+                            Sin naves asignadas para tripulación
+                        </span>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
     </div>
 </body>
 </html>

@@ -6,6 +6,7 @@ app_name = 'inventory'
 
 urlpatterns = [
     path('login/', views.login_tierra, name='login_tierra'),
+    path('logout/', views.logout_tierra, name='logout_tierra'),
     path('kiosco/login/', views.login_kiosco, name='login_kiosco'),
     path('', views.dashboard_tierra, name='tenant_home'),
     path('kiosco/', views.kiosco_home_placeholder, name='kiosco_home'),

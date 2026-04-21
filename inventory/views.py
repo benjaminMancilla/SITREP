@@ -1,7 +1,7 @@
 import json
 from decimal import Decimal, InvalidOperation
 
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from django.db.models import Count
 from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
@@ -83,8 +83,20 @@ def dashboard_tierra(request, slug):
     naves_activas = TenantQueryService.get_naves_activas(request.naviera)
     total_usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera).count()
     total_dispositivos = Dispositivo.objects.filter(naviera=request.naviera, is_active=True).count()
+    naves_capitan = Nave.objects.none()
+    if request.user.rol == "capitan":
+        naves_capitan = (
+            Nave.objects.filter(
+                naviera=request.naviera,
+                is_active=True,
+                tripulantes__usuario=request.user,
+            )
+            .distinct()
+            .order_by("nombre")
+        )
 
     naves_resumen = []
+    fichas_hoy_total = 0
     # TODO: optimizar con annotate() en Fase 4 para reducir queries por nave.
     for nave in naves_activas:
         periodos_abiertos = PeriodoRevision.objects.filter(nave=nave, estado="abierto").count()
@@ -92,6 +104,7 @@ def dashboard_tierra(request, slug):
             periodo__nave=nave,
             fecha_revision__date=timezone.localdate(),
         ).count()
+        fichas_hoy_total += fichas_hoy
         naves_resumen.append(
             {
                 "nave": nave,
@@ -107,6 +120,8 @@ def dashboard_tierra(request, slug):
             "naves_resumen": naves_resumen,
             "total_usuarios": total_usuarios,
             "total_dispositivos": total_dispositivos,
+            "fichas_hoy_total": fichas_hoy_total,
+            "naves_capitan": naves_capitan,
             "slug": slug,
             "naviera": request.naviera,
         },
@@ -179,6 +194,15 @@ def login_kiosco(request, slug):
         )
 
     return render(request, "inventory/login_kiosco.html")
+
+
+@tenant_member_required
+def logout_tierra(request, slug):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    logout(request)
+    return redirect("inventory:login_tierra", slug=slug)
 
 
 @tenant_member_required
