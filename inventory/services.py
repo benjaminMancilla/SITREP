@@ -105,6 +105,30 @@ class TenantQueryService:
         ).select_related("periodicidad")
 
     @staticmethod
+    def get_periodos_de_nave(nave, estado=None):
+        """
+        Retorna queryset de PeriodoRevision de la nave.
+        Si estado es None, retorna todos. Si no, filtra por estado.
+        Ordenados por fecha_inicio descendente.
+        """
+        queryset = PeriodoRevision.objects.filter(nave=nave)
+        if estado is not None:
+            queryset = queryset.filter(estado=estado)
+        return queryset.order_by("-fecha_inicio")
+
+    @staticmethod
+    def get_fichas_de_periodo(periodo):
+        """
+        Retorna queryset de FichaRegistro de un período,
+        con select_related('recurso', 'usuario', 'modificado_por').
+        """
+        return FichaRegistro.objects.filter(periodo=periodo).select_related(
+            "recurso",
+            "usuario",
+            "modificado_por",
+        )
+
+    @staticmethod
     def get_recursos_visibles_de_nave_en_periodo(nave, periodo):
         """
         Retorna queryset de MatrizNaveRecurso visibles de la nave
