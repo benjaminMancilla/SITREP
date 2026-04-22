@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha de Recurso - SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-900 p-4 text-slate-200 sm:p-6">
+    <div class="mx-auto max-w-4xl space-y-6">
+        <header class="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <p class="text-sm uppercase tracking-wide text-slate-400">Ficha de inspección</p>
+                    <h1 class="mt-1 text-3xl font-bold text-emerald-400">{{ recurso.nombre }}</h1>
+                    <p class="mt-2 text-sm text-slate-300">
+                        {{ recurso.proposito.tipo }} | {{ recurso.proposito.categoria }}
+                    </p>
+                    <p class="mt-1 text-sm text-slate-400">
+                        Nave: {{ nave.nombre }} | {{ nave.matricula }}
+                    </p>
+                    <p class="mt-1 text-sm text-slate-400">
+                        Período: {{ periodo.periodicidad.nombre }} ({{ periodo.fecha_inicio|date:"d/m/Y" }} - {{ periodo.fecha_termino|date:"d/m/Y" }})
+                    </p>
+                    <p class="mt-1 text-sm text-slate-400">Cantidad requerida: {{ matriz.cantidad }}</p>
+                </div>
+
+                <a
+                    href="{% url 'inventory:kiosco_periodo_detalle' slug=slug periodo_id=periodo.id %}"
+                    class="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-600 bg-slate-700 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-slate-600"
+                >
+                    Volver al período
+                </a>
+            </div>
+        </header>
+
+        <section class="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
+            {% if error %}
+                <div class="mb-5 rounded-lg border border-red-500/40 bg-red-500/15 px-4 py-3 text-sm font-medium text-red-200">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form
+                method="post"
+                action="{% url 'inventory:kiosco_recurso_ficha' slug=slug periodo_id=periodo.id recurso_id=recurso.id %}"
+                class="space-y-6"
+            >
+                {% csrf_token %}
+
+                <div class="rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+                    <label for="estado_operativo" class="inline-flex cursor-pointer items-center gap-3">
+                        <input
+                            id="estado_operativo"
+                            name="estado_operativo"
+                            type="checkbox"
+                            class="h-5 w-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                            {% if estado_operativo_form %}checked{% endif %}
+                        >
+                        <span class="text-base font-semibold text-slate-100">Recurso operativo</span>
+                    </label>
+                </div>
+
+                <div class="space-y-3">
+                    <h2 class="text-lg font-semibold text-white">Checklist de requerimientos</h2>
+                    {% if checklist_items %}
+                        <div class="space-y-2">
+                            {% for item in checklist_items %}
+                                <label
+                                    for="req_{{ item.index }}"
+                                    class="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3"
+                                >
+                                    <input
+                                        id="req_{{ item.index }}"
+                                        name="req_{{ item.index }}"
+                                        type="checkbox"
+                                        class="h-5 w-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                                        {% if item.checked %}checked{% endif %}
+                                    >
+                                    <span class="text-sm text-slate-200">{{ item.nombre }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
+                            Este recurso no tiene requerimientos específicos.
+                        </p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2">
+                    <label for="observacion_general" class="block text-sm font-semibold text-slate-200">
+                        Observación general
+                    </label>
+                    <textarea
+                        id="observacion_general"
+                        name="observacion_general"
+                        rows="4"
+                        class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+                        placeholder="Detalle observaciones de la revisión..."
+                    >{{ observacion_general_form }}</textarea>
+                </div>
+
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <button
+                        type="submit"
+                        class="inline-flex min-h-12 items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500"
+                    >
+                        {% if tiene_ficha %}
+                            Guardar cambios
+                        {% else %}
+                            Guardar ficha
+                        {% endif %}
+                    </button>
+
+                    <a
+                        href="{% url 'inventory:kiosco_periodo_detalle' slug=slug periodo_id=periodo.id %}"
+                        class="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-600 bg-slate-700 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-slate-600"
+                    >
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+            {% if ficha %}
+                <div class="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3 text-sm text-slate-400 space-y-1">
+                    <p>
+                        Registrado por
+                        <span class="text-slate-200 font-medium">
+                            {% if ficha.usuario.first_name or ficha.usuario.last_name %}
+                                {{ ficha.usuario.first_name }} {{ ficha.usuario.last_name }}
+                            {% else %}
+                                {{ ficha.usuario.rut }}
+                            {% endif %}
+                        </span>
+                        el {{ ficha.fecha_revision|date:"d/m/Y H:i" }}
+                    </p>
+                    {% if ficha.modificado_por %}
+                        <p>
+                            Última modificación por
+                            <span class="text-slate-200 font-medium">
+                                {% if ficha.modificado_por.first_name or ficha.modificado_por.last_name %}
+                                    {{ ficha.modificado_por.first_name }} {{ ficha.modificado_por.last_name }}
+                                {% else %}
+                                    {{ ficha.modificado_por.rut }}
+                                {% endif %}
+                            </span>
+                            el {{ ficha.modificado_en|date:"d/m/Y H:i" }}
+                        </p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</body>
+</html>

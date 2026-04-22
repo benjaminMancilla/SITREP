@@ -11,6 +11,12 @@ urlpatterns = [
     path('kiosco/logout/', views.logout_kiosco, name='logout_kiosco'),
     path('', views.dashboard_tierra, name='tenant_home'),
     path('kiosco/', views.dashboard_kiosco, name='kiosco_home'),
+    path('kiosco/periodos/<int:periodo_id>/', views.kiosco_periodo_detalle, name='kiosco_periodo_detalle'),
+    path(
+        'kiosco/periodos/<int:periodo_id>/recursos/<int:recurso_id>/ficha/',
+        views.kiosco_recurso_ficha,
+        name='kiosco_recurso_ficha',
+    ),
     # Usuarios
     path('usuarios/', views.listar_usuarios, name='listar_usuarios'),
     path('usuarios/crear/', views.crear_usuario, name='crear_usuario'),

@@ -1,4 +1,5 @@
 import json
+import logging
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import authenticate, login, logout
@@ -11,6 +12,8 @@ from django.utils import timezone
 from .decorators import requiere_rol, tenant_member_required
 from .models import Dispositivo, FichaRegistro, MatrizNaveRecurso, Nave, PeriodoRevision, Recurso, Tripulacion, Usuario
 from .services import MotorFichas, TenantQueryService
+
+logger = logging.getLogger(__name__)
 
 
 def _pin_valido_4_digitos(raw_pin):
@@ -168,6 +171,208 @@ def dashboard_kiosco(request, slug):
             "periodos_resumen": periodos_resumen,
             "slug": slug,
             "usuario": request.user,
+        },
+    )
+
+
+@tenant_member_required
+@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+def kiosco_periodo_detalle(request, slug, periodo_id):
+    if request.method != "GET":
+        return HttpResponseNotAllowed(["GET"])
+
+    nave_id = request.session.get("nave_id")
+    if not nave_id:
+        logger.info(
+            "kiosco_periodo_detalle redirect login: session without nave_id (user_id=%s, naviera_id=%s)",
+            getattr(request.user, "id", None),
+            getattr(request.naviera, "id", None),
+        )
+        return redirect(f"/{slug}/kiosco/login/")
+
+    try:
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    except Http404:
+        logger.info(
+            "kiosco_periodo_detalle redirect login: nave not found/active (nave_id=%s, naviera_id=%s)",
+            nave_id,
+            getattr(request.naviera, "id", None),
+        )
+        return redirect(f"/{slug}/kiosco/login/")
+
+    try:
+        periodo = PeriodoRevision.objects.select_related("periodicidad").get(
+            id=periodo_id,
+            nave=nave,
+            estado="abierto",
+        )
+    except PeriodoRevision.DoesNotExist:
+        logger.info(
+            "kiosco_periodo_detalle redirect dashboard: periodo not found/open (periodo_id=%s, nave_id=%s)",
+            periodo_id,
+            nave.id,
+        )
+        return redirect(f"/{slug}/kiosco/")
+
+    matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+        "recurso__nombre"
+    )
+
+    recursos_lista = []
+    # TODO: optimizar N+1 con prefetch en Fase 4
+    for matriz in matrices:
+        ficha = TenantQueryService.get_ficha_de_periodo_y_recurso(periodo, matriz.recurso)
+        recursos_lista.append(
+            {
+                "matriz": matriz,
+                "recurso": matriz.recurso,
+                "ficha": ficha,
+                "tiene_ficha": ficha is not None,
+                "estado_operativo": ficha.estado_operativo if ficha else None,
+            }
+        )
+
+    return render(
+        request,
+        "inventory/kiosco_periodo_detalle.html",
+        {
+            "nave": nave,
+            "periodo": periodo,
+            "recursos_lista": recursos_lista,
+            "slug": slug,
+        },
+    )
+
+
+@tenant_member_required
+@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
+    if request.method not in ["GET", "POST"]:
+        return HttpResponseNotAllowed(["GET", "POST"])
+
+    nave_id = request.session.get("nave_id")
+    if not nave_id:
+        logger.info(
+            "kiosco_recurso_ficha redirect login: session without nave_id (user_id=%s, naviera_id=%s)",
+            getattr(request.user, "id", None),
+            getattr(request.naviera, "id", None),
+        )
+        return redirect(f"/{slug}/kiosco/login/")
+
+    try:
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    except Http404:
+        logger.info(
+            "kiosco_recurso_ficha redirect login: nave not found/active (nave_id=%s, naviera_id=%s)",
+            nave_id,
+            getattr(request.naviera, "id", None),
+        )
+        return redirect(f"/{slug}/kiosco/login/")
+
+    try:
+        periodo = PeriodoRevision.objects.select_related("periodicidad").get(
+            id=periodo_id,
+            nave=nave,
+            estado="abierto",
+        )
+    except PeriodoRevision.DoesNotExist:
+        logger.info(
+            "kiosco_recurso_ficha redirect dashboard: periodo not found/open (periodo_id=%s, nave_id=%s)",
+            periodo_id,
+            nave.id,
+        )
+        return redirect(f"/{slug}/kiosco/")
+
+    try:
+        matriz = MatrizNaveRecurso.objects.select_related(
+            "recurso",
+            "recurso__proposito",
+        ).get(
+            nave=nave,
+            recurso_id=recurso_id,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        )
+    except MatrizNaveRecurso.DoesNotExist:
+        logger.info(
+            "kiosco_recurso_ficha redirect detalle: matriz visible not found (periodo_id=%s, recurso_id=%s, nave_id=%s)",
+            periodo.id,
+            recurso_id,
+            nave.id,
+        )
+        return redirect(f"/{slug}/kiosco/periodos/{periodo.id}/")
+
+    recurso = matriz.recurso
+    requerimientos = recurso.requerimientos or []
+    ficha = TenantQueryService.get_ficha_de_periodo_y_recurso(periodo, recurso)
+    tiene_ficha = ficha is not None
+
+    estado_operativo_form = ficha.estado_operativo if ficha else False
+    observacion_general_form = ficha.observacion_general if ficha else ""
+    payload_checklist_form = ficha.payload_checklist if ficha else {}
+
+    if request.method == "POST":
+        estado_operativo_form = request.POST.get("estado_operativo") == "on"
+        observacion_general_form = (request.POST.get("observacion_general") or "").strip()
+        payload_checklist_form = {}
+        for index, requerimiento in enumerate(requerimientos):
+            payload_checklist_form[requerimiento] = request.POST.get(f"req_{index}") == "on"
+
+        try:
+            if tiene_ficha:
+                ficha = MotorFichas.modificar_ficha(
+                    ficha=ficha,
+                    usuario_modificador=request.user,
+                    estado_operativo=estado_operativo_form,
+                    observacion_general=observacion_general_form,
+                    payload_checklist=payload_checklist_form,
+                )
+            else:
+                ficha = MotorFichas.crear_ficha(
+                    periodo=periodo,
+                    recurso=recurso,
+                    usuario=request.user,
+                    estado_operativo=estado_operativo_form,
+                    observacion_general=observacion_general_form,
+                    payload_checklist=payload_checklist_form,
+                )
+            logger.info(
+                "kiosco_recurso_ficha saved (ficha_id=%s, periodo_id=%s, recurso_id=%s, user_id=%s)",
+                ficha.id,
+                periodo.id,
+                recurso.id,
+                request.user.id,
+            )
+            return redirect(f"/{slug}/kiosco/periodos/{periodo.id}/")
+        except ValueError as exc:
+            error = str(exc)
+    else:
+        error = None
+
+    checklist_items = [
+        {
+            "index": index,
+            "nombre": requerimiento,
+            "checked": bool(payload_checklist_form.get(requerimiento)),
+        }
+        for index, requerimiento in enumerate(requerimientos)
+    ]
+
+    return render(
+        request,
+        "inventory/kiosco_recurso_ficha.html",
+        {
+            "nave": nave,
+            "periodo": periodo,
+            "matriz": matriz,
+            "recurso": recurso,
+            "ficha": ficha,
+            "tiene_ficha": tiene_ficha,
+            "slug": slug,
+            "error": error,
+            "estado_operativo_form": estado_operativo_form,
+            "observacion_general_form": observacion_general_form,
+            "checklist_items": checklist_items,
         },
     )
 
