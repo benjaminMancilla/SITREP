@@ -368,6 +368,20 @@ class MotorFichas:
         return True, []
 
     @classmethod
+    def validar_estado_operativo(cls, recurso, estado_operativo, payload_checklist):
+        """
+        Impide marcar un recurso como operativo si algún requerimiento no está cumplido.
+        """
+        if not estado_operativo:
+            return True
+
+        requerimientos = recurso.requerimientos or []
+        if not requerimientos:
+            return True
+
+        return all(bool(payload_checklist.get(req)) for req in requerimientos)
+
+    @classmethod
     def crear_ficha(
         cls,
         periodo,
@@ -392,6 +406,10 @@ class MotorFichas:
             es_valido, faltantes = cls.validar_payload_checklist(recurso, payload_checklist)
             if not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
+            if not cls.validar_estado_operativo(recurso, estado_operativo, payload_checklist):
+                raise ValueError(
+                    "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
+                )
 
             if FichaRegistro.objects.filter(periodo=periodo, recurso=recurso).exists():
                 raise ValueError(
@@ -433,6 +451,14 @@ class MotorFichas:
             )
             if not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
+            if not cls.validar_estado_operativo(
+                ficha.recurso,
+                estado_operativo,
+                payload_checklist,
+            ):
+                raise ValueError(
+                    "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
+                )
 
             ficha.estado_operativo = estado_operativo
             ficha.observacion_general = observacion_general
