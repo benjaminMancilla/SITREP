@@ -61,15 +61,20 @@
                         <th class="px-4 py-3 text-left font-semibold">Matrícula</th>
                         <th class="px-4 py-3 text-left font-semibold">Períodos abiertos activos</th>
                         <th class="px-4 py-3 text-left font-semibold">Fichas registradas hoy</th>
-                        {% if request.user.rol != "tierra" %}
-                            <th class="px-4 py-3 text-left font-semibold">Acciones</th>
-                        {% endif %}
+                        <th class="px-4 py-3 text-left font-semibold">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-700">
                     {% for item in naves_resumen %}
                         <tr class="hover:bg-slate-700/30">
-                            <td class="px-4 py-3 text-white">{{ item.nave.nombre }}</td>
+                            <td class="px-4 py-3 text-white">
+                                <a
+                                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=item.nave.id %}"
+                                    class="font-semibold text-emerald-300 transition-colors hover:text-emerald-200"
+                                >
+                                    {{ item.nave.nombre }}
+                                </a>
+                            </td>
                             <td class="px-4 py-3">{{ item.nave.matricula }}</td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
@@ -81,9 +86,15 @@
                                     {{ item.fichas_hoy }}
                                 </span>
                             </td>
-                            {% if request.user.rol != "tierra" %}
-                                <td class="px-4 py-3">
-                                    <div class="flex flex-wrap gap-2">
+                            <td class="px-4 py-3">
+                                <div class="flex flex-wrap gap-2">
+                                    <a
+                                        href="{% url 'inventory:nave_detalle' slug=slug nave_id=item.nave.id %}"
+                                        class="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500"
+                                    >
+                                        Ver Detalle
+                                    </a>
+                                    {% if request.user.rol != "tierra" %}
                                         <a
                                             href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=item.nave.id %}"
                                             class="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-100 transition-colors hover:bg-slate-600"
@@ -98,21 +109,15 @@
                                                 Editar
                                             </a>
                                         {% endif %}
-                                    </div>
-                                </td>
-                            {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
                         </tr>
                     {% empty %}
                         <tr>
-                            {% if request.user.rol != "tierra" %}
-                                <td colspan="5" class="px-4 py-8 text-center text-slate-400">
-                                    No hay naves activas registradas para esta naviera.
-                                </td>
-                            {% else %}
-                                <td colspan="4" class="px-4 py-8 text-center text-slate-400">
-                                    No hay naves activas registradas para esta naviera.
-                                </td>
-                            {% endif %}
+                            <td colspan="5" class="px-4 py-8 text-center text-slate-400">
+                                No hay naves activas registradas para esta naviera.
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

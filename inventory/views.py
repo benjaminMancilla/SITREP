@@ -132,6 +132,50 @@ def dashboard_tierra(request, slug):
 
 
 @tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+def nave_detalle(request, slug, nave_id):
+    if request.method != "GET":
+        return HttpResponseNotAllowed(["GET"])
+
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    periodos = TenantQueryService.get_periodos_de_nave(nave)
+
+    periodos_detalle = []
+    # TODO: optimizar con annotate() y prefetch_related en Fase 4
+    for periodo in periodos:
+        fichas = TenantQueryService.get_fichas_de_periodo(periodo)
+        total_recursos = MatrizNaveRecurso.objects.filter(
+            nave=nave,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        ).count()
+        periodos_detalle.append(
+            {
+                "periodo": periodo,
+                "fichas": fichas,
+                "total_recursos": total_recursos,
+                "fichas_count": fichas.count(),
+            }
+        )
+
+    es_admin = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
+
+    return render(
+        request,
+        "inventory/nave_detalle.html",
+        {
+            "nave": nave,
+            "periodos_detalle": periodos_detalle,
+            "slug": slug,
+            "es_admin": es_admin,
+            "periodos_historial_count": sum(
+                1 for item in periodos_detalle if item["periodo"].estado != "abierto"
+            ),
+        },
+    )
+
+
+@tenant_member_required
 @requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
 def dashboard_kiosco(request, slug):
     nave_id = request.session.get("nave_id")
