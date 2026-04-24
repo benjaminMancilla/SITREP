@@ -461,13 +461,65 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
     )
 
 
-def login_tierra(request, slug):
+def _normalizar_modo_login(modo, modo_default="tierra"):
+    modo_default_normalizado = "mar" if modo_default == "mar" else "tierra"
+    if modo in {"tierra", "mar"}:
+        return modo
+    return modo_default_normalizado
+
+
+def _render_login_unificado(request, slug, modo, **contexto):
+    payload = {"slug": slug, "modo": modo}
+    payload.update(contexto)
+    return render(request, "inventory/login_unificado.html", payload)
+
+
+def login_unificado(request, slug, modo_default="tierra"):
     tenant = getattr(request, "naviera", None)
+    modo = _normalizar_modo_login(
+        request.POST.get("modo") if request.method == "POST" else request.GET.get("modo"),
+        modo_default=modo_default,
+    )
 
     if request.user.is_authenticated and getattr(request.user, "naviera", None) == tenant:
+        if modo == "mar":
+            return redirect(f"/{slug}/kiosco/")
         return redirect(f"/{slug}/")
 
     if request.method == "POST":
+        if modo == "mar":
+            rut = request.POST.get("rut")
+            pin = request.POST.get("pin")
+            dispositivo_token = request.POST.get("dispositivo_token")
+
+            usuario = authenticate(
+                request,
+                rut=rut,
+                pin=pin,
+                naviera_id=getattr(request.naviera, "id", None),
+                dispositivo_token=dispositivo_token,
+            )
+            if usuario is not None:
+                dispositivo = getattr(usuario, "_dispositivo_autenticado", None)
+                request.session["nave_id"] = getattr(dispositivo, "nave_id", None)
+                login(request, usuario)
+                return redirect(f"/{slug}/kiosco/")
+
+            if getattr(request, "_dispositivo_revocado", False):
+                return _render_login_unificado(
+                    request,
+                    slug,
+                    modo,
+                    limpiar_token=True,
+                )
+
+            return _render_login_unificado(
+                request,
+                slug,
+                modo,
+                error="Acceso denegado.",
+            )
+
         email = request.POST.get("email")
         password = request.POST.get("password")
 
@@ -476,53 +528,14 @@ def login_tierra(request, slug):
             login(request, usuario)
             return redirect(f"/{slug}/")
 
-        return render(
+        return _render_login_unificado(
             request,
-            "inventory/login_tierra.html",
-            {"error": "Credenciales inválidas."},
+            slug,
+            modo,
+            error="Credenciales inválidas.",
         )
 
-    return render(request, "inventory/login_tierra.html")
-
-
-def login_kiosco(request, slug):
-    tenant = getattr(request, "naviera", None)
-
-    if request.user.is_authenticated and getattr(request.user, "naviera", None) == tenant:
-        return redirect(f"/{slug}/kiosco/")
-    
-    if request.method == "POST":
-        rut = request.POST.get("rut")
-        pin = request.POST.get("pin")
-        dispositivo_token = request.POST.get("dispositivo_token")
-
-        usuario = authenticate(
-            request,
-            rut=rut,
-            pin=pin,
-            naviera_id=getattr(request.naviera, "id", None),
-            dispositivo_token=dispositivo_token,
-        )
-        if usuario is not None:
-            dispositivo = getattr(usuario, "_dispositivo_autenticado", None)
-            request.session["nave_id"] = getattr(dispositivo, "nave_id", None)
-            login(request, usuario)
-            return redirect(f"/{slug}/kiosco/")
-
-        if getattr(request, "_dispositivo_revocado", False):
-            return render(
-                request,
-                "inventory/login_kiosco.html",
-                {"limpiar_token": True},
-            )
-
-        return render(
-            request,
-            "inventory/login_kiosco.html",
-            {"error": "Acceso denegado."},
-        )
-
-    return render(request, "inventory/login_kiosco.html")
+    return _render_login_unificado(request, slug, modo)
 
 
 def logout_kiosco(request, slug):

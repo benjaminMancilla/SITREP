@@ -5,9 +5,9 @@ app_name = 'inventory'
 
 
 urlpatterns = [
-    path('login/', views.login_tierra, name='login_tierra'),
+    path('login/', views.login_unificado, {'modo_default': 'tierra'}, name='login_tierra'),
     path('logout/', views.logout_tierra, name='logout_tierra'),
-    path('kiosco/login/', views.login_kiosco, name='login_kiosco'),
+    path('kiosco/login/', views.login_unificado, {'modo_default': 'mar'}, name='login_kiosco'),
     path('kiosco/logout/', views.logout_kiosco, name='logout_kiosco'),
     path('', views.dashboard_tierra, name='tenant_home'),
     path('kiosco/', views.dashboard_kiosco, name='kiosco_home'),

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen">
+    <div class="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
+        <div class="grid w-full gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            <section class="flex flex-col justify-between rounded-3xl border border-slate-800 bg-slate-800/50 p-8 shadow-2xl shadow-slate-950/30 sm:p-10">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-400">SITREP</p>
+                    <h1 class="mt-5 text-4xl font-bold leading-tight text-white sm:text-5xl">
+                        Acceso unificado a la operación terrestre y marítima
+                    </h1>
+                    <p class="mt-5 max-w-xl text-lg leading-8 text-slate-300">
+                        Ingrese al tenant <span class="font-semibold text-white">{{ request.naviera.nombre }}</span>
+                        y seleccione el modo de autenticación según su contexto operativo.
+                    </p>
+                </div>
+
+                <div class="mt-8 grid gap-4 sm:grid-cols-2">
+                    <div class="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
+                        <p class="text-sm uppercase tracking-[0.25em] text-emerald-400">Tierra</p>
+                        <p class="mt-3 text-sm leading-6 text-slate-400">
+                            Acceso administrativo y de supervisión mediante email y contraseña.
+                        </p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
+                        <p class="text-sm uppercase tracking-[0.25em] text-emerald-400">Mar</p>
+                        <p class="mt-3 text-sm leading-6 text-slate-400">
+                            Acceso operativo de kiosco mediante RUT, PIN y dispositivo autorizado.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-3xl border border-slate-700 bg-slate-800 p-6 shadow-xl sm:p-8">
+                <div class="mb-8">
+                    <p class="text-sm uppercase tracking-[0.3em] text-slate-400">{{ slug }}</p>
+                    <div class="mt-4 inline-flex w-full rounded-2xl border border-slate-700 bg-slate-900 p-2">
+                        <a
+                            href="{% url 'inventory:login_tierra' slug=slug %}"
+                            class="flex-1 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors {% if modo == 'tierra' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:bg-slate-800{% endif %}"
+                        >
+                            Tierra
+                        </a>
+                        <a
+                            href="{% url 'inventory:login_kiosco' slug=slug %}"
+                            class="flex-1 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors {% if modo == 'mar' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:bg-slate-800{% endif %}"
+                        >
+                            Mar
+                        </a>
+                    </div>
+                </div>
+
+                {% if modo == "mar" %}
+                    <div>
+                        <h2 class="text-3xl font-bold text-emerald-400">Acceso Mar</h2>
+                        <p class="mt-3 text-base text-slate-400">
+                            Ingrese con credenciales de kiosco desde un dispositivo autorizado.
+                        </p>
+
+                        {% if error %}
+                            <p class="mt-6 text-base text-red-400">{{ error }}</p>
+                        {% endif %}
+
+                        <p id="token-error" class="mt-6 text-base text-red-400 hidden">
+                            Dispositivo no autorizado. Contacte a su supervisor.
+                        </p>
+
+                        <form id="kiosco-form" method="POST" action="" class="mt-8 space-y-5">
+                            {% csrf_token %}
+                            <input type="hidden" name="modo" value="mar">
+
+                            <div>
+                                <label for="rut" class="block text-lg font-medium mb-2">RUT</label>
+                                <input
+                                    id="rut"
+                                    name="rut"
+                                    type="text"
+                                    required
+                                    autocomplete="username"
+                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-4 text-xl text-white outline-none focus:border-emerald-500"
+                                    placeholder="12.345.678-9"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="pin" class="block text-lg font-medium mb-2">PIN</label>
+                                <input
+                                    id="pin"
+                                    name="pin"
+                                    type="password"
+                                    required
+                                    inputmode="numeric"
+                                    pattern="[0-9]{1,4}"
+                                    maxlength="4"
+                                    autocomplete="current-password"
+                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-4 text-xl tracking-[0.3em] text-white outline-none focus:border-emerald-500"
+                                    placeholder="••••"
+                                >
+                            </div>
+
+                            <input id="dispositivo_token" name="dispositivo_token" type="hidden">
+
+                            <button
+                                id="submit-btn"
+                                type="submit"
+                                class="w-full rounded-lg bg-emerald-600 px-6 py-4 text-xl font-bold text-white transition-colors hover:bg-emerald-500"
+                            >
+                                Ingresar
+                            </button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div>
+                        <h2 class="text-3xl font-bold text-emerald-400">Acceso Tierra</h2>
+                        <p class="mt-3 text-base text-slate-400">
+                            Ingrese con email y contraseña para continuar al dashboard del tenant.
+                        </p>
+
+                        {% if error %}
+                            <p class="mt-6 text-sm text-red-400">{{ error }}</p>
+                        {% endif %}
+
+                        <form method="POST" action="" class="mt-8 space-y-5">
+                            {% csrf_token %}
+                            <input type="hidden" name="modo" value="tierra">
+
+                            <div>
+                                <label for="email" class="block text-sm font-medium mb-2">Email</label>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    name="email"
+                                    required
+                                    autocomplete="email"
+                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white outline-none focus:border-emerald-500"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="password" class="block text-sm font-medium mb-2">Contraseña</label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    name="password"
+                                    required
+                                    autocomplete="current-password"
+                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white outline-none focus:border-emerald-500"
+                                >
+                            </div>
+
+                            <button type="submit" class="w-full rounded-lg bg-emerald-600 px-4 py-3 font-bold text-white transition-colors hover:bg-emerald-500">
+                                Ingresar
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+
+    {% if modo == "mar" %}
+        <script>
+            (function () {
+                {% if limpiar_token %}
+                window.localStorage.removeItem("sitrep_kiosco_token");
+                {% endif %}
+
+                var token = window.localStorage.getItem("sitrep_kiosco_token");
+                var tokenInput = document.getElementById("dispositivo_token");
+                var tokenError = document.getElementById("token-error");
+                var form = document.getElementById("kiosco-form");
+
+                if (token) {
+                    tokenInput.value = token;
+                    return;
+                }
+
+                tokenError.classList.remove("hidden");
+                var controls = form.querySelectorAll("input, button");
+                controls.forEach(function (control) {
+                    control.disabled = true;
+                });
+            })();
+        </script>
+    {% endif %}
+</body>
+</html>
