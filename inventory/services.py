@@ -381,6 +381,7 @@ class MotorPeriodos:
                     )
 
                     if periodo_abierto is None:
+                        MotorReglasSITREP.sincronizar_matriz_nave(nave)
                         cls._crear_periodo_abierto(nave, periodicidad, hoy)
                         stats['periodos_creados'] += 1
                         continue
@@ -393,6 +394,7 @@ class MotorPeriodos:
                         periodo_abierto.save(update_fields=['estado'])
                         stats['periodos_vencidos'] += 1
 
+                        MotorReglasSITREP.sincronizar_matriz_nave(nave)
                         cls._crear_periodo_abierto(nave, periodicidad, hoy)
                         stats['periodos_creados'] += 1
                         continue
@@ -451,9 +453,15 @@ class MotorFichas:
         payload_normalizado = {}
         for requerimiento, valor in payload_checklist.items():
             if isinstance(valor, dict):
-                payload_normalizado[requerimiento] = dict(valor)
+                item_normalizado = dict(valor)
+                if "cumple" in item_normalizado and "observacion" not in item_normalizado:
+                    item_normalizado["observacion"] = ""
+                payload_normalizado[requerimiento] = item_normalizado
             elif isinstance(valor, bool):
-                payload_normalizado[requerimiento] = {"cumple": valor}
+                payload_normalizado[requerimiento] = {
+                    "cumple": valor,
+                    "observacion": "",
+                }
             else:
                 payload_normalizado[requerimiento] = valor
         return payload_normalizado
@@ -490,6 +498,29 @@ class MotorFichas:
 
         if faltantes:
             return False, faltantes
+        return True, []
+
+    @classmethod
+    def validar_observaciones_requerimientos(cls, recurso, payload_checklist):
+        """
+        Verifica que los requerimientos fallados tengan observación.
+        Retorna (es_valido, lista_de_requerimientos_sin_observacion).
+        """
+        requerimientos = recurso.requerimientos or []
+        if not requerimientos:
+            return True, []
+
+        payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
+        sin_observacion = []
+        for requerimiento in requerimientos:
+            item = payload_checklist.get(requerimiento)
+            if not isinstance(item, dict):
+                continue
+            if item.get("cumple") is False and not (item.get("observacion", "").strip()):
+                sin_observacion.append(requerimiento)
+
+        if sin_observacion:
+            return False, sin_observacion
         return True, []
 
     @classmethod
@@ -542,6 +573,14 @@ class MotorFichas:
             )
             if estado_operativo is not None and not checklist_completo:
                 raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
+            obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
+                recurso,
+                payload_checklist,
+            )
+            if not obs_valido:
+                raise ValueError(
+                    f"Los siguientes requerimientos fallados requieren observación: {sin_obs}"
+                )
             if not cls.validar_estado_operativo(recurso, estado_operativo, payload_checklist):
                 raise ValueError(
                     "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
@@ -595,6 +634,14 @@ class MotorFichas:
             )
             if estado_operativo is not None and not checklist_completo:
                 raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
+            obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
+                ficha.recurso,
+                payload_checklist,
+            )
+            if not obs_valido:
+                raise ValueError(
+                    f"Los siguientes requerimientos fallados requieren observación: {sin_obs}"
+                )
             if not cls.validar_estado_operativo(
                 ficha.recurso,
                 estado_operativo,

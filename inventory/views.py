@@ -69,12 +69,6 @@ def _contar_fichas_completas_por_periodo(periodo_ids):
     return conteos
 
 
-def _checklist_item_cumple(valor):
-    if isinstance(valor, dict):
-        return bool(valor.get("cumple"))
-    return bool(valor)
-
-
 def _extraer_payload_ficha_desde_json(request):
     try:
         payload = json.loads(request.body)
@@ -395,7 +389,8 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         payload_checklist_form = {}
         for index, requerimiento in enumerate(requerimientos):
             payload_checklist_form[requerimiento] = {
-                "cumple": request.POST.get(f"req_{index}") == "on"
+                "cumple": request.POST.get(f"req_{index}") == "on",
+                "observacion": (request.POST.get(f"obs_{index}") or "").strip(),
             }
 
         try:
@@ -433,7 +428,8 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         {
             "index": index,
             "nombre": requerimiento,
-            "checked": _checklist_item_cumple(payload_checklist_form.get(requerimiento)),
+            "checked": payload_checklist_form.get(requerimiento, {}).get("cumple", False),
+            "observacion": payload_checklist_form.get(requerimiento, {}).get("observacion", ""),
         }
         for index, requerimiento in enumerate(requerimientos)
     ]
