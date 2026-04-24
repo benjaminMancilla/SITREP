@@ -48,7 +48,7 @@
             >
                 {% csrf_token %}
 
-                <div class="rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+                <div class="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-2">
                     <label for="estado_operativo" class="inline-flex cursor-pointer items-center gap-3">
                         <input
                             id="estado_operativo"
@@ -59,9 +59,12 @@
                         >
                         <span class="text-base font-semibold text-slate-100">Recurso operativo</span>
                     </label>
-                    <p class="mt-3 text-sm text-slate-400">
-                        Un recurso solo puede estar operativo si todos los requerimientos están cumplidos.
-                    </p>
+                    {% if recurso.requerimientos %}
+                        <p class="ml-8 text-xs text-slate-400">
+                            Solo puede marcarse como operativo si todos los requerimientos están cumplidos.
+                            Si alguno falla, este campo se ignorará y el recurso quedará como no operativo.
+                        </p>
+                    {% endif %}
                 </div>
 
                 <div class="space-y-3">

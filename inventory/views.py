@@ -392,6 +392,14 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
                 "cumple": request.POST.get(f"req_{index}") == "on",
                 "observacion": (request.POST.get(f"obs_{index}") or "").strip(),
             }
+        if estado_operativo_form is True:
+            hay_fallo = any(
+                not valor.get("cumple", True)
+                for valor in payload_checklist_form.values()
+                if isinstance(valor, dict)
+            )
+            if hay_fallo:
+                estado_operativo_form = False
 
         try:
             if tiene_ficha:
