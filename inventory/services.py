@@ -523,13 +523,23 @@ class MotorFichas:
         if not requerimientos:
             return True, []
 
+        payload_original = payload_checklist if isinstance(payload_checklist, dict) else {}
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
         sin_observacion = []
         for requerimiento in requerimientos:
             item = payload_checklist.get(requerimiento)
             if not isinstance(item, dict):
                 continue
-            if item.get("cumple") is False and not (item.get("observacion", "").strip()):
+            item_original = payload_original.get(requerimiento)
+
+            # Compatibilidad con payloads legacy: si la clave "observacion" no venía
+            # en el request original, no bloqueamos el guardado por ese motivo.
+            requiere_observacion = not isinstance(item_original, dict) or "observacion" in item_original
+            if (
+                requiere_observacion
+                and item.get("cumple") is False
+                and not (item.get("observacion", "").strip())
+            ):
                 sin_observacion.append(requerimiento)
 
         if sin_observacion:
@@ -576,6 +586,7 @@ class MotorFichas:
             if not recurso_asignado:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
+            payload_checklist_original = payload_checklist
             payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
             es_valido, faltantes = cls.validar_payload_checklist(recurso, payload_checklist)
             if estado_operativo is not None and not es_valido:
@@ -588,7 +599,7 @@ class MotorFichas:
                 raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
             obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
                 recurso,
-                payload_checklist,
+                payload_checklist_original,
             )
             if not obs_valido:
                 raise ValueError(
@@ -634,6 +645,7 @@ class MotorFichas:
             if ficha.periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
                 raise ValueError("No se puede registrar en un período cerrado.")
 
+            payload_checklist_original = payload_checklist
             payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
             es_valido, faltantes = cls.validar_payload_checklist(
                 ficha.recurso,
@@ -649,7 +661,7 @@ class MotorFichas:
                 raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
             obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
                 ficha.recurso,
-                payload_checklist,
+                payload_checklist_original,
             )
             if not obs_valido:
                 raise ValueError(
