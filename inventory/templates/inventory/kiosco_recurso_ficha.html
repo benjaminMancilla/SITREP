@@ -48,8 +48,15 @@
             >
                 {% csrf_token %}
 
-                <div class="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-2">
-                    <label for="estado_operativo" class="inline-flex cursor-pointer items-center gap-3">
+                <div
+                    id="estado-operativo-panel"
+                    class="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-2"
+                >
+                    <label
+                        for="estado_operativo"
+                        id="estado-operativo-label"
+                        class="inline-flex cursor-pointer items-center gap-3"
+                    >
                         <input
                             id="estado_operativo"
                             name="estado_operativo"
@@ -60,7 +67,7 @@
                         <span class="text-base font-semibold text-slate-100">Recurso operativo</span>
                     </label>
                     {% if recurso.requerimientos %}
-                        <p class="ml-8 text-xs text-slate-400">
+                        <p id="estado-operativo-help" class="ml-8 text-xs text-slate-400" aria-live="polite">
                             Solo puede marcarse como operativo si todos los requerimientos están cumplidos.
                             Si alguno falla, este campo se ignorará y el recurso quedará como no operativo.
                         </p>
@@ -81,6 +88,7 @@
                                             id="req_{{ item.index }}"
                                             name="req_{{ item.index }}"
                                             type="checkbox"
+                                            data-requerimiento-checkbox="true"
                                             class="h-5 w-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
                                             {% if item.checked %}checked{% endif %}
                                         >
@@ -166,5 +174,49 @@
             {% endif %}
         </section>
     </div>
+    {% if checklist_items %}
+        <script>
+            (function () {
+                const estadoOperativo = document.getElementById("estado_operativo");
+                const estadoOperativoHelp = document.getElementById("estado-operativo-help");
+                const estadoOperativoLabel = document.getElementById("estado-operativo-label");
+                const requerimientoCheckboxes = Array.from(
+                    document.querySelectorAll('[data-requerimiento-checkbox="true"]')
+                );
+
+                if (!estadoOperativo || !estadoOperativoHelp || !estadoOperativoLabel || !requerimientoCheckboxes.length) {
+                    return;
+                }
+
+                function syncEstadoOperativo() {
+                    const todosCumplen = requerimientoCheckboxes.every((checkbox) => checkbox.checked);
+
+                    estadoOperativo.disabled = !todosCumplen;
+                    estadoOperativoLabel.classList.toggle("cursor-not-allowed", !todosCumplen);
+                    estadoOperativoLabel.classList.toggle("opacity-60", !todosCumplen);
+
+                    if (!todosCumplen) {
+                        estadoOperativo.checked = false;
+                        estadoOperativoHelp.textContent =
+                            "Marca todos los requerimientos como cumplidos para habilitar este campo.";
+                        estadoOperativoHelp.classList.remove("text-slate-400");
+                        estadoOperativoHelp.classList.add("text-amber-300");
+                        return;
+                    }
+
+                    estadoOperativoHelp.textContent =
+                        "Todos los requerimientos están cumplidos. Ya puedes marcar este recurso como operativo.";
+                    estadoOperativoHelp.classList.remove("text-amber-300");
+                    estadoOperativoHelp.classList.add("text-slate-400");
+                }
+
+                requerimientoCheckboxes.forEach((checkbox) => {
+                    checkbox.addEventListener("change", syncEstadoOperativo);
+                });
+
+                syncEstadoOperativo();
+            })();
+        </script>
+    {% endif %}
 </body>
 </html>
