@@ -1,19 +1,22 @@
 from django.http import Http404
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from unittest.mock import patch
 
 from .models import (
     Dispositivo,
+    FichaRegistro,
     MatrizNaveRecurso,
     Nave,
     Naviera,
     Periodicidad,
+    PeriodoRevision,
     Proposito,
     Recurso,
     Usuario,
 )
-from .services import MotorReglasSITREP, TenantQueryService
+from .services import MotorFichas, MotorPeriodos, MotorReglasSITREP, TenantQueryService
 
 
 class TenantFixturesMixin:
@@ -510,3 +513,304 @@ class TestMotorReglasSITREP(TestCase):
             MatrizNaveRecurso.objects.filter(nave=self.nave, recurso=recurso_falla).exists()
         )
         self.assertTrue(any("Error processing recurso" in linea for linea in logs.output))
+
+
+class TestMotorPeriodosEstados(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(
+            nombre="Naviera Estados",
+            rut="55555555-5",
+            slug="naviera-estados",
+        )
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Mensual",
+            duracion_dias=30,
+            offset_dias=1,
+            responsabilidad="mar",
+            visibilidad="todos",
+        )
+        self.proposito = Proposito.objects.create(
+            nombre="Seguridad Operativa",
+            categoria="Seguridad",
+            tipo="Material",
+        )
+        self.recurso_a = Recurso.objects.create(
+            naviera=None,
+            proposito=self.proposito,
+            periodicidad=self.periodicidad,
+            nombre="Extintor A",
+            requerimientos=["vigencia", "presion"],
+            regla_aplicacion=None,
+        )
+        self.recurso_b = Recurso.objects.create(
+            naviera=None,
+            proposito=self.proposito,
+            periodicidad=self.periodicidad,
+            nombre="Extintor B",
+            requerimientos=["sello"],
+            regla_aplicacion=None,
+        )
+        self.recurso_sin_checklist = Recurso.objects.create(
+            naviera=None,
+            proposito=self.proposito,
+            periodicidad=self.periodicidad,
+            nombre="Radio VHF",
+            requerimientos=[],
+            regla_aplicacion=None,
+        )
+        self.usuario = Usuario.objects.create_user(
+            username="marinero_estados",
+            password="password-seguro-123",
+            naviera=self.naviera,
+            rut="55555555-6",
+            email="marinero@example.com",
+            rol="mar",
+        )
+        self.nave = Nave.objects.create(
+            naviera=self.naviera,
+            nombre="Nave Estados",
+            matricula="NVE-001",
+            eslora=20.0,
+            arqueo_bruto=200,
+            capacidad_personas=12,
+        )
+        self.periodo = PeriodoRevision.objects.get(
+            nave=self.nave,
+            periodicidad=self.periodicidad,
+        )
+
+    def _crear_ficha(self, recurso, estado_operativo, payload_checklist, observacion_general=""):
+        return MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=estado_operativo,
+            observacion_general=observacion_general,
+            payload_checklist=payload_checklist,
+        )
+
+    def test_get_periodos_abiertos_de_nave_incluye_pendiente_y_en_proceso(self):
+        otra_periodicidad = Periodicidad.objects.create(
+            nombre="Semanal Estados",
+            duracion_dias=7,
+            offset_dias=1,
+            responsabilidad="mar",
+            visibilidad="todos",
+        )
+        periodo_en_proceso = PeriodoRevision.objects.create(
+            nave=self.nave,
+            periodicidad=otra_periodicidad,
+            fecha_inicio=timezone.localdate(),
+            fecha_termino=timezone.localdate(),
+            estado="en_proceso",
+        )
+        PeriodoRevision.objects.create(
+            nave=self.nave,
+            periodicidad=otra_periodicidad,
+            fecha_inicio=timezone.localdate(),
+            fecha_termino=timezone.localdate(),
+            estado="conforme",
+        )
+
+        periodos_ids = set(
+            TenantQueryService.get_periodos_abiertos_de_nave(self.nave).values_list("id", flat=True)
+        )
+
+        self.assertIn(self.periodo.id, periodos_ids)
+        self.assertIn(periodo_en_proceso.id, periodos_ids)
+        self.assertEqual(len(periodos_ids), 2)
+
+    def test_crear_ficha_parcial_mantiene_periodo_pendiente(self):
+        ficha = self._crear_ficha(
+            recurso=self.recurso_a,
+            estado_operativo=None,
+            payload_checklist={"vigencia": {"cumple": True}},
+        )
+
+        self.periodo.refresh_from_db()
+
+        self.assertIsNone(ficha.estado_operativo)
+        self.assertEqual(self.periodo.estado, "pendiente")
+
+    def test_crear_ficha_completa_cambia_periodo_a_en_proceso(self):
+        self._crear_ficha(
+            recurso=self.recurso_a,
+            estado_operativo=True,
+            payload_checklist={
+                "vigencia": {"cumple": True},
+                "presion": {"cumple": True},
+            },
+        )
+
+        self.periodo.refresh_from_db()
+
+        self.assertEqual(self.periodo.estado, "en_proceso")
+
+    def test_periodo_sin_registros_termina_omitido(self):
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "omitido")
+
+    def test_periodo_con_registro_incompleto_termina_caduco(self):
+        self._crear_ficha(
+            recurso=self.recurso_a,
+            estado_operativo=None,
+            payload_checklist={"vigencia": {"cumple": True}},
+        )
+
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "caduco")
+
+    def test_periodo_completo_y_operativo_termina_conforme(self):
+        self._crear_ficha(
+            recurso=self.recurso_a,
+            estado_operativo=True,
+            payload_checklist={
+                "vigencia": {"cumple": True},
+                "presion": {"cumple": True},
+            },
+        )
+        MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=self.recurso_b,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={"sello": {"cumple": True}},
+        )
+        MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=self.recurso_sin_checklist,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "conforme")
+
+    def test_periodo_completo_con_observacion_termina_observado(self):
+        self._crear_ficha(
+            recurso=self.recurso_a,
+            estado_operativo=True,
+            payload_checklist={
+                "vigencia": {"cumple": True},
+                "presion": {"cumple": True},
+            },
+            observacion_general="Requiere seguimiento",
+        )
+        MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=self.recurso_b,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={"sello": {"cumple": True}},
+        )
+        MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=self.recurso_sin_checklist,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "observado")
+
+    def test_periodo_completo_con_falla_termina_fallido(self):
+        self._crear_ficha(
+            recurso=self.recurso_a,
+            estado_operativo=False,
+            payload_checklist={
+                "vigencia": {"cumple": True},
+                "presion": {"cumple": False},
+            },
+        )
+        MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=self.recurso_b,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={"sello": {"cumple": True}},
+        )
+        MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=self.recurso_sin_checklist,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "fallido")
+
+    def test_estado_abierto_sin_fichas_completas_permanece_pendiente(self):
+        self.assertEqual(
+            MotorPeriodos._calcular_estado_abierto(self.nave, self.periodo),
+            "pendiente",
+        )
+
+    def test_estado_abierto_con_una_ficha_completa_pasa_a_en_proceso(self):
+        self._crear_ficha(
+            recurso=self.recurso_a,
+            estado_operativo=True,
+            payload_checklist={
+                "vigencia": {"cumple": True},
+                "presion": {"cumple": True},
+            },
+        )
+
+        self.assertEqual(
+            MotorPeriodos._calcular_estado_abierto(self.nave, self.periodo),
+            "en_proceso",
+        )
+
+    def test_ficha_con_requerimientos_exige_campo_cumple_en_cada_item(self):
+        ficha = FichaRegistro.objects.create(
+            periodo=self.periodo,
+            recurso=self.recurso_a,
+            usuario=self.usuario,
+            estado_operativo=True,
+            payload_checklist={"vigencia": True, "presion": True},
+        )
+
+        self.assertFalse(MotorPeriodos._es_ficha_completa(ficha))
+
+    def test_ficha_sin_requerimientos_es_completa_si_tiene_estado_operativo(self):
+        ficha = FichaRegistro.objects.create(
+            periodo=self.periodo,
+            recurso=self.recurso_sin_checklist,
+            usuario=self.usuario,
+            estado_operativo=False,
+            payload_checklist={},
+        )
+
+        self.assertTrue(MotorPeriodos._es_ficha_completa(ficha))
+
+    def test_sincronizar_periodos_nave_retorna_conteo_de_errores(self):
+        periodicidad_extra = Periodicidad.objects.create(
+            nombre="Diaria Estados",
+            duracion_dias=1,
+            offset_dias=0,
+            responsabilidad="mar",
+            visibilidad="todos",
+        )
+
+        original_crear_periodo_abierto = MotorPeriodos._crear_periodo_abierto
+
+        def crear_periodo_con_fallo(nave, periodicidad, fecha_inicio):
+            if periodicidad == periodicidad_extra:
+                raise RuntimeError("fallo simulado de periodicidad")
+            return original_crear_periodo_abierto(nave, periodicidad, fecha_inicio)
+
+        with patch.object(
+            MotorPeriodos,
+            "_crear_periodo_abierto",
+            side_effect=crear_periodo_con_fallo,
+        ):
+            with self.assertLogs("inventory.services", level="ERROR") as logs:
+                stats = MotorPeriodos.sincronizar_periodos_nave(self.nave)
+
+        self.assertEqual(stats["periodos_con_error"], 1)
+        self.assertTrue(any("Error processing periodicidad" in linea for linea in logs.output))
+        self.assertIn("periodos_creados", stats)
+        self.assertIn("periodos_vencidos", stats)
