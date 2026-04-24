@@ -378,8 +378,16 @@ class PeriodoRevision(models.Model):
     fecha_inicio = models.DateField()
     fecha_termino = models.DateField()
     
-    ESTADOS = [('abierto', 'Abierto'), ('cerrado', 'Cerrado'), ('vencido', 'Vencido')]
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='abierto')
+    ESTADOS = [
+        ('pendiente', 'Pendiente'),
+        ('en_proceso', 'En Proceso'),
+        ('conforme', 'Conforme'),
+        ('observado', 'Observado'),
+        ('fallido', 'Fallido'),
+        ('omitido', 'Omitido'),
+        ('caduco', 'Caduco'),
+    ]
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
     
     class Meta:
         verbose_name = "Periodo de Revisión"
@@ -406,7 +414,14 @@ class FichaRegistro(models.Model):
     fecha_revision = models.DateTimeField(auto_now_add=True)
 
     # Datos de la ficha
-    estado_operativo = models.BooleanField()
+    estado_operativo = models.BooleanField(
+        null=True,
+        default=None,
+        help_text=(
+            "None=sin determinar, True=operativo, False=con falla. "
+            "Solo se asigna cuando la ficha está completa."
+        ),
+    )
     observacion_general = models.TextField(blank=True, default='')
     
     # DETALLE DINÁMICO
@@ -432,6 +447,11 @@ class FichaRegistro(models.Model):
         verbose_name_plural = "Fichas de Registro"
 
     def __str__(self):
-        estado = "OK" if self.estado_operativo else "FALLA"
+        if self.estado_operativo is None:
+            estado = "PENDIENTE"
+        elif self.estado_operativo:
+            estado = "OK"
+        else:
+            estado = "FALLA"
         return f"[{estado}] {self.recurso.nombre} - Periodo: {self.periodo.id}"
 
