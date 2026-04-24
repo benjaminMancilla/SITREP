@@ -814,3 +814,479 @@ class TestMotorPeriodosEstados(TestCase):
         self.assertTrue(any("Error processing periodicidad" in linea for linea in logs.output))
         self.assertIn("periodos_creados", stats)
         self.assertIn("periodos_vencidos", stats)
+
+
+class TestIntegracionMotorReglas(TestCase):
+    REGLA_POR_ESLORA = {
+        "atributo": "eslora",
+        "condiciones": [
+            {
+                "operador": "<=",
+                "valor": 10,
+                "resultado_cantidad": 0,
+                "resultado_visible": False,
+            },
+            {
+                "operador": "<=",
+                "valor": 30,
+                "resultado_cantidad": 2,
+                "resultado_visible": True,
+            },
+            {
+                "operador": ">",
+                "valor": 30,
+                "resultado_cantidad": 4,
+                "resultado_visible": True,
+            },
+        ],
+        "fallback_cantidad": 0,
+        "fallback_visible": False,
+    }
+
+    def setUp(self):
+        self.naviera = Naviera.objects.create(
+            nombre="Naviera Integración",
+            rut="99999999-9",
+            slug="naviera-integracion",
+        )
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Semanal Integración",
+            duracion_dias=7,
+            offset_dias=1,
+            responsabilidad="mar",
+            visibilidad="todos",
+        )
+        self.proposito = Proposito.objects.create(
+            nombre="Seguridad Integración",
+            categoria="Seguridad",
+            tipo="Material",
+        )
+        self.usuario = Usuario.objects.create_user(
+            username="marinero_integracion",
+            password="password-seguro-123",
+            naviera=self.naviera,
+            rut="99999999-9",
+            email="marinero_integracion@example.com",
+            rol="mar",
+        )
+
+    def _crear_nave(self, nombre, matricula, eslora, naviera=None):
+        return Nave.objects.create(
+            naviera=naviera or self.naviera,
+            nombre=nombre,
+            matricula=matricula,
+            eslora=eslora,
+            arqueo_bruto=200,
+            capacidad_personas=12,
+        )
+
+    def _crear_recurso(
+        self,
+        nombre,
+        regla_aplicacion,
+        requerimientos=None,
+        naviera=None,
+        periodicidad=None,
+    ):
+        return Recurso.objects.create(
+            naviera=naviera,
+            proposito=self.proposito,
+            periodicidad=periodicidad or self.periodicidad,
+            nombre=nombre,
+            requerimientos=requerimientos if requerimientos is not None else [],
+            regla_aplicacion=regla_aplicacion,
+        )
+
+    def _get_matriz(self, nave, recurso):
+        return MatrizNaveRecurso.objects.get(nave=nave, recurso=recurso)
+
+    def _get_periodo(self, nave):
+        return PeriodoRevision.objects.get(nave=nave, periodicidad=self.periodicidad)
+
+    def test_nave_pequena_obtiene_cantidad_correcta_segun_eslora(self):
+        """Nave con eslora=8 (<=10) debe tener cantidad=0 y es_visible=False"""
+        recurso = self._crear_recurso(
+            nombre="Extintor Integración Pequeña",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+        )
+        nave = self._crear_nave("Lancha Integración", "INT-001", 8)
+
+        matriz = self._get_matriz(nave, recurso)
+
+        self.assertEqual(matriz.cantidad, 0)
+        self.assertFalse(matriz.es_visible)
+
+    def test_nave_mediana_obtiene_cantidad_correcta_segun_eslora(self):
+        """Nave con eslora=20 (<=30) debe tener cantidad=2 y es_visible=True"""
+        recurso = self._crear_recurso(
+            nombre="Extintor Integración Mediana",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+        )
+        nave = self._crear_nave("Patrullera Integración", "INT-002", 20)
+
+        matriz = self._get_matriz(nave, recurso)
+
+        self.assertEqual(matriz.cantidad, 2)
+        self.assertTrue(matriz.es_visible)
+
+    def test_nave_grande_obtiene_cantidad_correcta_segun_eslora(self):
+        """Nave con eslora=50 (>30) debe tener cantidad=4 y es_visible=True"""
+        recurso = self._crear_recurso(
+            nombre="Extintor Integración Grande",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+        )
+        nave = self._crear_nave("Buque Integración", "INT-003", 50)
+
+        matriz = self._get_matriz(nave, recurso)
+
+        self.assertEqual(matriz.cantidad, 4)
+        self.assertTrue(matriz.es_visible)
+
+    def test_signal_post_save_nave_sincroniza_matriz_automaticamente(self):
+        """Al crear una nave, el Signal dispara sincronización y MatrizNaveRecurso existe"""
+        recurso = self._crear_recurso(
+            nombre="Recurso Signal",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+        )
+
+        nave = self._crear_nave("Nave Signal", "INT-004", 20)
+
+        matriz = self._get_matriz(nave, recurso)
+        self.assertEqual(matriz.cantidad, 2)
+        self.assertTrue(matriz.es_visible)
+
+    def test_editar_eslora_nave_actualiza_matriz(self):
+        """Al editar la eslora de una nave, la matriz debe actualizarse con el nuevo valor"""
+        recurso = self._crear_recurso(
+            nombre="Recurso Actualizable",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+        )
+        nave = self._crear_nave("Nave Editable", "INT-005", 20)
+
+        matriz = self._get_matriz(nave, recurso)
+        self.assertEqual(matriz.cantidad, 2)
+
+        nave.eslora = 50
+        nave.save()
+
+        matriz.refresh_from_db()
+        self.assertEqual(matriz.cantidad, 4)
+        self.assertTrue(matriz.es_visible)
+
+    def test_recurso_sin_regla_usa_fallback_default(self):
+        """Recurso con regla_aplicacion=None usa fallback (0, True)"""
+        recurso = self._crear_recurso(
+            nombre="Recurso Sin Regla",
+            regla_aplicacion=None,
+        )
+        nave = self._crear_nave("Nave Fallback", "INT-006", 20)
+
+        matriz = self._get_matriz(nave, recurso)
+
+        self.assertEqual(matriz.cantidad, 0)
+        self.assertTrue(matriz.es_visible)
+
+    def test_recurso_global_aplica_a_todas_las_naves_del_tenant(self):
+        """Un recurso global (naviera=None) debe aparecer en la matriz de todas las naves activas"""
+        recurso = self._crear_recurso(
+            nombre="Recurso Global Integración",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+        )
+        nave_a = self._crear_nave("Nave Global A", "INT-007", 20)
+        nave_b = self._crear_nave("Nave Global B", "INT-008", 50)
+
+        self.assertTrue(MatrizNaveRecurso.objects.filter(nave=nave_a, recurso=recurso).exists())
+        self.assertTrue(MatrizNaveRecurso.objects.filter(nave=nave_b, recurso=recurso).exists())
+
+    def test_recurso_privado_no_aplica_a_naves_de_otro_tenant(self):
+        """Un recurso privado de naviera_a no debe aparecer en matriz de naves de naviera_b"""
+        naviera_b = Naviera.objects.create(
+            nombre="Naviera Integración B",
+            rut="88888888-8",
+            slug="naviera-integracion-b",
+        )
+        recurso_privado = self._crear_recurso(
+            nombre="Recurso Privado Tenant",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            naviera=self.naviera,
+        )
+        nave_a = self._crear_nave("Nave Privada A", "INT-009", 20)
+        nave_b = self._crear_nave("Nave Privada B", "INT-010", 20, naviera=naviera_b)
+
+        self.assertTrue(MatrizNaveRecurso.objects.filter(nave=nave_a, recurso=recurso_privado).exists())
+        self.assertFalse(
+            MatrizNaveRecurso.objects.filter(nave=nave_b, recurso=recurso_privado).exists()
+        )
+
+    def test_flujo_completo_ficha_operativa(self):
+        """
+        Flujo end-to-end:
+        1. Crear nave con eslora=20 → Signal crea MatrizNaveRecurso (cantidad=2, visible=True)
+        2. Crear recurso con requerimientos=["vigencia", "presion"]
+        3. Verificar que PeriodoRevision existe en estado 'pendiente'
+        4. Crear ficha con todos los requerimientos cumplidos y estado_operativo=True
+        5. Verificar que período pasa a 'en_proceso'
+        6. Verificar que _determinar_estado_cierre retorna 'conforme'
+        """
+        recurso = self._crear_recurso(
+            nombre="Extintor Operativo",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "presion"],
+        )
+        nave = self._crear_nave("Nave Operativa", "INT-011", 20)
+
+        matriz = self._get_matriz(nave, recurso)
+        periodo = self._get_periodo(nave)
+
+        self.assertEqual(matriz.cantidad, 2)
+        self.assertTrue(matriz.es_visible)
+        self.assertEqual(periodo.estado, "pendiente")
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={
+                "vigencia": {"cumple": True, "observacion": ""},
+                "presion": {"cumple": True, "observacion": ""},
+            },
+        )
+
+        periodo.refresh_from_db()
+
+        self.assertTrue(ficha.estado_operativo)
+        self.assertEqual(periodo.estado, "en_proceso")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "conforme")
+
+    def test_flujo_completo_ficha_con_fallo(self):
+        """
+        Flujo end-to-end con fallo:
+        1. Crear nave → Signal crea MatrizNaveRecurso
+        2. Crear ficha con requerimiento fallado (cumple=False, observacion='motivo')
+           y estado_operativo=False
+        3. Verificar que período está en 'en_proceso'
+        4. Verificar que _determinar_estado_cierre retorna 'fallido'
+        """
+        recurso = self._crear_recurso(
+            nombre="Extintor Con Falla",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "presion"],
+        )
+        nave = self._crear_nave("Nave Con Falla", "INT-012", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=False,
+            observacion_general="",
+            payload_checklist={
+                "vigencia": {"cumple": True, "observacion": ""},
+                "presion": {"cumple": False, "observacion": "motivo"},
+            },
+        )
+
+        periodo.refresh_from_db()
+
+        self.assertFalse(ficha.estado_operativo)
+        self.assertEqual(periodo.estado, "en_proceso")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "fallido")
+
+    def test_flujo_completo_periodo_caduco(self):
+        """
+        Período que expira con ficha incompleta → caduco:
+        1. Crear ficha parcial (estado_operativo=None, checklist incompleto)
+        2. Verificar que _determinar_estado_cierre retorna 'caduco'
+        """
+        recurso = self._crear_recurso(
+            nombre="Extintor Parcial",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "presion"],
+        )
+        nave = self._crear_nave("Nave Parcial", "INT-013", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+        )
+
+        self.assertIsNone(ficha.estado_operativo)
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "caduco")
+
+    def test_observacion_requerimiento_fallado_es_obligatoria(self):
+        """
+        Si un requerimiento tiene cumple=False y no tiene observación,
+        MotorFichas.crear_ficha debe lanzar ValueError
+        """
+        recurso = self._crear_recurso(
+            nombre="Extintor Sin Observación",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "presion"],
+        )
+        nave = self._crear_nave("Nave Sin Observación", "INT-014", 20)
+        periodo = self._get_periodo(nave)
+
+        with self.assertRaises(ValueError):
+            MotorFichas.crear_ficha(
+                periodo=periodo,
+                recurso=recurso,
+                usuario=self.usuario,
+                estado_operativo=False,
+                observacion_general="",
+                payload_checklist={
+                    "vigencia": {"cumple": True, "observacion": ""},
+                    "presion": {"cumple": False, "observacion": ""},
+                },
+            )
+
+    def test_estado_operativo_se_fuerza_false_si_hay_fallo_en_requerimiento(self):
+        """
+        Si hay requerimientos fallados, validar_estado_operativo retorna False
+        cuando estado_operativo=True
+        """
+        recurso = self._crear_recurso(
+            nombre="Extintor Validación",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "presion"],
+        )
+
+        es_valido = MotorFichas.validar_estado_operativo(
+            recurso=recurso,
+            estado_operativo=True,
+            payload_checklist={
+                "vigencia": {"cumple": True, "observacion": ""},
+                "presion": {"cumple": False, "observacion": "baja presión"},
+            },
+        )
+
+        self.assertFalse(es_valido)
+
+    def test_recurso_sin_requerimientos_puede_guardarse_con_payload_vacio(self):
+        """
+        Un recurso con requerimientos=[] permite crear ficha con payload_checklist={}
+        y cualquier valor de estado_operativo
+        """
+        recurso_ok = self._crear_recurso(
+            nombre="Recurso Sin Checklist OK",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=[],
+        )
+        recurso_falla = self._crear_recurso(
+            nombre="Recurso Sin Checklist FALLA",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=[],
+        )
+        nave = self._crear_nave("Nave Sin Checklist", "INT-015", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha_ok = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso_ok,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={},
+        )
+        ficha_falla = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso_falla,
+            usuario=self.usuario,
+            estado_operativo=False,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        self.assertEqual(ficha_ok.payload_checklist, {})
+        self.assertTrue(ficha_ok.estado_operativo)
+        self.assertEqual(ficha_falla.payload_checklist, {})
+        self.assertFalse(ficha_falla.estado_operativo)
+
+    def test_regla_con_atributo_inexistente_usa_fallback(self):
+        """regla_aplicacion con atributo='campo_inexistente' retorna fallback"""
+        recurso = self._crear_recurso(
+            nombre="Recurso Atributo Inválido",
+            regla_aplicacion={
+                "atributo": "campo_inexistente",
+                "condiciones": [
+                    {
+                        "operador": "<=",
+                        "valor": 10,
+                        "resultado_cantidad": 99,
+                        "resultado_visible": True,
+                    }
+                ],
+                "fallback_cantidad": 7,
+                "fallback_visible": False,
+            },
+        )
+        nave = self._crear_nave("Nave Fallback Regla", "INT-016", 20)
+
+        matriz = self._get_matriz(nave, recurso)
+
+        self.assertEqual(matriz.cantidad, 7)
+        self.assertFalse(matriz.es_visible)
+
+    def test_regla_con_operador_invalido_ignora_condicion(self):
+        """Una condición con operador no reconocido se ignora y continúa evaluando"""
+        recurso = self._crear_recurso(
+            nombre="Recurso Operador Inválido",
+            regla_aplicacion={
+                "atributo": "eslora",
+                "condiciones": [
+                    {
+                        "operador": "!==",
+                        "valor": 20,
+                        "resultado_cantidad": 99,
+                        "resultado_visible": False,
+                    },
+                    {
+                        "operador": "<=",
+                        "valor": 30,
+                        "resultado_cantidad": 2,
+                        "resultado_visible": True,
+                    },
+                ],
+                "fallback_cantidad": 0,
+                "fallback_visible": False,
+            },
+        )
+        nave = self._crear_nave("Nave Operador Inválido", "INT-017", 20)
+
+        matriz = self._get_matriz(nave, recurso)
+
+        self.assertEqual(matriz.cantidad, 2)
+        self.assertTrue(matriz.es_visible)
+
+    def test_payload_checklist_legacy_booleano_se_normaliza(self):
+        """
+        Un payload legacy {"req": True} debe normalizarse a {"req": {"cumple": True, "observacion": ""}}
+        mediante MotorFichas.normalizar_payload_checklist()
+        """
+        payload_normalizado = MotorFichas.normalizar_payload_checklist({"req": True})
+
+        self.assertEqual(
+            payload_normalizado,
+            {"req": {"cumple": True, "observacion": ""}},
+        )
+
+    def test_payload_checklist_sin_campo_observacion_se_completa(self):
+        """
+        Un payload {"req": {"cumple": True}} sin "observacion" debe normalizarse
+        agregando "observacion": ""
+        """
+        payload_normalizado = MotorFichas.normalizar_payload_checklist(
+            {"req": {"cumple": True}}
+        )
+
+        self.assertEqual(
+            payload_normalizado,
+            {"req": {"cumple": True, "observacion": ""}},
+        )
