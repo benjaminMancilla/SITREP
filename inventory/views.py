@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from .decorators import requiere_rol, tenant_member_required
 from .models import Dispositivo, FichaRegistro, MatrizNaveRecurso, Nave, PeriodoRevision, Recurso, Tripulacion, Usuario
-from .services import MotorFichas, TenantQueryService
+from .services import MotorFichas, MotorPeriodos, TenantQueryService
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,28 @@ def _obtener_periodo_de_nave(nave, periodo_id):
         return None
 
 
+def _contar_fichas_completas(fichas):
+    return sum(1 for ficha in fichas if MotorPeriodos._es_ficha_completa(ficha))
+
+
+def _contar_fichas_completas_por_periodo(periodo_ids):
+    conteos = {periodo_id: 0 for periodo_id in periodo_ids}
+    if not periodo_ids:
+        return conteos
+
+    fichas = FichaRegistro.objects.filter(periodo_id__in=periodo_ids).select_related("recurso")
+    for ficha in fichas:
+        if MotorPeriodos._es_ficha_completa(ficha):
+            conteos[ficha.periodo_id] += 1
+    return conteos
+
+
+def _checklist_item_cumple(valor):
+    if isinstance(valor, dict):
+        return bool(valor.get("cumple"))
+    return bool(valor)
+
+
 def _extraer_payload_ficha_desde_json(request):
     try:
         payload = json.loads(request.body)
@@ -66,8 +88,8 @@ def _extraer_payload_ficha_desde_json(request):
     observacion_general = payload.get("observacion_general", "")
     payload_checklist = payload.get("payload_checklist", {})
 
-    if type(estado_operativo) is not bool:
-        return None, _json_error("estado_operativo debe ser booleano.", 400)
+    if estado_operativo is not None and type(estado_operativo) is not bool:
+        return None, _json_error("estado_operativo debe ser booleano o null.", 400)
     if not isinstance(observacion_general, str):
         return None, _json_error("observacion_general debe ser texto.", 400)
     if not isinstance(payload_checklist, dict):
@@ -102,7 +124,10 @@ def dashboard_tierra(request, slug):
     fichas_hoy_total = 0
     # TODO: optimizar con annotate() en Fase 4 para reducir queries por nave.
     for nave in naves_activas:
-        periodos_abiertos = PeriodoRevision.objects.filter(nave=nave, estado="abierto").count()
+        periodos_abiertos = PeriodoRevision.objects.filter(
+            nave=nave,
+            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
+        ).count()
         fichas_hoy = FichaRegistro.objects.filter(
             periodo__nave=nave,
             fecha_revision__date=timezone.localdate(),
@@ -143,7 +168,7 @@ def nave_detalle(request, slug, nave_id):
     periodos_detalle = []
     # TODO: optimizar con annotate() y prefetch_related en Fase 4
     for periodo in periodos:
-        fichas = TenantQueryService.get_fichas_de_periodo(periodo)
+        fichas = list(TenantQueryService.get_fichas_de_periodo(periodo))
         total_recursos = MatrizNaveRecurso.objects.filter(
             nave=nave,
             es_visible=True,
@@ -154,7 +179,7 @@ def nave_detalle(request, slug, nave_id):
                 "periodo": periodo,
                 "fichas": fichas,
                 "total_recursos": total_recursos,
-                "fichas_count": fichas.count(),
+                "fichas_count": _contar_fichas_completas(fichas),
             }
         )
 
@@ -169,7 +194,9 @@ def nave_detalle(request, slug, nave_id):
             "slug": slug,
             "es_admin": es_admin,
             "periodos_historial_count": sum(
-                1 for item in periodos_detalle if item["periodo"].estado != "abierto"
+                1
+                for item in periodos_detalle
+                if item["periodo"].estado not in TenantQueryService.ESTADOS_ABIERTOS
             ),
         },
     )
@@ -187,7 +214,12 @@ def dashboard_kiosco(request, slug):
     except Http404:
         return redirect(f"/{slug}/kiosco/login/")
 
-    periodos_abiertos = TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id")
+    periodos_abiertos = list(
+        TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id")
+    )
+    fichas_completadas_por_periodo = _contar_fichas_completas_por_periodo(
+        [periodo.id for periodo in periodos_abiertos]
+    )
 
     periodos_resumen = []
     # TODO: optimizar con annotate() en Fase 4
@@ -197,7 +229,7 @@ def dashboard_kiosco(request, slug):
             es_visible=True,
             recurso__periodicidad_id=periodo.periodicidad_id,
         ).count()
-        fichas_completadas = FichaRegistro.objects.filter(periodo=periodo).count()
+        fichas_completadas = fichas_completadas_por_periodo.get(periodo.id, 0)
         periodos_resumen.append(
             {
                 "periodo": periodo,
@@ -248,7 +280,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         periodo = PeriodoRevision.objects.select_related("periodicidad").get(
             id=periodo_id,
             nave=nave,
-            estado="abierto",
+            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
         )
     except PeriodoRevision.DoesNotExist:
         logger.info(
@@ -317,7 +349,7 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         periodo = PeriodoRevision.objects.select_related("periodicidad").get(
             id=periodo_id,
             nave=nave,
-            estado="abierto",
+            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
         )
     except PeriodoRevision.DoesNotExist:
         logger.info(
@@ -353,14 +385,18 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
 
     estado_operativo_form = ficha.estado_operativo if ficha else False
     observacion_general_form = ficha.observacion_general if ficha else ""
-    payload_checklist_form = ficha.payload_checklist if ficha else {}
+    payload_checklist_form = MotorFichas.normalizar_payload_checklist(
+        ficha.payload_checklist if ficha else {}
+    )
 
     if request.method == "POST":
         estado_operativo_form = request.POST.get("estado_operativo") == "on"
         observacion_general_form = (request.POST.get("observacion_general") or "").strip()
         payload_checklist_form = {}
         for index, requerimiento in enumerate(requerimientos):
-            payload_checklist_form[requerimiento] = request.POST.get(f"req_{index}") == "on"
+            payload_checklist_form[requerimiento] = {
+                "cumple": request.POST.get(f"req_{index}") == "on"
+            }
 
         try:
             if tiene_ficha:
@@ -397,7 +433,7 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         {
             "index": index,
             "nombre": requerimiento,
-            "checked": bool(payload_checklist_form.get(requerimiento)),
+            "checked": _checklist_item_cumple(payload_checklist_form.get(requerimiento)),
         }
         for index, requerimiento in enumerate(requerimientos)
     ]
@@ -961,16 +997,7 @@ def api_periodos_nave(request, slug):
             )
         }
 
-    fichas_por_periodo = {}
-    if periodo_ids:
-        fichas_por_periodo = {
-            row["periodo_id"]: row["total"]
-            for row in (
-                FichaRegistro.objects.filter(periodo_id__in=periodo_ids)
-                .values("periodo_id")
-                .annotate(total=Count("id"))
-            )
-        }
+    fichas_por_periodo = _contar_fichas_completas_por_periodo(periodo_ids)
 
     payload = {
         "nave": {
@@ -1086,7 +1113,7 @@ def api_detalle_recurso(request, slug, periodo_id, recurso_id):
     if ficha:
         estado_operativo = ficha.estado_operativo
         observacion_general = ficha.observacion_general
-        payload_checklist = ficha.payload_checklist or {}
+        payload_checklist = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
         fecha_revision = ficha.fecha_revision.isoformat() if ficha.fecha_revision else None
 
         nombre_completo = f"{ficha.usuario.first_name} {ficha.usuario.last_name}".strip()

@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class TenantQueryService:
+    ESTADOS_ABIERTOS = {"pendiente", "en_proceso"}
+
     @staticmethod
     def get_nave(naviera, nave_id):
         """Retorna la nave si pertenece al tenant. Http404 si no existe o es de otro tenant."""
@@ -101,7 +103,7 @@ class TenantQueryService:
         """Retorna queryset de PeriodoRevision abiertos de la nave, con select_related."""
         return PeriodoRevision.objects.filter(
             nave=nave,
-            estado="abierto",
+            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
         ).select_related("periodicidad")
 
     @staticmethod
@@ -269,55 +271,145 @@ class MotorPeriodos:
             periodicidad=periodicidad,
             fecha_inicio=fecha_inicio,
             fecha_termino=fecha_termino,
-            estado='abierto',
+            estado='pendiente',
         )
+
+    @classmethod
+    def _es_ficha_completa(cls, ficha):
+        """
+        Una ficha está completa cuando:
+        - Todos los requerimientos del recurso tienen datos en payload_checklist
+        - Cada requerimiento define 'cumple'
+        - estado_operativo no es None
+        """
+        if ficha.estado_operativo is None:
+            return False
+
+        requerimientos = ficha.recurso.requerimientos or []
+        if not requerimientos:
+            return True
+
+        payload_checklist = ficha.payload_checklist or {}
+        if not isinstance(payload_checklist, dict):
+            return False
+
+        for requerimiento in requerimientos:
+            item = payload_checklist.get(requerimiento)
+            if not isinstance(item, dict) or "cumple" not in item:
+                return False
+
+        return True
+
+    @classmethod
+    def _calcular_estado_abierto(cls, nave, periodo):
+        """
+        Calcula el estado actual de un período abierto.
+        Retorna 'pendiente' o 'en_proceso'.
+        """
+        fichas = FichaRegistro.objects.filter(periodo=periodo).select_related("recurso")
+        fichas_completas = sum(1 for ficha in fichas if cls._es_ficha_completa(ficha))
+        return "en_proceso" if fichas_completas >= 1 else "pendiente"
+
+    @classmethod
+    def sincronizar_estado_periodo_abierto(cls, periodo):
+        if periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
+            return periodo.estado
+
+        nuevo_estado = cls._calcular_estado_abierto(periodo.nave, periodo)
+        if periodo.estado != nuevo_estado:
+            periodo.estado = nuevo_estado
+            periodo.save(update_fields=["estado"])
+        return periodo.estado
 
     @classmethod
     def _determinar_estado_cierre(cls, periodo):
         """
-        Determina el estado final de un período que expiró.
-        PLACEHOLDER: Siempre retorna 'vencido'.
-        En el futuro evaluará si todas las fichas están completas para retornar 'cerrado'.
+        Determina el estado final de un período expirado usando el avance real
+        de las fichas visibles para la periodicidad de la nave.
         """
-        return 'vencido'
+        total_recursos = MatrizNaveRecurso.objects.filter(
+            nave=periodo.nave,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        ).count()
+        fichas = list(
+            FichaRegistro.objects.filter(periodo=periodo).select_related("recurso")
+        )
+        fichas_completas = [ficha for ficha in fichas if cls._es_ficha_completa(ficha)]
+
+        if not fichas_completas:
+            return "omitido" if not fichas else "caduco"
+
+        if len(fichas_completas) < total_recursos:
+            return "caduco"
+
+        if len(fichas_completas) == total_recursos:
+            if any(ficha.estado_operativo is False for ficha in fichas_completas):
+                return "fallido"
+            if any((ficha.observacion_general or "").strip() for ficha in fichas_completas):
+                return "observado"
+            return "conforme"
+
+        return "caduco"
 
     @classmethod
     def sincronizar_periodos_nave(cls, nave):
         """
         Garantiza que exista un periodo abierto por periodicidad para la nave.
-        Si el periodo abierto está vencido, lo marca vencido y crea uno nuevo.
+        Si el periodo abierto expiró, lo cierra según el avance real y crea uno nuevo.
         """
         stats = {
             'periodos_creados': 0,
             'periodos_vencidos': 0,
+            'periodos_con_error': 0,
         }
         hoy = timezone.localdate()
 
-        with transaction.atomic():
-            for periodicidad in Periodicidad.objects.all():
-                periodo_abierto = (
-                    PeriodoRevision.objects
-                    .filter(nave=nave, periodicidad=periodicidad, estado='abierto')
-                    .select_related('periodicidad')
-                    .order_by('-fecha_inicio', '-id')
-                    .first()
+        for periodicidad in Periodicidad.objects.all():
+            try:
+                with transaction.atomic():
+                    periodo_abierto = (
+                        PeriodoRevision.objects
+                        .filter(
+                            nave=nave,
+                            periodicidad=periodicidad,
+                            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
+                        )
+                        .select_related('periodicidad')
+                        .order_by('-fecha_inicio', '-id')
+                        .first()
+                    )
+
+                    if periodo_abierto is None:
+                        cls._crear_periodo_abierto(nave, periodicidad, hoy)
+                        stats['periodos_creados'] += 1
+                        continue
+
+                    fecha_expiracion = periodo_abierto.fecha_termino + timedelta(
+                        days=periodo_abierto.periodicidad.offset_dias
+                    )
+                    if fecha_expiracion < hoy:
+                        periodo_abierto.estado = cls._determinar_estado_cierre(periodo_abierto)
+                        periodo_abierto.save(update_fields=['estado'])
+                        stats['periodos_vencidos'] += 1
+
+                        cls._crear_periodo_abierto(nave, periodicidad, hoy)
+                        stats['periodos_creados'] += 1
+                        continue
+
+                    estado_actual = cls._calcular_estado_abierto(nave, periodo_abierto)
+                    if periodo_abierto.estado != estado_actual:
+                        periodo_abierto.estado = estado_actual
+                        periodo_abierto.save(update_fields=["estado"])
+            except Exception as e:
+                logger.error(
+                    (
+                        f"Error processing periodicidad {periodicidad.id} for nave {nave.id} "
+                        f"(Naviera: {nave.naviera_id}): {str(e)}"
+                    ),
+                    exc_info=True,
                 )
-
-                if periodo_abierto is None:
-                    cls._crear_periodo_abierto(nave, periodicidad, hoy)
-                    stats['periodos_creados'] += 1
-                    continue
-
-                fecha_expiracion = periodo_abierto.fecha_termino + timedelta(
-                    days=periodo_abierto.periodicidad.offset_dias
-                )
-                if fecha_expiracion < hoy:
-                    periodo_abierto.estado = cls._determinar_estado_cierre(periodo_abierto)
-                    periodo_abierto.save(update_fields=['estado'])
-                    stats['periodos_vencidos'] += 1
-
-                    cls._crear_periodo_abierto(nave, periodicidad, hoy)
-                    stats['periodos_creados'] += 1
+                stats['periodos_con_error'] += 1
 
         return stats
 
@@ -328,6 +420,7 @@ class MotorPeriodos:
             'naves_con_error': 0,
             'periodos_creados': 0,
             'periodos_vencidos': 0,
+            'periodos_con_error': 0,
         }
         naves = Nave.objects.filter(is_active=True).select_related('naviera')
 
@@ -337,6 +430,7 @@ class MotorPeriodos:
                 stats['naves_procesadas'] += 1
                 stats['periodos_creados'] += nave_stats['periodos_creados']
                 stats['periodos_vencidos'] += nave_stats['periodos_vencidos']
+                stats['periodos_con_error'] += nave_stats['periodos_con_error']
 
             except Exception as e:
                 logger.error(
@@ -350,19 +444,50 @@ class MotorPeriodos:
 
 class MotorFichas:
     @classmethod
+    def normalizar_payload_checklist(cls, payload_checklist):
+        if not isinstance(payload_checklist, dict):
+            return {}
+
+        payload_normalizado = {}
+        for requerimiento, valor in payload_checklist.items():
+            if isinstance(valor, dict):
+                payload_normalizado[requerimiento] = dict(valor)
+            elif isinstance(valor, bool):
+                payload_normalizado[requerimiento] = {"cumple": valor}
+            else:
+                payload_normalizado[requerimiento] = valor
+        return payload_normalizado
+
+    @classmethod
     def validar_payload_checklist(cls, recurso, payload_checklist):
         """
-        Valida que el payload incluya todos los requerimientos del recurso como keys.
-        Retorna (es_valido, faltantes).
+        Evalúa si el payload incluye todos los requerimientos del recurso.
+        Retorna (esta_completo, faltantes).
         """
         requerimientos = recurso.requerimientos or []
         if not requerimientos:
             return True, []
 
-        if not isinstance(payload_checklist, dict):
-            payload_checklist = {}
+        payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
 
         faltantes = [req for req in requerimientos if req not in payload_checklist]
+        if faltantes:
+            return False, faltantes
+        return True, []
+
+    @classmethod
+    def validar_payload_checklist_completo(cls, recurso, payload_checklist):
+        requerimientos = recurso.requerimientos or []
+        if not requerimientos:
+            return True, []
+
+        payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
+        faltantes = []
+        for requerimiento in requerimientos:
+            item = payload_checklist.get(requerimiento)
+            if not isinstance(item, dict) or "cumple" not in item:
+                faltantes.append(requerimiento)
+
         if faltantes:
             return False, faltantes
         return True, []
@@ -372,14 +497,18 @@ class MotorFichas:
         """
         Impide marcar un recurso como operativo si algún requerimiento no está cumplido.
         """
-        if not estado_operativo:
+        payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
+        if estado_operativo is None:
+            return True
+
+        if estado_operativo is False:
             return True
 
         requerimientos = recurso.requerimientos or []
         if not requerimientos:
             return True
 
-        return all(bool(payload_checklist.get(req)) for req in requerimientos)
+        return all(bool(payload_checklist.get(req, {}).get("cumple")) for req in requerimientos)
 
     @classmethod
     def crear_ficha(
@@ -392,8 +521,8 @@ class MotorFichas:
         payload_checklist,
     ):
         with transaction.atomic():
-            if periodo.estado != "abierto":
-                raise ValueError("No se puede registrar en un período cerrado o vencido.")
+            if periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
+                raise ValueError("No se puede registrar en un período cerrado.")
 
             recurso_asignado = MatrizNaveRecurso.objects.filter(
                 nave=periodo.nave,
@@ -403,9 +532,16 @@ class MotorFichas:
             if not recurso_asignado:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
+            payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
             es_valido, faltantes = cls.validar_payload_checklist(recurso, payload_checklist)
-            if not es_valido:
+            if estado_operativo is not None and not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
+            checklist_completo, faltantes = cls.validar_payload_checklist_completo(
+                recurso,
+                payload_checklist,
+            )
+            if estado_operativo is not None and not checklist_completo:
+                raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
             if not cls.validar_estado_operativo(recurso, estado_operativo, payload_checklist):
                 raise ValueError(
                     "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
@@ -423,13 +559,14 @@ class MotorFichas:
                     usuario=usuario,
                     estado_operativo=estado_operativo,
                     observacion_general=observacion_general,
-                    payload_checklist=payload_checklist if payload_checklist is not None else {},
+                    payload_checklist=payload_checklist,
                 )
             except IntegrityError as exc:
                 raise ValueError(
                     "Ya existe una ficha para este recurso en este período. Use modificar_ficha()."
                 ) from exc
 
+            MotorPeriodos.sincronizar_estado_periodo_abierto(periodo)
             return ficha
 
     @classmethod
@@ -442,15 +579,22 @@ class MotorFichas:
         payload_checklist,
     ):
         with transaction.atomic():
-            if ficha.periodo.estado != "abierto":
-                raise ValueError("No se puede registrar en un período cerrado o vencido.")
+            if ficha.periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
+                raise ValueError("No se puede registrar en un período cerrado.")
 
+            payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
             es_valido, faltantes = cls.validar_payload_checklist(
                 ficha.recurso,
                 payload_checklist,
             )
-            if not es_valido:
+            if estado_operativo is not None and not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
+            checklist_completo, faltantes = cls.validar_payload_checklist_completo(
+                ficha.recurso,
+                payload_checklist,
+            )
+            if estado_operativo is not None and not checklist_completo:
+                raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
             if not cls.validar_estado_operativo(
                 ficha.recurso,
                 estado_operativo,
@@ -462,7 +606,7 @@ class MotorFichas:
 
             ficha.estado_operativo = estado_operativo
             ficha.observacion_general = observacion_general
-            ficha.payload_checklist = payload_checklist if payload_checklist is not None else {}
+            ficha.payload_checklist = payload_checklist
             ficha.modificado_por = usuario_modificador
             ficha.modificado_en = timezone.now()
             ficha.save(
@@ -474,4 +618,5 @@ class MotorFichas:
                     "modificado_en",
                 ]
             )
+            MotorPeriodos.sincronizar_estado_periodo_abierto(ficha.periodo)
             return ficha

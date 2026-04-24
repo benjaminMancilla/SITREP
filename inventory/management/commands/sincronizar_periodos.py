@@ -26,8 +26,9 @@ class Command(BaseCommand):
         self.stdout.write(f"Naves procesadas: {stats['naves_procesadas']}")
         self.stdout.write(f"Periodos creados: {stats['periodos_creados']}")
         self.stdout.write(f"Periodos vencidos: {stats['periodos_vencidos']}")
+        self.stdout.write(f"Periodos con error: {stats['periodos_con_error']}")
         self.stdout.write(f"Naves con error: {stats['naves_con_error']}")
-        if stats['naves_con_error'] > 0:
+        if stats['naves_con_error'] > 0 or stats['periodos_con_error'] > 0:
             self.stdout.write(self.style.WARNING("Sincronización completada con ERRORES parciales. Revise los logs."))
         else:
             self.stdout.write(self.style.SUCCESS("Sincronizacion de periodos completada."))
