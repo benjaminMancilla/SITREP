@@ -16,7 +16,7 @@ def trigger_sincronizacion(sender, instance, created, **kwargs):
     """
     if instance.is_active:
         try:
-            MotorReglasSITREP.sincronizar_matriz_nave(instance)
+            MotorReglasSITREP.sincronizar_matriz_nave(instance, solo_actualizar=True)
         except Exception:
             logger.error(
                 f"Error sincronizando matriz nave {instance.id}",

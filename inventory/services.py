@@ -205,7 +205,7 @@ class MotorReglasSITREP:
         return (regla_json.get('fallback_cantidad', 0), regla_json.get('fallback_visible', False))
     
     @classmethod
-    def sincronizar_matriz_nave(cls, nave):
+    def sincronizar_matriz_nave(cls, nave, solo_actualizar=False):
         """
         Genera o actualiza la matriz de la nave.
         RESPETA LA BANDERA DE AUDITORÍA (modificado_manualmente).
@@ -226,6 +226,19 @@ class MotorReglasSITREP:
             try:
                 with transaction.atomic():
                     cantidad_calc, visible_calc = cls.evaluar_regla(nave, recurso.regla_aplicacion)
+
+                    if solo_actualizar:
+                        # Solo actualiza entradas existentes, no crea nuevas
+                        updated = MatrizNaveRecurso.objects.filter(
+                            nave=nave,
+                            recurso=recurso,
+                            modificado_manualmente=False,
+                        ).update(cantidad=cantidad_calc, es_visible=visible_calc)
+                        if updated:
+                            stats['recursos_actualizados'] += 1
+                        else:
+                            stats['recursos_omitidos'] += 1
+                        continue
 
                     matriz_obj, created = MatrizNaveRecurso.objects.get_or_create(
                         nave=nave,
