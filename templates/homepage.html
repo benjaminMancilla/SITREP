@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITREP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-900 text-slate-200">
+    <div class="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-8 sm:px-6 lg:px-8">
+        <header class="border-b border-slate-800 pb-8">
+            <p class="text-sm uppercase tracking-[0.35em] text-emerald-400">SITREP</p>
+            <h1 class="mt-4 text-4xl font-bold text-white sm:text-5xl">
+                Sistema de Trazabilidad y Registro de Equipos de Puerto
+            </h1>
+            <p class="mt-4 max-w-3xl text-lg text-slate-400">
+                Plataforma de gestión de seguridad marítima para navieras
+            </p>
+        </header>
+
+        <main class="flex-1 py-10">
+            <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <div class="rounded-2xl border border-slate-800 bg-slate-800/70 p-8 shadow-2xl shadow-slate-950/30">
+                    <p class="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-400">Acceder</p>
+
+                    {% if navieras %}
+                        <div class="mt-6 space-y-4">
+                            {% for naviera in navieras %}
+                                <div class="flex flex-col gap-4 rounded-xl border border-slate-700 bg-slate-900/70 p-5 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <h2 class="text-xl font-semibold text-white">{{ naviera.nombre }}</h2>
+                                        <p class="mt-1 text-sm text-slate-400">Tenant disponible para ingreso al sistema.</p>
+                                    </div>
+                                    <a
+                                        href="/{{ naviera.slug }}/"
+                                        class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-emerald-500"
+                                    >
+                                        Ingresar
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-100">
+                            No hay navieras disponibles. Contacte al administrador.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <aside class="rounded-2xl border border-slate-800 bg-slate-800/40 p-8">
+                    <p class="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-400">Plataforma</p>
+                    <p class="mt-4 text-base leading-7 text-slate-300">
+                        Punto de entrada centralizado para las navieras registradas en SITREP.
+                    </p>
+                    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                        <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                            <p class="text-sm text-slate-400">Diseño</p>
+                            <p class="mt-2 text-lg font-semibold text-white">Modo oscuro consistente</p>
+                        </div>
+                        <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                            <p class="text-sm text-slate-400">Acceso</p>
+                            <p class="mt-2 text-lg font-semibold text-white">Ingreso por tenant</p>
+                        </div>
+                    </div>
+                </aside>
+            </section>
+        </main>
+
+        <footer class="border-t border-slate-800 pt-6 text-sm text-slate-500">
+            SITREP © 2026
+        </footer>
+    </div>
+</body>
+</html>
