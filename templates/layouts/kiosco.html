@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}{% block page_title %}SITREP | Kiosco{% endblock %}{% endblock %}
+
+{% block body_class %}min-h-screen bg-surface text-ink font-sans antialiased{% endblock %}
+
+{% block layout %}
+<div class="min-h-screen bg-surface">
+    <header class="sticky top-0 z-30 border-b border-navy-light bg-navy text-white shadow-sm">
+        <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex min-w-0 items-center gap-4">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5">
+                        <svg viewBox="0 0 48 48" class="h-7 w-7" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <rect x="14" y="14" width="20" height="20" rx="2" transform="rotate(45 24 24)" stroke="currentColor" stroke-width="2"/>
+                            <path d="M24 6V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M24 32V42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M6 24H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M32 24H42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span class="text-2xs font-semibold uppercase tracking-[0.3em] text-white/60">SITREP</span>
+                            {% if periodo %}
+                                <span class="hidden h-1 w-1 rounded-full bg-white/30 sm:inline-block"></span>
+                                <span class="text-sm font-medium text-white/70">{{ periodo.periodicidad.nombre }}</span>
+                            {% endif %}
+                        </div>
+                        <h1 class="truncate text-xl font-bold lg:text-2xl">
+                            {% if nave %}
+                                {{ nave.nombre }}
+                            {% else %}
+                                Kiosco SITREP
+                            {% endif %}
+                        </h1>
+                        <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
+                            {% if nave and nave.matricula %}
+                                <span>Matrícula: {{ nave.matricula }}</span>
+                            {% endif %}
+                            <span>
+                                Usuario:
+                                {% if usuario %}
+                                    {% if usuario.first_name or usuario.last_name %}
+                                        {{ usuario.first_name }} {{ usuario.last_name }}
+                                    {% else %}
+                                        {{ usuario.rut|default:usuario.username }}
+                                    {% endif %}
+                                {% else %}
+                                    {% if request.user.first_name or request.user.last_name %}
+                                        {{ request.user.first_name }} {{ request.user.last_name }}
+                                    {% else %}
+                                        {{ request.user.rut|default:request.user.username }}
+                                    {% endif %}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" action="{% url 'inventory:logout_kiosco' slug=slug %}" class="shrink-0">
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                    >
+                        Cerrar sesión
+                    </button>
+                </form>
+            </div>
+
+            {% block kiosco_header_extra %}{% endblock %}
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl bg-surface p-4 sm:p-6 lg:p-8">
+        {% block page_content %}{% block content %}{% endblock %}{% endblock %}
+    </main>
+</div>
+{% endblock %}
