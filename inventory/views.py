@@ -1,6 +1,7 @@
 import json
 import logging
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlencode
 
 from django.contrib.auth import authenticate, login, logout
 from django.core.paginator import Paginator
@@ -317,11 +318,37 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
     matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
         "recurso__nombre"
     )
+    error_recurso_id = request.GET.get("error_recurso")
+    error_msg = request.GET.get("error_msg", "")
+    try:
+        error_recurso_id = int(error_recurso_id) if error_recurso_id else None
+    except (TypeError, ValueError):
+        error_recurso_id = None
+
+    fichas_por_recurso_id = {
+        ficha.recurso_id: ficha
+        for ficha in FichaRegistro.objects.filter(
+            periodo=periodo,
+            recurso_id__in=matrices.values_list("recurso_id", flat=True),
+        ).select_related("usuario", "modificado_por")
+    }
 
     recursos_lista = []
-    # TODO: optimizar N+1 con prefetch en Fase 4
     for matriz in matrices:
-        ficha = TenantQueryService.get_ficha_de_periodo_y_recurso(periodo, matriz.recurso)
+        ficha = fichas_por_recurso_id.get(matriz.recurso_id)
+        payload_actual = MotorFichas.normalizar_payload_checklist(
+            ficha.payload_checklist if ficha else {}
+        )
+        checklist_items = []
+        for index, requerimiento in enumerate(matriz.recurso.requerimientos or []):
+            checklist_items.append(
+                {
+                    "index": index,
+                    "nombre": requerimiento,
+                    "checked": payload_actual.get(requerimiento, {}).get("cumple", False),
+                    "observacion": payload_actual.get(requerimiento, {}).get("observacion", ""),
+                }
+            )
         recursos_lista.append(
             {
                 "matriz": matriz,
@@ -329,6 +356,9 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
                 "ficha": ficha,
                 "tiene_ficha": ficha is not None,
                 "estado_operativo": ficha.estado_operativo if ficha else None,
+                "observacion_general": ficha.observacion_general if ficha else "",
+                "checklist_items": checklist_items,
+                "action_url": f"/{slug}/kiosco/periodos/{periodo.id}/recursos/{matriz.recurso.id}/ficha/",
             }
         )
 
@@ -339,6 +369,8 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
             "nave": nave,
             "periodo": periodo,
             "recursos_lista": recursos_lista,
+            "error_recurso_id": error_recurso_id,
+            "error_msg": error_msg,
             "slug": slug,
         },
     )
@@ -458,7 +490,13 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
             )
             return redirect(f"/{slug}/kiosco/periodos/{periodo.id}/")
         except ValueError as exc:
-            error = str(exc)
+            error_query = urlencode(
+                {
+                    "error_recurso": recurso.id,
+                    "error_msg": str(exc),
+                }
+            )
+            return redirect(f"/{slug}/kiosco/periodos/{periodo.id}/?{error_query}")
     else:
         error = None
 

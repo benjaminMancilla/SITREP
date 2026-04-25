@@ -29,43 +29,207 @@
 
         <section class="space-y-3">
             {% for item in recursos_lista %}
-                <article class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h2 class="text-xl font-semibold text-white">{{ item.recurso.nombre }}</h2>
-                            <p class="mt-1 text-sm text-slate-400">
-                                {{ item.recurso.proposito.tipo }} | {{ item.recurso.proposito.categoria }}
-                            </p>
-                            <p class="mt-1 text-sm text-slate-400">Cantidad requerida: {{ item.matriz.cantidad }}</p>
-                        </div>
-                        <div class="flex flex-col gap-2 sm:items-end">
-                            {% if item.tiene_ficha %}
-                                {% if item.estado_operativo %}
-                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-300">
-                                        Registrado OK
+                <article class="overflow-hidden rounded-xl border border-slate-700 bg-slate-800 shadow-xl">
+                    <button
+                        id="toggle-{{ item.recurso.id }}"
+                        type="button"
+                        onclick="toggleItem('{{ item.recurso.id }}')"
+                        class="flex w-full items-start justify-between gap-4 px-5 py-5 text-left hover:bg-slate-700/20"
+                        aria-expanded="{% if item.recurso.id == error_recurso_id %}true{% else %}false{% endif %}"
+                        aria-controls="panel-{{ item.recurso.id }}"
+                    >
+                        <span class="min-w-0 flex-1">
+                            <span class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <span class="space-y-1">
+                                    <span class="block text-xl font-semibold text-white">{{ item.recurso.nombre }}</span>
+                                    <span class="block text-sm text-slate-400">
+                                        {{ item.recurso.proposito.tipo }} | {{ item.recurso.proposito.categoria }}
                                     </span>
-                                {% else %}
-                                    <span class="inline-flex rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
-                                        Registrado con falla
-                                    </span>
-                                {% endif %}
-                            {% else %}
-                                <span class="inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-300">
-                                    Pendiente
+                                    <span class="block text-sm text-slate-400">Cantidad requerida: {{ item.matriz.cantidad }}</span>
+                                    {% if item.tiene_ficha %}
+                                        <span class="block pt-1 text-xs text-slate-500">
+                                            Registrado por
+                                            {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
+                                                {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
+                                            {% else %}
+                                                {{ item.ficha.usuario.rut }}
+                                            {% endif %}
+                                            el {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                                        </span>
+                                    {% endif %}
                                 </span>
+                                <span class="flex shrink-0 items-center gap-3">
+                                    {% if item.tiene_ficha %}
+                                        {% if item.estado_operativo == True %}
+                                            <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-300">
+                                                Operativo
+                                            </span>
+                                        {% elif item.estado_operativo == False %}
+                                            <span class="inline-flex rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-sm font-semibold text-rose-200">
+                                                Falla
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-sm font-semibold text-amber-200">
+                                                En Proceso
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="inline-flex rounded-full border border-slate-600 bg-slate-700 px-3 py-1 text-sm font-semibold text-slate-300">
+                                            Pendiente
+                                        </span>
+                                    {% endif %}
+                                    <svg
+                                        id="chevron-{{ item.recurso.id }}"
+                                        class="h-5 w-5 shrink-0 text-slate-400 transition-transform"
+                                        style="{% if item.recurso.id == error_recurso_id %}transform: rotate(180deg);{% endif %}"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        viewBox="0 0 24 24"
+                                        aria-hidden="true"
+                                    >
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"></path>
+                                    </svg>
+                                </span>
+                            </span>
+                        </span>
+                    </button>
+
+                    <div
+                        id="panel-{{ item.recurso.id }}"
+                        class="{% if item.recurso.id != error_recurso_id %}hidden {% endif %}border-t border-slate-700 px-5 py-5"
+                    >
+                        <form
+                            method="post"
+                            action="{{ item.action_url }}"
+                            class="space-y-6"
+                            data-recurso-form="true"
+                            data-recurso-id="{{ item.recurso.id }}"
+                        >
+                            {% csrf_token %}
+
+                            {% if item.recurso.id == error_recurso_id and error_msg %}
+                                <div class="rounded-lg border border-rose-500/40 bg-rose-500/15 px-4 py-3 text-sm font-medium text-rose-200">
+                                    {{ error_msg }}
+                                </div>
                             {% endif %}
 
-                            <a
-                                href="{% url 'inventory:kiosco_recurso_ficha' slug=slug periodo_id=periodo.id recurso_id=item.recurso.id %}"
-                                class="inline-flex min-h-10 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/30"
-                            >
-                                {% if item.tiene_ficha %}
-                                    Ver/Editar
+                            <div class="space-y-3">
+                                <h3 class="text-lg font-semibold text-white">Checklist de requerimientos</h3>
+                                {% if item.checklist_items %}
+                                    <div class="space-y-2">
+                                        {% for checklist in item.checklist_items %}
+                                            <div class="space-y-2 rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3">
+                                                <label
+                                                    for="req_{{ item.recurso.id }}_{{ checklist.index }}"
+                                                    class="flex cursor-pointer items-center gap-3"
+                                                >
+                                                    <input
+                                                        id="req_{{ item.recurso.id }}_{{ checklist.index }}"
+                                                        name="req_{{ checklist.index }}"
+                                                        type="checkbox"
+                                                        data-requerimiento-checkbox="true"
+                                                        class="h-5 w-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                                                        {% if checklist.checked %}checked{% endif %}
+                                                    >
+                                                    <span class="text-sm text-slate-200">{{ checklist.nombre }}</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="obs_{{ checklist.index }}"
+                                                    value="{{ checklist.observacion }}"
+                                                    placeholder="Observación (obligatoria si falla)..."
+                                                    class="w-full rounded border border-slate-600 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+                                                >
+                                            </div>
+                                        {% endfor %}
+                                    </div>
                                 {% else %}
-                                    Llenar Ficha
+                                    <p class="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
+                                        Este recurso no tiene requerimientos específicos.
+                                    </p>
                                 {% endif %}
-                            </a>
-                        </div>
+                            </div>
+
+                            <div
+                                id="estado-operativo-panel-{{ item.recurso.id }}"
+                                class="space-y-2 rounded-lg border border-slate-700 bg-slate-900/40 p-4"
+                            >
+                                <label
+                                    for="estado_operativo_{{ item.recurso.id }}"
+                                    id="estado-operativo-label-{{ item.recurso.id }}"
+                                    class="inline-flex cursor-pointer items-center gap-3"
+                                >
+                                    <input
+                                        id="estado_operativo_{{ item.recurso.id }}"
+                                        name="estado_operativo"
+                                        type="checkbox"
+                                        data-estado-operativo="true"
+                                        class="h-5 w-5 rounded border-slate-500 bg-slate-700 text-emerald-500 focus:ring-emerald-500"
+                                        {% if item.estado_operativo == True %}checked{% endif %}
+                                    >
+                                    <span class="text-base font-semibold text-slate-100">Recurso operativo</span>
+                                </label>
+                                <p
+                                    id="estado-operativo-help-{{ item.recurso.id }}"
+                                    class="ml-8 text-xs text-slate-400"
+                                    aria-live="polite"
+                                >
+                                    Solo puede marcarse como operativo si todos los requerimientos están cumplidos.
+                                </p>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label for="observacion_general_{{ item.recurso.id }}" class="block text-sm font-semibold text-slate-200">
+                                    Observación general
+                                </label>
+                                <textarea
+                                    id="observacion_general_{{ item.recurso.id }}"
+                                    name="observacion_general"
+                                    rows="4"
+                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+                                    placeholder="Detalle observaciones de la revisión..."
+                                >{{ item.observacion_general }}</textarea>
+                            </div>
+
+                            <div class="flex">
+                                <button
+                                    type="submit"
+                                    class="inline-flex min-h-12 items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-emerald-500"
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+
+                            {% if item.tiene_ficha %}
+                                <div class="space-y-1 rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                                    <p>
+                                        Registrado por
+                                        <span class="font-medium text-slate-200">
+                                            {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
+                                                {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
+                                            {% else %}
+                                                {{ item.ficha.usuario.rut }}
+                                            {% endif %}
+                                        </span>
+                                        el {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                                    </p>
+                                    {% if item.ficha.modificado_por %}
+                                        <p>
+                                            Última modificación por
+                                            <span class="font-medium text-slate-200">
+                                                {% if item.ficha.modificado_por.first_name or item.ficha.modificado_por.last_name %}
+                                                    {{ item.ficha.modificado_por.first_name }} {{ item.ficha.modificado_por.last_name }}
+                                                {% else %}
+                                                    {{ item.ficha.modificado_por.rut }}
+                                                {% endif %}
+                                            </span>
+                                            el {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </form>
                     </div>
                 </article>
             {% empty %}
@@ -77,5 +241,74 @@
             {% endfor %}
         </section>
     </div>
+
+    <script>
+        function toggleItem(id) {
+            const panel = document.getElementById('panel-' + id);
+            const chevron = document.getElementById('chevron-' + id);
+            const toggle = document.getElementById('toggle-' + id);
+            const isHidden = panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !isHidden);
+            chevron.style.transform = isHidden ? 'rotate(180deg)' : '';
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            }
+        }
+
+        (function () {
+            function syncEstadoOperativo(form) {
+                const estadoOperativo = form.querySelector('[data-estado-operativo="true"]');
+                const estadoOperativoHelp = form.querySelector('[id^="estado-operativo-help-"]');
+                const estadoOperativoLabel = form.querySelector('[id^="estado-operativo-label-"]');
+                const requerimientoCheckboxes = Array.from(
+                    form.querySelectorAll('[data-requerimiento-checkbox="true"]')
+                );
+
+                if (!estadoOperativo || !estadoOperativoHelp || !estadoOperativoLabel) {
+                    return;
+                }
+
+                if (!requerimientoCheckboxes.length) {
+                    estadoOperativo.disabled = false;
+                    estadoOperativoLabel.classList.remove('cursor-not-allowed', 'opacity-60');
+                    estadoOperativoHelp.textContent =
+                        'Este recurso no tiene bloqueos por checklist. Puedes marcarlo como operativo si corresponde.';
+                    estadoOperativoHelp.classList.remove('text-amber-300');
+                    estadoOperativoHelp.classList.add('text-slate-400');
+                    return;
+                }
+
+                const todosCumplen = requerimientoCheckboxes.every((checkbox) => checkbox.checked);
+
+                if (!todosCumplen) {
+                    estadoOperativo.checked = false;
+                    estadoOperativo.disabled = true;
+                    estadoOperativoLabel.classList.add('cursor-not-allowed', 'opacity-60');
+                    estadoOperativoHelp.textContent =
+                        'Un requerimiento falló — el recurso no puede marcarse como operativo.';
+                    estadoOperativoHelp.classList.remove('text-slate-400');
+                    estadoOperativoHelp.classList.add('text-amber-300');
+                    return;
+                }
+
+                estadoOperativo.disabled = false;
+                estadoOperativoLabel.classList.remove('cursor-not-allowed', 'opacity-60');
+                estadoOperativoHelp.textContent =
+                    'Todos los requerimientos están cumplidos. Ya puedes marcar este recurso como operativo.';
+                estadoOperativoHelp.classList.remove('text-amber-300');
+                estadoOperativoHelp.classList.add('text-slate-400');
+            }
+
+            document.querySelectorAll('[data-recurso-form="true"]').forEach((form) => {
+                form.querySelectorAll('[data-requerimiento-checkbox="true"]').forEach((checkbox) => {
+                    checkbox.addEventListener('change', function () {
+                        syncEstadoOperativo(form);
+                    });
+                });
+
+                syncEstadoOperativo(form);
+            });
+        })();
+    </script>
 </body>
 </html>
