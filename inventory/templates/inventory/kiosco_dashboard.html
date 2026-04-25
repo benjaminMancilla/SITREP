@@ -89,6 +89,127 @@
                 </article>
             {% endfor %}
         </section>
+
+        <section class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
+            <h2 class="mb-4 text-lg font-semibold text-white">Historial de Revisiones</h2>
+            <form method="get" action="" class="space-y-3">
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-400">Desde</label>
+                        <input
+                            type="date"
+                            name="fecha_desde"
+                            value="{{ fecha_desde_str }}"
+                            class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        >
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-400">Hasta</label>
+                        <input
+                            type="date"
+                            name="fecha_hasta"
+                            value="{{ fecha_hasta_str }}"
+                            class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        >
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-400">Estado</label>
+                        <select
+                            name="estado"
+                            class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        >
+                            <option value="">Todos</option>
+                            <option value="conforme" {% if estado_filtro == "conforme" %}selected{% endif %}>Conforme</option>
+                            <option value="observado" {% if estado_filtro == "observado" %}selected{% endif %}>Observado</option>
+                            <option value="fallido" {% if estado_filtro == "fallido" %}selected{% endif %}>Fallido</option>
+                            <option value="omitido" {% if estado_filtro == "omitido" %}selected{% endif %}>Omitido</option>
+                            <option value="caduco" {% if estado_filtro == "caduco" %}selected{% endif %}>Caduco</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-400">Periodicidad</label>
+                        <select
+                            name="periodicidad"
+                            class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                        >
+                            <option value="">Todas</option>
+                            {% for p in periodicidades %}
+                                <option value="{{ p.id }}" {% if periodicidad_id_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button
+                        type="submit"
+                        class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+                    >
+                        Filtrar
+                    </button>
+                    <a
+                        href="?"
+                        class="rounded-md border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-700"
+                    >
+                        Limpiar
+                    </a>
+                </div>
+            </form>
+        </section>
+
+        <section class="space-y-4">
+            {% for periodo in historial %}
+                <article class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h3 class="text-2xl font-semibold text-white">{{ periodo.periodicidad.nombre }}</h3>
+                                {% if periodo.estado == "conforme" %}
+                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                                        Conforme
+                                    </span>
+                                {% elif periodo.estado == "observado" %}
+                                    <span class="inline-flex rounded-full border border-sky-500/40 bg-sky-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
+                                        Observado
+                                    </span>
+                                {% elif periodo.estado == "fallido" %}
+                                    <span class="inline-flex rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-300">
+                                        Fallido
+                                    </span>
+                                {% elif periodo.estado == "omitido" %}
+                                    <span class="inline-flex rounded-full border border-slate-500/50 bg-slate-700/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200">
+                                        Omitido
+                                    </span>
+                                {% elif periodo.estado == "caduco" %}
+                                    <span class="inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                                        Caduco
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-sm text-slate-400">
+                                {{ periodo.fecha_inicio|date:"d/m/Y" }} - {{ periodo.fecha_termino|date:"d/m/Y" }}
+                            </p>
+                            <!-- TODO(fase-optimizacion): evitar N+1 en historial; reemplazar periodo.fichas.count por conteo anotado/prefetch desde la vista. -->
+                            <p class="text-sm text-slate-300">
+                                Fichas registradas:
+                                <span class="font-semibold text-white">{{ periodo.fichas.count }}</span>
+                            </p>
+                        </div>
+
+                        <!-- TODO(routing): reemplazar href hardcodeado por {% url 'inventory:kiosco_periodo_historial' %} cuando la ruta exista en urls.py. -->
+                        <a
+                            href="/{{ slug }}/kiosco/periodos/{{ periodo.id }}/historial/"
+                            class="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-base font-semibold text-white transition-colors hover:bg-slate-600"
+                        >
+                            Ver detalle
+                        </a>
+                    </div>
+                </article>
+            {% empty %}
+                <article class="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
+                    <p class="text-lg text-slate-300">No hay revisiones históricas que coincidan con los filtros.</p>
+                </article>
+            {% endfor %}
+        </section>
     </div>
 </body>
 </html>
