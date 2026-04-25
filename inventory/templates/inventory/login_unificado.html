@@ -43,174 +43,197 @@
                 <div class="mb-8">
                     <p class="text-sm uppercase tracking-[0.3em] text-slate-400">{{ slug }}</p>
                     <div class="mt-4 inline-flex w-full rounded-2xl border border-slate-700 bg-slate-900 p-2">
-                        <a
-                            href="?modo=tierra"
+                        <button
+                            id="tab-tierra"
+                            type="button"
+                            onclick="setModo('tierra')"
                             class="flex-1 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors {% if modo == 'tierra' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:bg-slate-800{% endif %}"
                         >
                             Tierra
-                        </a>
-                        <a
-                            href="?modo=mar"
+                        </button>
+                        <button
+                            id="tab-mar"
+                            type="button"
+                            onclick="setModo('mar')"
                             class="flex-1 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors {% if modo == 'mar' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:bg-slate-800{% endif %}"
                         >
                             Mar
-                        </a>
+                        </button>
                     </div>
                 </div>
 
-                {% if modo == "mar" %}
-                    <div>
-                        <h2 class="text-3xl font-bold text-emerald-400">Acceso Mar</h2>
-                        <p class="mt-3 text-base text-slate-400">
-                            Ingrese con credenciales de kiosco desde un dispositivo autorizado.
-                        </p>
+                <div id="tierra-panel" class="{% if modo != 'tierra' %}hidden{% endif %}">
+                    <h2 class="text-3xl font-bold text-emerald-400">Acceso Tierra</h2>
+                    <p class="mt-3 text-base text-slate-400">
+                        Ingrese con email y contraseña para continuar al dashboard del tenant.
+                    </p>
 
-                        {% if error %}
-                            <p class="mt-6 text-base text-red-400">{{ error }}</p>
-                        {% endif %}
+                    {% if modo == "tierra" and error %}
+                        <p class="mt-6 text-sm text-red-400">{{ error }}</p>
+                    {% endif %}
 
-                        <div class="mt-6">
-                            <p id="token-ok" class="hidden rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
-                                Dispositivo autorizado
-                            </p>
-                            <p id="token-error" class="hidden rounded-full border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300">
-                                Dispositivo no autorizado — contacte a su supervisor
-                            </p>
+                    <form method="POST" action="{% url 'inventory:login_tierra' slug=slug %}" class="mt-8 space-y-5">
+                        {% csrf_token %}
+                        <input type="hidden" name="modo" value="tierra">
+
+                        <div>
+                            <label for="email" class="block text-sm font-medium mb-2">Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                name="email"
+                                required
+                                autocomplete="email"
+                                class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white outline-none focus:border-emerald-500"
+                            >
                         </div>
 
-                        <form id="kiosco-form" method="POST" action="" class="mt-8 space-y-5">
-                            {% csrf_token %}
-                            <input type="hidden" name="modo" value="mar">
-                            <input type="hidden" name="mode" value="mar">
-
-                            <div>
-                                <label for="rut" class="block text-lg font-medium mb-2">RUT</label>
-                                <input
-                                    id="rut"
-                                    name="rut"
-                                    type="text"
-                                    required
-                                    autocomplete="username"
-                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-4 text-xl text-white outline-none focus:border-emerald-500"
-                                    placeholder="12.345.678-9"
-                                >
-                            </div>
-
-                            <div>
-                                <label for="pin" class="block text-lg font-medium mb-2">PIN</label>
-                                <input
-                                    id="pin"
-                                    name="pin"
-                                    type="password"
-                                    required
-                                    inputmode="numeric"
-                                    pattern="[0-9]{1,4}"
-                                    maxlength="4"
-                                    autocomplete="current-password"
-                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-4 text-xl tracking-[0.3em] text-white outline-none focus:border-emerald-500"
-                                    placeholder="••••"
-                                >
-                            </div>
-
-                            <input id="dispositivo_token" name="dispositivo_token" type="hidden">
-
-                            <button
-                                id="submit-btn"
-                                type="submit"
-                                class="w-full rounded-lg bg-emerald-600 px-6 py-4 text-xl font-bold text-white transition-colors hover:bg-emerald-500"
+                        <div>
+                            <label for="password" class="block text-sm font-medium mb-2">Contraseña</label>
+                            <input
+                                id="password"
+                                type="password"
+                                name="password"
+                                required
+                                autocomplete="current-password"
+                                class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white outline-none focus:border-emerald-500"
                             >
-                                Ingresar
-                            </button>
-                        </form>
-                    </div>
-                {% else %}
-                    <div>
-                        <h2 class="text-3xl font-bold text-emerald-400">Acceso Tierra</h2>
-                        <p class="mt-3 text-base text-slate-400">
-                            Ingrese con email y contraseña para continuar al dashboard del tenant.
+                        </div>
+
+                        <button type="submit" class="w-full rounded-lg bg-emerald-600 px-4 py-3 font-bold text-white transition-colors hover:bg-emerald-500">
+                            Ingresar
+                        </button>
+                    </form>
+                </div>
+
+                <div id="mar-panel" class="{% if modo != 'mar' %}hidden{% endif %}">
+                    <h2 class="text-3xl font-bold text-emerald-400">Acceso Mar</h2>
+                    <p class="mt-3 text-base text-slate-400">
+                        Ingrese con credenciales de kiosco desde un dispositivo autorizado.
+                    </p>
+
+                    {% if modo == "mar" and error %}
+                        <p class="mt-6 text-base text-red-400">{{ error }}</p>
+                    {% endif %}
+
+                    <div class="mt-6">
+                        <p id="token-ok" class="hidden rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
+                            Dispositivo autorizado
                         </p>
-
-                        {% if error %}
-                            <p class="mt-6 text-sm text-red-400">{{ error }}</p>
-                        {% endif %}
-
-                        <form method="POST" action="" class="mt-8 space-y-5">
-                            {% csrf_token %}
-                            <input type="hidden" name="modo" value="tierra">
-                            <input type="hidden" name="mode" value="tierra">
-
-                            <div>
-                                <label for="email" class="block text-sm font-medium mb-2">Email</label>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    required
-                                    autocomplete="email"
-                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white outline-none focus:border-emerald-500"
-                                >
-                            </div>
-
-                            <div>
-                                <label for="password" class="block text-sm font-medium mb-2">Contraseña</label>
-                                <input
-                                    id="password"
-                                    type="password"
-                                    name="password"
-                                    required
-                                    autocomplete="current-password"
-                                    class="w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-white outline-none focus:border-emerald-500"
-                                >
-                            </div>
-
-                            <button type="submit" class="w-full rounded-lg bg-emerald-600 px-4 py-3 font-bold text-white transition-colors hover:bg-emerald-500">
-                                Ingresar
-                            </button>
-                        </form>
+                        <p id="token-error" class="hidden rounded-full border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300">
+                            Dispositivo no autorizado — contacte a su supervisor
+                        </p>
                     </div>
-                {% endif %}
+
+                    <form id="kiosco-form" method="POST" action="{% url 'inventory:login_tierra' slug=slug %}" class="mt-8 space-y-5">
+                        {% csrf_token %}
+                        <input type="hidden" name="modo" value="mar">
+
+                        <div>
+                            <label for="rut" class="block text-lg font-medium mb-2">RUT</label>
+                            <input
+                                id="rut"
+                                name="rut"
+                                type="text"
+                                required
+                                autocomplete="username"
+                                class="w-full rounded-lg border border-slate-600 bg-slate-900 p-4 text-xl text-white outline-none focus:border-emerald-500"
+                                placeholder="12.345.678-9"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="pin" class="block text-lg font-medium mb-2">PIN</label>
+                            <input
+                                id="pin"
+                                name="pin"
+                                type="password"
+                                required
+                                inputmode="numeric"
+                                pattern="[0-9]{1,4}"
+                                maxlength="4"
+                                autocomplete="current-password"
+                                class="w-full rounded-lg border border-slate-600 bg-slate-900 p-4 text-xl tracking-[0.3em] text-white outline-none focus:border-emerald-500"
+                                placeholder="••••"
+                            >
+                        </div>
+
+                        <input id="dispositivo_token" name="dispositivo_token" type="hidden">
+
+                        <button
+                            id="submit-btn"
+                            type="submit"
+                            class="w-full rounded-lg bg-emerald-600 px-6 py-4 text-xl font-bold text-white transition-colors hover:bg-emerald-500"
+                        >
+                            Ingresar
+                        </button>
+                    </form>
+                </div>
             </section>
         </div>
     </div>
+    <script>
+        var modoActual = "{{ modo|escapejs }}";
+        var debeLimpiarTokenKiosco = {% if limpiar_token %}true{% else %}false{% endif %};
 
-    {% if modo == "mar" %}
-        <script>
-            (function () {
-                {% if limpiar_token %}
+        function setTabActivo(tab, activo) {
+            if (activo) {
+                tab.classList.add("bg-emerald-600", "text-white");
+                tab.classList.remove("text-slate-300", "hover:bg-slate-800");
+                return;
+            }
+
+            tab.classList.remove("bg-emerald-600", "text-white");
+            tab.classList.add("text-slate-300", "hover:bg-slate-800");
+        }
+
+        function validarDispositivoKiosco() {
+            if (debeLimpiarTokenKiosco) {
                 window.localStorage.removeItem("sitrep_kiosco_token");
-                {% endif %}
+                debeLimpiarTokenKiosco = false;
+            }
 
-                var token = window.localStorage.getItem("sitrep_kiosco_token");
-                var tokenInput = document.getElementById("dispositivo_token");
-                var tokenError = document.getElementById("token-error");
-                var form = document.getElementById("kiosco-form");
+            var token = window.localStorage.getItem("sitrep_kiosco_token");
+            var tokenInput = document.getElementById("dispositivo_token");
+            var tokenOk = document.getElementById("token-ok");
+            var tokenError = document.getElementById("token-error");
+            var form = document.getElementById("kiosco-form");
+            var controls = form.querySelectorAll("input, button");
+            var autorizado = Boolean(token);
 
-                if (token) {
-                    tokenInput.value = token;
+            tokenInput.value = token || "";
+            tokenOk.classList.toggle("hidden", !autorizado);
+            tokenError.classList.toggle("hidden", autorizado);
+
+            controls.forEach(function (control) {
+                if (control === tokenInput || control.type === "hidden") {
                     return;
                 }
+                control.disabled = !autorizado;
+            });
+        }
 
-                tokenError.classList.remove("hidden");
-                var controls = form.querySelectorAll("input, button");
-                controls.forEach(function (control) {
-                    control.disabled = true;
-                });
-            })();
-        </script>
-        <script>
-            (function () {
-                var token = window.localStorage.getItem("sitrep_kiosco_token");
-                var tokenOk = document.getElementById("token-ok");
-                var tokenError = document.getElementById("token-error");
+        function setModo(modo) {
+            var esMar = modo === "mar";
+            var tierraPanel = document.getElementById("tierra-panel");
+            var marPanel = document.getElementById("mar-panel");
+            var tabTierra = document.getElementById("tab-tierra");
+            var tabMar = document.getElementById("tab-mar");
 
-                if (token) {
-                    tokenOk.classList.remove("hidden");
-                    return;
-                }
+            tierraPanel.classList.toggle("hidden", esMar);
+            marPanel.classList.toggle("hidden", !esMar);
+            setTabActivo(tabTierra, !esMar);
+            setTabActivo(tabMar, esMar);
 
-                tokenError.classList.remove("hidden");
-            })();
-        </script>
-    {% endif %}
+            if (esMar) {
+                validarDispositivoKiosco();
+            }
+
+            modoActual = esMar ? "mar" : "tierra";
+            window.history.replaceState(null, "", "?modo=" + modoActual);
+        }
+
+        setModo(modoActual === "mar" ? "mar" : "tierra");
+    </script>
 </body>
 </html>

@@ -478,6 +478,10 @@ def _render_login_unificado(request, slug, modo, **contexto):
     return render(request, "inventory/login_unificado.html", payload)
 
 
+def redirect_kiosco_login(request, slug):
+    return redirect(f"/{slug}/login/?modo=mar")
+
+
 def login_unificado(request, slug, modo_default="tierra"):
     tenant = getattr(request, "naviera", None)
     modo = _normalizar_modo_login(
@@ -550,7 +554,11 @@ def logout_kiosco(request, slug):
 
     logout(request)
     request.session.flush()
-    return redirect(f"/{slug}/kiosco/login/")
+    return redirect(f"/{slug}/login/?modo=mar")  # ← antes era /{slug}/kiosco/login/
+
+
+def redirect_kiosco_login(request, slug):
+    return redirect(f"/{slug}/login/?modo=mar")
 
 
 @tenant_member_required
