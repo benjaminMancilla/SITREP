@@ -34,7 +34,7 @@
         <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
                 <p class="text-sm uppercase tracking-wide text-slate-400">Total naves activas</p>
-                <p class="mt-2 text-3xl font-bold text-white">{{ naves_resumen|length }}</p>
+                <p class="mt-2 text-3xl font-bold text-white">{{ page_obj.paginator.count }}</p>
             </article>
             <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
                 <p class="text-sm uppercase tracking-wide text-slate-400">Total usuarios activos</p>
@@ -52,7 +52,44 @@
 
         <section class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
             <div class="border-b border-slate-700 px-4 py-3">
-                <h2 class="text-lg font-semibold text-white">Estado de la Flota</h2>
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-white">Estado de la Flota</h2>
+                        <p class="mt-1 text-sm text-slate-400">
+                            {{ page_obj.paginator.count }} naves encontradas
+                        </p>
+                    </div>
+                    <form method="get" class="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <input
+                            type="hidden"
+                            name="page"
+                            value="{{ request.GET.page|default:page_obj.number }}"
+                        >
+                        <input
+                            type="search"
+                            name="q"
+                            value="{{ query_busqueda }}"
+                            placeholder="Buscar por nombre o matrícula"
+                            class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none lg:min-w-80"
+                        >
+                        <div class="flex gap-2">
+                            <button
+                                type="submit"
+                                class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+                            >
+                                Buscar
+                            </button>
+                            {% if query_busqueda %}
+                                <a
+                                    href="{% url 'inventory:tenant_home' slug=slug %}"
+                                    class="rounded-md bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-600"
+                                >
+                                    Limpiar
+                                </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
             </div>
             <table class="min-w-full text-sm">
                 <thead class="bg-slate-800 text-slate-300">
@@ -60,50 +97,70 @@
                         <th class="px-4 py-3 text-left font-semibold">Nave</th>
                         <th class="px-4 py-3 text-left font-semibold">Matrícula</th>
                         <th class="px-4 py-3 text-left font-semibold">Períodos abiertos activos</th>
+                        <th class="px-4 py-3 text-left font-semibold">Fallos activos</th>
                         <th class="px-4 py-3 text-left font-semibold">Fichas registradas hoy</th>
+                        <th class="px-4 py-3 text-left font-semibold">Último registro</th>
                         <th class="px-4 py-3 text-left font-semibold">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-700">
-                    {% for item in naves_resumen %}
+                    {% for nave in page_obj %}
                         <tr class="hover:bg-slate-700/30">
                             <td class="px-4 py-3 text-white">
                                 <a
-                                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=item.nave.id %}"
+                                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
                                     class="font-semibold text-emerald-300 transition-colors hover:text-emerald-200"
                                 >
-                                    {{ item.nave.nombre }}
+                                    {{ nave.nombre }}
                                 </a>
                             </td>
-                            <td class="px-4 py-3">{{ item.nave.matricula }}</td>
+                            <td class="px-4 py-3">{{ nave.matricula }}</td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                    {{ item.periodos_abiertos }}
+                                    {{ nave.periodos_abiertos }}
                                 </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if nave.fallos_activos %}
+                                    <span class="inline-flex rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-xs font-semibold text-rose-200">
+                                        {{ nave.fallos_activos }}
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+                                        0
+                                    </span>
+                                {% endif %}
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex rounded-full border border-blue-500/40 bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">
-                                    {{ item.fichas_hoy }}
+                                    {{ nave.fichas_hoy }}
                                 </span>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">
+                                {% if nave.ultimo_registro %}
+                                    {{ nave.ultimo_registro|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <span class="text-slate-500">Sin registros</span>
+                                {% endif %}
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex flex-wrap gap-2">
                                     <a
-                                        href="{% url 'inventory:nave_detalle' slug=slug nave_id=item.nave.id %}"
+                                        href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
                                         class="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500"
                                     >
                                         Ver Detalle
                                     </a>
                                     {% if request.user.rol != "tierra" %}
                                         <a
-                                            href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=item.nave.id %}"
+                                            href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=nave.id %}"
                                             class="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-100 transition-colors hover:bg-slate-600"
                                         >
                                             Ver Tripulación
                                         </a>
                                         {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
                                             <a
-                                                href="{% url 'inventory:editar_nave' slug=slug nave_id=item.nave.id %}"
+                                                href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
                                                 class="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-500"
                                             >
                                                 Editar
@@ -115,13 +172,111 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="5" class="px-4 py-8 text-center text-slate-400">
+                            <td colspan="7" class="px-4 py-8 text-center text-slate-400">
                                 No hay naves activas registradas para esta naviera.
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% if page_obj.paginator.num_pages > 1 %}
+                <div class="flex flex-col gap-3 border-t border-slate-700 px-4 py-4 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+                    <p>
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        {% if page_obj.has_previous %}
+                            <a
+                                href="?page=1{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
+                                class="rounded-md bg-slate-700 px-3 py-1.5 font-semibold text-slate-100 transition-colors hover:bg-slate-600"
+                            >
+                                Primera
+                            </a>
+                            <a
+                                href="?page={{ page_obj.previous_page_number }}{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
+                                class="rounded-md bg-slate-700 px-3 py-1.5 font-semibold text-slate-100 transition-colors hover:bg-slate-600"
+                            >
+                                Anterior
+                            </a>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                            <a
+                                href="?page={{ page_obj.next_page_number }}{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
+                                class="rounded-md bg-emerald-600 px-3 py-1.5 font-semibold text-white transition-colors hover:bg-emerald-500"
+                            >
+                                Siguiente
+                            </a>
+                            <a
+                                href="?page={{ page_obj.paginator.num_pages }}{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
+                                class="rounded-md bg-slate-700 px-3 py-1.5 font-semibold text-slate-100 transition-colors hover:bg-slate-600"
+                            >
+                                Última
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Actividad reciente</h2>
+                    <p class="mt-1 text-sm text-slate-400">Últimas 10 contribuciones registradas en la naviera.</p>
+                </div>
+            </div>
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="text-slate-300">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-semibold">Fecha</th>
+                            <th class="px-4 py-3 text-left font-semibold">Nave</th>
+                            <th class="px-4 py-3 text-left font-semibold">Periodicidad</th>
+                            <th class="px-4 py-3 text-left font-semibold">Recurso</th>
+                            <th class="px-4 py-3 text-left font-semibold">Usuario</th>
+                            <th class="px-4 py-3 text-left font-semibold">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700">
+                        {% for ficha in ultimas_fichas %}
+                            <tr class="hover:bg-slate-700/30">
+                                <td class="px-4 py-3 text-slate-300">{{ ficha.fecha_revision|date:"d/m/Y H:i" }}</td>
+                                <td class="px-4 py-3 text-white">{{ ficha.periodo.nave.nombre }}</td>
+                                <td class="px-4 py-3 text-slate-300">{{ ficha.periodo.periodicidad.nombre }}</td>
+                                <td class="px-4 py-3 text-slate-300">{{ ficha.recurso.nombre }}</td>
+                                <td class="px-4 py-3 text-slate-300">
+                                    {% if ficha.usuario.first_name or ficha.usuario.last_name %}
+                                        {{ ficha.usuario.first_name }} {{ ficha.usuario.last_name }}
+                                    {% else %}
+                                        {{ ficha.usuario.rut }}
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if ficha.estado_operativo == True %}
+                                        <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+                                            Operativo
+                                        </span>
+                                    {% elif ficha.estado_operativo == False %}
+                                        <span class="inline-flex rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-xs font-semibold text-rose-200">
+                                            Con falla
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-200">
+                                            Pendiente
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-slate-400">
+                                    No hay actividad reciente registrada.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         {% if request.user.rol == "admin_naviera" or request.user.rol == "admin_sitrep" %}

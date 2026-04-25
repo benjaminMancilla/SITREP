@@ -3,8 +3,9 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import authenticate, login, logout
+from django.core.paginator import Paginator
 from django.db import IntegrityError
-from django.db.models import Count
+from django.db.models import Count, Max, Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -99,9 +100,12 @@ def _extraer_payload_ficha_desde_json(request):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
 def dashboard_tierra(request, slug):
-    naves_activas = TenantQueryService.get_naves_activas(request.naviera)
     total_usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera).count()
     total_dispositivos = Dispositivo.objects.filter(naviera=request.naviera, is_active=True).count()
+    fichas_hoy_total = FichaRegistro.objects.filter(
+        periodo__nave__naviera=request.naviera,
+        fecha_revision__date=timezone.localdate(),
+    ).count()
     naves_capitan = Nave.objects.none()
     if request.user.rol == "capitan":
         naves_capitan = (
@@ -114,32 +118,58 @@ def dashboard_tierra(request, slug):
             .order_by("nombre")
         )
 
-    naves_resumen = []
-    fichas_hoy_total = 0
-    # TODO: optimizar con annotate() en Fase 4 para reducir queries por nave.
-    for nave in naves_activas:
-        periodos_abiertos = PeriodoRevision.objects.filter(
-            nave=nave,
-            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
-        ).count()
-        fichas_hoy = FichaRegistro.objects.filter(
-            periodo__nave=nave,
-            fecha_revision__date=timezone.localdate(),
-        ).count()
-        fichas_hoy_total += fichas_hoy
-        naves_resumen.append(
-            {
-                "nave": nave,
-                "periodos_abiertos": periodos_abiertos,
-                "fichas_hoy": fichas_hoy,
-            }
+    query_busqueda = request.GET.get("q", "").strip()
+    naves_activas = TenantQueryService.get_naves_activas(request.naviera).annotate(
+        periodos_abiertos=Count(
+            "periodos",
+            filter=Q(periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS),
+            distinct=True,
+        ),
+        ultimo_registro=Max("periodos__fichas__fecha_revision"),
+        fallos_activos=Count(
+            "periodos__fichas",
+            filter=Q(
+                periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS,
+                periodos__fichas__estado_operativo=False,
+            ),
+            distinct=True,
+        ),
+        fichas_hoy=Count(
+            "periodos__fichas",
+            filter=Q(periodos__fichas__fecha_revision__date=timezone.localdate()),
+            distinct=True,
+        ),
+    )
+
+    if query_busqueda:
+        naves_activas = naves_activas.filter(
+            Q(nombre__icontains=query_busqueda) | Q(matricula__icontains=query_busqueda)
         )
+
+    paginator = Paginator(naves_activas.order_by("nombre"), 10)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
+    ultimas_fichas = (
+        FichaRegistro.objects.filter(
+            periodo__nave__naviera=request.naviera,
+        )
+        .select_related(
+            "recurso",
+            "usuario",
+            "periodo__nave",
+            "periodo__periodicidad",
+        )
+        .order_by("-fecha_revision")[:10]
+    )
 
     return render(
         request,
         "inventory/dashboard_tierra.html",
         {
-            "naves_resumen": naves_resumen,
+            "page_obj": page_obj,
+            "query_busqueda": query_busqueda,
+            "ultimas_fichas": ultimas_fichas,
             "total_usuarios": total_usuarios,
             "total_dispositivos": total_dispositivos,
             "fichas_hoy_total": fichas_hoy_total,
