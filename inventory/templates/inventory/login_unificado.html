@@ -13,11 +13,13 @@
                 <div>
                     <p class="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-400">SITREP</p>
                     <h1 class="mt-5 text-4xl font-bold leading-tight text-white sm:text-5xl">
-                        Acceso unificado a la operación terrestre y marítima
+                        {{ naviera.nombre }}
                     </h1>
-                    <p class="mt-5 max-w-xl text-lg leading-8 text-slate-300">
-                        Ingrese al tenant <span class="font-semibold text-white">{{ request.naviera.nombre }}</span>
-                        y seleccione el modo de autenticación según su contexto operativo.
+                    <p class="mt-4 text-lg font-medium text-slate-300">
+                        Sistema de Gestión de Seguridad Marítima
+                    </p>
+                    <p class="mt-5 max-w-xl text-lg leading-8 text-slate-400">
+                        Seleccione el modo de acceso correspondiente a su operación para ingresar al tenant.
                     </p>
                 </div>
 
@@ -42,13 +44,13 @@
                     <p class="text-sm uppercase tracking-[0.3em] text-slate-400">{{ slug }}</p>
                     <div class="mt-4 inline-flex w-full rounded-2xl border border-slate-700 bg-slate-900 p-2">
                         <a
-                            href="{% url 'inventory:login_tierra' slug=slug %}"
+                            href="?modo=tierra"
                             class="flex-1 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors {% if modo == 'tierra' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:bg-slate-800{% endif %}"
                         >
                             Tierra
                         </a>
                         <a
-                            href="{% url 'inventory:login_kiosco' slug=slug %}"
+                            href="?modo=mar"
                             class="flex-1 rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors {% if modo == 'mar' %}bg-emerald-600 text-white{% else %}text-slate-300 hover:bg-slate-800{% endif %}"
                         >
                             Mar
@@ -67,13 +69,19 @@
                             <p class="mt-6 text-base text-red-400">{{ error }}</p>
                         {% endif %}
 
-                        <p id="token-error" class="mt-6 text-base text-red-400 hidden">
-                            Dispositivo no autorizado. Contacte a su supervisor.
-                        </p>
+                        <div class="mt-6">
+                            <p id="token-ok" class="hidden rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
+                                Dispositivo autorizado
+                            </p>
+                            <p id="token-error" class="hidden rounded-full border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300">
+                                Dispositivo no autorizado — contacte a su supervisor
+                            </p>
+                        </div>
 
                         <form id="kiosco-form" method="POST" action="" class="mt-8 space-y-5">
                             {% csrf_token %}
                             <input type="hidden" name="modo" value="mar">
+                            <input type="hidden" name="mode" value="mar">
 
                             <div>
                                 <label for="rut" class="block text-lg font-medium mb-2">RUT</label>
@@ -129,6 +137,7 @@
                         <form method="POST" action="" class="mt-8 space-y-5">
                             {% csrf_token %}
                             <input type="hidden" name="modo" value="tierra">
+                            <input type="hidden" name="mode" value="tierra">
 
                             <div>
                                 <label for="email" class="block text-sm font-medium mb-2">Email</label>
@@ -186,6 +195,20 @@
                 controls.forEach(function (control) {
                     control.disabled = true;
                 });
+            })();
+        </script>
+        <script>
+            (function () {
+                var token = window.localStorage.getItem("sitrep_kiosco_token");
+                var tokenOk = document.getElementById("token-ok");
+                var tokenError = document.getElementById("token-error");
+
+                if (token) {
+                    tokenOk.classList.remove("hidden");
+                    return;
+                }
+
+                tokenError.classList.remove("hidden");
             })();
         </script>
     {% endif %}

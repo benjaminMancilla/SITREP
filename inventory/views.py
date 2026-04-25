@@ -469,7 +469,11 @@ def _normalizar_modo_login(modo, modo_default="tierra"):
 
 
 def _render_login_unificado(request, slug, modo, **contexto):
-    payload = {"slug": slug, "modo": modo}
+    payload = {
+        "slug": slug,
+        "modo": modo,
+        "naviera": getattr(request, "naviera", None),
+    }
     payload.update(contexto)
     return render(request, "inventory/login_unificado.html", payload)
 
@@ -477,7 +481,9 @@ def _render_login_unificado(request, slug, modo, **contexto):
 def login_unificado(request, slug, modo_default="tierra"):
     tenant = getattr(request, "naviera", None)
     modo = _normalizar_modo_login(
-        request.POST.get("modo") if request.method == "POST" else request.GET.get("modo"),
+        (request.POST.get("modo") or request.POST.get("mode"))
+        if request.method == "POST"
+        else request.GET.get("modo"),
         modo_default=modo_default,
     )
 
