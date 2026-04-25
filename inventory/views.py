@@ -82,6 +82,101 @@ def _contar_fichas_completas_por_periodo(periodo_ids):
     return conteos
 
 
+def _obtener_filtros_historial_desde_request(request):
+    fecha_desde_str = request.GET.get("fecha_desde", "")
+    fecha_hasta_str = request.GET.get("fecha_hasta", "")
+    estado_filtro = request.GET.get("estado", "")
+    periodicidad_id_filtro = request.GET.get("periodicidad", "")
+
+    fecha_desde = None
+    fecha_hasta = None
+    try:
+        if fecha_desde_str:
+            fecha_desde = date.fromisoformat(fecha_desde_str)
+        if fecha_hasta_str:
+            fecha_hasta = date.fromisoformat(fecha_hasta_str)
+    except ValueError:
+        fecha_desde = None
+        fecha_hasta = None
+
+    return {
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "fecha_desde_str": fecha_desde_str,
+        "fecha_hasta_str": fecha_hasta_str,
+        "estado_filtro": estado_filtro,
+        "periodicidad_id_filtro": periodicidad_id_filtro,
+    }
+
+
+def _construir_periodos_detalle(nave, periodos):
+    periodos_detalle = []
+    # TODO: optimizar con annotate() y prefetch_related en Fase 4
+    for periodo in periodos:
+        fichas = list(TenantQueryService.get_fichas_de_periodo(periodo))
+        total_recursos = MatrizNaveRecurso.objects.filter(
+            nave=nave,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        ).count()
+        periodos_detalle.append(
+            {
+                "periodo": periodo,
+                "fichas": fichas,
+                "total_recursos": total_recursos,
+                "fichas_count": _contar_fichas_completas(fichas),
+            }
+        )
+    return periodos_detalle
+
+
+def _construir_recursos_lista_periodo(nave, periodo, slug=None):
+    matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+        "recurso__nombre"
+    )
+    fichas_por_recurso_id = {
+        ficha.recurso_id: ficha
+        for ficha in FichaRegistro.objects.filter(
+            periodo=periodo,
+            recurso_id__in=matrices.values_list("recurso_id", flat=True),
+        ).select_related("usuario", "modificado_por")
+    }
+
+    recursos_lista = []
+    for matriz in matrices:
+        ficha = fichas_por_recurso_id.get(matriz.recurso_id)
+        payload_actual = MotorFichas.normalizar_payload_checklist(
+            ficha.payload_checklist if ficha else {}
+        )
+        checklist_items = []
+        for index, requerimiento in enumerate(matriz.recurso.requerimientos or []):
+            checklist_items.append(
+                {
+                    "index": index,
+                    "nombre": requerimiento,
+                    "checked": payload_actual.get(requerimiento, {}).get("cumple", False),
+                    "observacion": payload_actual.get(requerimiento, {}).get("observacion", ""),
+                }
+            )
+
+        item = {
+            "matriz": matriz,
+            "recurso": matriz.recurso,
+            "ficha": ficha,
+            "tiene_ficha": ficha is not None,
+            "estado_operativo": ficha.estado_operativo if ficha else None,
+            "observacion_general": ficha.observacion_general if ficha else "",
+            "checklist_items": checklist_items,
+        }
+        if slug is not None:
+            item["action_url"] = (
+                f"/{slug}/kiosco/periodos/{periodo.id}/recursos/{matriz.recurso.id}/ficha/"
+            )
+        recursos_lista.append(item)
+
+    return recursos_lista
+
+
 def _extraer_payload_ficha_desde_json(request):
     try:
         payload = json.loads(request.body)
@@ -199,25 +294,18 @@ def nave_detalle(request, slug, nave_id):
         return HttpResponseNotAllowed(["GET"])
 
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    periodos = TenantQueryService.get_periodos_de_nave(nave)
-
-    periodos_detalle = []
-    # TODO: optimizar con annotate() y prefetch_related en Fase 4
-    for periodo in periodos:
-        fichas = list(TenantQueryService.get_fichas_de_periodo(periodo))
-        total_recursos = MatrizNaveRecurso.objects.filter(
-            nave=nave,
-            es_visible=True,
-            recurso__periodicidad_id=periodo.periodicidad_id,
-        ).count()
-        periodos_detalle.append(
-            {
-                "periodo": periodo,
-                "fichas": fichas,
-                "total_recursos": total_recursos,
-                "fichas_count": _contar_fichas_completas(fichas),
-            }
-        )
+    filtros_historial = _obtener_filtros_historial_desde_request(request)
+    periodos_abiertos = TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("-fecha_inicio")
+    historial = TenantQueryService.get_periodos_historial_de_nave(
+        nave,
+        fecha_desde=filtros_historial["fecha_desde"],
+        fecha_hasta=filtros_historial["fecha_hasta"],
+        estado=filtros_historial["estado_filtro"] or None,
+        periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
+    )
+    periodicidades = Periodicidad.objects.all().order_by("nombre")
+    periodos_abiertos_detalle = _construir_periodos_detalle(nave, periodos_abiertos)
+    historial_detalle = _construir_periodos_detalle(nave, historial)
 
     es_admin = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
 
@@ -226,14 +314,15 @@ def nave_detalle(request, slug, nave_id):
         "inventory/nave_detalle.html",
         {
             "nave": nave,
-            "periodos_detalle": periodos_detalle,
+            "periodos_abiertos_detalle": periodos_abiertos_detalle,
+            "historial_detalle": historial_detalle,
+            "periodicidades": periodicidades,
             "slug": slug,
             "es_admin": es_admin,
-            "periodos_historial_count": sum(
-                1
-                for item in periodos_detalle
-                if item["periodo"].estado not in TenantQueryService.ESTADOS_ABIERTOS
-            ),
+            "fecha_desde_str": filtros_historial["fecha_desde_str"],
+            "fecha_hasta_str": filtros_historial["fecha_hasta_str"],
+            "estado_filtro": filtros_historial["estado_filtro"],
+            "periodicidad_id_filtro": filtros_historial["periodicidad_id_filtro"],
         },
     )
 
@@ -250,31 +339,17 @@ def dashboard_kiosco(request, slug):
     except Http404:
         return redirect(f"/{slug}/kiosco/login/")
 
-    fecha_desde_str = request.GET.get("fecha_desde", "")
-    fecha_hasta_str = request.GET.get("fecha_hasta", "")
-    estado_filtro = request.GET.get("estado", "")
-    periodicidad_id_filtro = request.GET.get("periodicidad", "")
-
-    fecha_desde = None
-    fecha_hasta = None
-    try:
-        if fecha_desde_str:
-            fecha_desde = date.fromisoformat(fecha_desde_str)
-        if fecha_hasta_str:
-            fecha_hasta = date.fromisoformat(fecha_hasta_str)
-    except ValueError:
-        fecha_desde = None
-        fecha_hasta = None
+    filtros_historial = _obtener_filtros_historial_desde_request(request)
 
     periodos_abiertos = list(
         TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id")
     )
     historial = TenantQueryService.get_periodos_historial_de_nave(
         nave,
-        fecha_desde=fecha_desde,
-        fecha_hasta=fecha_hasta,
-        estado=estado_filtro or None,
-        periodicidad_id=periodicidad_id_filtro or None,
+        fecha_desde=filtros_historial["fecha_desde"],
+        fecha_hasta=filtros_historial["fecha_hasta"],
+        estado=filtros_historial["estado_filtro"] or None,
+        periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
     )
     periodicidades = Periodicidad.objects.all().order_by("nombre")
     fichas_completadas_por_periodo = _contar_fichas_completas_por_periodo(
@@ -307,10 +382,10 @@ def dashboard_kiosco(request, slug):
             "periodos_resumen": periodos_resumen,
             "historial": historial,
             "periodicidades": periodicidades,
-            "fecha_desde_str": fecha_desde_str,
-            "fecha_hasta_str": fecha_hasta_str,
-            "estado_filtro": estado_filtro,
-            "periodicidad_id_filtro": periodicidad_id_filtro,
+            "fecha_desde_str": filtros_historial["fecha_desde_str"],
+            "fecha_hasta_str": filtros_historial["fecha_hasta_str"],
+            "estado_filtro": filtros_historial["estado_filtro"],
+            "periodicidad_id_filtro": filtros_historial["periodicidad_id_filtro"],
             "slug": slug,
             "usuario": request.user,
         },
@@ -356,9 +431,6 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         )
         return redirect(f"/{slug}/kiosco/")
 
-    matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
-        "recurso__nombre"
-    )
     error_recurso_id = request.GET.get("error_recurso")
     error_msg = request.GET.get("error_msg", "")
     try:
@@ -366,42 +438,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
     except (TypeError, ValueError):
         error_recurso_id = None
 
-    fichas_por_recurso_id = {
-        ficha.recurso_id: ficha
-        for ficha in FichaRegistro.objects.filter(
-            periodo=periodo,
-            recurso_id__in=matrices.values_list("recurso_id", flat=True),
-        ).select_related("usuario", "modificado_por")
-    }
-
-    recursos_lista = []
-    for matriz in matrices:
-        ficha = fichas_por_recurso_id.get(matriz.recurso_id)
-        payload_actual = MotorFichas.normalizar_payload_checklist(
-            ficha.payload_checklist if ficha else {}
-        )
-        checklist_items = []
-        for index, requerimiento in enumerate(matriz.recurso.requerimientos or []):
-            checklist_items.append(
-                {
-                    "index": index,
-                    "nombre": requerimiento,
-                    "checked": payload_actual.get(requerimiento, {}).get("cumple", False),
-                    "observacion": payload_actual.get(requerimiento, {}).get("observacion", ""),
-                }
-            )
-        recursos_lista.append(
-            {
-                "matriz": matriz,
-                "recurso": matriz.recurso,
-                "ficha": ficha,
-                "tiene_ficha": ficha is not None,
-                "estado_operativo": ficha.estado_operativo if ficha else None,
-                "observacion_general": ficha.observacion_general if ficha else "",
-                "checklist_items": checklist_items,
-                "action_url": f"/{slug}/kiosco/periodos/{periodo.id}/recursos/{matriz.recurso.id}/ficha/",
-            }
-        )
+    recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
 
     return render(
         request,
@@ -412,6 +449,60 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
             "recursos_lista": recursos_lista,
             "error_recurso_id": error_recurso_id,
             "error_msg": error_msg,
+            "slug": slug,
+        },
+    )
+
+
+@tenant_member_required
+@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+def kiosco_periodo_historial(request, slug, periodo_id):
+    if request.method != "GET":
+        return HttpResponseNotAllowed(["GET"])
+
+    nave_id = request.session.get("nave_id")
+    if not nave_id:
+        logger.info(
+            "kiosco_periodo_historial redirect login: session without nave_id (user_id=%s, naviera_id=%s)",
+            getattr(request.user, "id", None),
+            getattr(request.naviera, "id", None),
+        )
+        return redirect(f"/{slug}/kiosco/login/")
+
+    try:
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    except Http404:
+        logger.info(
+            "kiosco_periodo_historial redirect login: nave not found/active (nave_id=%s, naviera_id=%s)",
+            nave_id,
+            getattr(request.naviera, "id", None),
+        )
+        return redirect(f"/{slug}/kiosco/login/")
+
+    ESTADOS_CERRADOS = {"conforme", "observado", "fallido", "omitido", "caduco"}
+    try:
+        periodo = PeriodoRevision.objects.select_related("periodicidad").get(
+            id=periodo_id,
+            nave=nave,
+            estado__in=ESTADOS_CERRADOS,
+        )
+    except PeriodoRevision.DoesNotExist:
+        logger.info(
+            "kiosco_periodo_historial redirect dashboard: periodo not found/closed (periodo_id=%s, nave_id=%s)",
+            periodo_id,
+            nave.id,
+        )
+        return redirect(f"/{slug}/kiosco/")
+
+    recursos_lista = _construir_recursos_lista_periodo(nave, periodo)
+
+    return render(
+        request,
+        "inventory/kiosco_periodo_historial.html",
+        {
+            "nave": nave,
+            "periodo": periodo,
+            "recursos_lista": recursos_lista,
             "slug": slug,
         },
     )
