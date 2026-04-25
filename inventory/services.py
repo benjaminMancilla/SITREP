@@ -107,6 +107,36 @@ class TenantQueryService:
         ).select_related("periodicidad")
 
     @staticmethod
+    def get_periodos_historial_de_nave(
+        nave,
+        fecha_desde=None,
+        fecha_hasta=None,
+        estado=None,
+        periodicidad_id=None,
+    ):
+        """
+        Retorna queryset de PeriodoRevision cerrados de una nave con filtros opcionales.
+        Estados cerrados: conforme, observado, fallido, omitido, caduco.
+        Ordenados por fecha_inicio descendente.
+        """
+        ESTADOS_CERRADOS = {"conforme", "observado", "fallido", "omitido", "caduco"}
+        qs = PeriodoRevision.objects.filter(
+            nave=nave,
+            estado__in=ESTADOS_CERRADOS,
+        ).select_related("periodicidad")
+
+        if fecha_desde:
+            qs = qs.filter(fecha_inicio__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(fecha_termino__lte=fecha_hasta)
+        if estado:
+            qs = qs.filter(estado=estado)
+        if periodicidad_id:
+            qs = qs.filter(periodicidad_id=periodicidad_id)
+
+        return qs.order_by("-fecha_inicio")
+
+    @staticmethod
     def get_periodos_de_nave(nave, estado=None):
         """
         Retorna queryset de PeriodoRevision de la nave.
