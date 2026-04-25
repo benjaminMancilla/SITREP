@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}{% block page_title %}SITREP | Tierra{% endblock %}{% endblock %}
+
+{% block body_class %}min-h-screen bg-surface text-ink font-sans antialiased{% endblock %}
+
+{% block layout %}
+<div
+    class="min-h-screen bg-surface lg:pl-60"
+    x-data="{ navActive: '' }"
+    x-init="navActive = ($refs.navActive.textContent || '').trim()"
+>
+    <span x-ref="navActive" class="hidden">{% block nav_active %}{% endblock %}</span>
+
+    <aside class="w-full bg-navy text-white lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col lg:overflow-y-auto">
+        <div class="flex h-full flex-col p-5">
+            <div class="border-b border-white/10 pb-5">
+                <a href="{% url 'inventory:tenant_home' slug=slug %}" class="flex items-center gap-3">
+                    <span class="flex h-12 w-12 items-center justify-center rounded-xl border border-white/15 bg-white/5">
+                        <svg viewBox="0 0 48 48" class="h-8 w-8" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <rect x="14" y="14" width="20" height="20" rx="2" transform="rotate(45 24 24)" stroke="currentColor" stroke-width="2"/>
+                            <path d="M24 6V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M24 32V42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M6 24H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M32 24H42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    <span>
+                        <span class="block text-xl font-bold tracking-[0.16em]">SITREP</span>
+                        <span class="block text-2xs font-medium uppercase tracking-[0.28em] text-white/55">Tierra</span>
+                    </span>
+                </a>
+                <p class="mt-4 text-sm text-white/60">
+                    {% if naviera %}
+                        {{ naviera.nombre }}
+                    {% elif request.naviera %}
+                        {{ request.naviera.nombre }}
+                    {% else %}
+                        Tenant no resuelto
+                    {% endif %}
+                </p>
+            </div>
+
+            <nav class="mt-5 space-y-1.5">
+                <a
+                    href="{% url 'inventory:tenant_home' slug=slug %}"
+                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
+                    :class="navActive === 'dashboard' ? 'border-white bg-navy-light text-white' : ''"
+                >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <a
+                    href="{% url 'inventory:listar_naves' slug=slug %}"
+                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
+                    :class="navActive === 'naves' ? 'border-white bg-navy-light text-white' : ''"
+                >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M3 15.5h18l-2.5 3.5H5.5L3 15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                        <path d="M6 15.5 9 8h6l3 7.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Gestión de Naves</span>
+                </a>
+
+                <a
+                    href="{% url 'inventory:listar_usuarios' slug=slug %}"
+                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
+                    :class="navActive === 'usuarios' ? 'border-white bg-navy-light text-white' : ''"
+                >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                    <span>Usuarios</span>
+                </a>
+
+                <a
+                    href="{% url 'inventory:listar_dispositivos' slug=slug %}"
+                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
+                    :class="navActive === 'hardware' ? 'border-white bg-navy-light text-white' : ''"
+                >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="7" y="3.5" width="10" height="17" rx="2" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M10 6.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M11 17.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                    <span>Hardware Kiosco</span>
+                </a>
+            </nav>
+
+            <div class="mt-auto border-t border-white/10 pt-5">
+                <div class="mb-4">
+                    <p class="text-sm font-medium text-white">
+                        {% if request.user.first_name or request.user.last_name %}
+                            {{ request.user.first_name }} {{ request.user.last_name }}
+                        {% else %}
+                            {{ request.user.rut|default:request.user.username }}
+                        {% endif %}
+                    </p>
+                    <p class="mt-1 text-xs uppercase tracking-[0.18em] text-white/55">
+                        {{ request.user.get_rol_display|default:request.user.rol }}
+                    </p>
+                </div>
+
+                <form method="post" action="{% url 'inventory:logout_tierra' slug=slug %}">
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                    >
+                        Cerrar sesión
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto bg-surface p-6 lg:p-8">
+        {% block page_header %}{% endblock %}
+        {% block page_content %}{% block content %}{% endblock %}{% endblock %}
+    </main>
+</div>
+{% endblock %}
