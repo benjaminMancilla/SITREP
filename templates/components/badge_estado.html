@@ -1,0 +1,28 @@
+{% with estado_normalizado=estado|default:''|lower %}
+    {% if estado_normalizado == "conforme" or estado_normalizado == "operativo" %}
+        <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-ok-bg px-2.5 py-0.5 text-xs font-medium text-ok">
+            <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
+            {{ estado|capfirst }}
+        </span>
+    {% elif estado_normalizado == "observado" %}
+        <span class="inline-flex items-center gap-1 rounded-full border border-info-border bg-info-bg px-2.5 py-0.5 text-xs font-medium text-info">
+            <span class="h-1.5 w-1.5 rounded-full bg-info"></span>
+            {{ estado|capfirst }}
+        </span>
+    {% elif estado_normalizado == "fallido" or estado_normalizado == "con_falla" %}
+        <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+            <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+            {{ estado|capfirst }}
+        </span>
+    {% elif estado_normalizado == "caduco" or estado_normalizado == "en_proceso" or estado_normalizado == "warn" %}
+        <span class="inline-flex items-center gap-1 rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-xs font-medium text-warn">
+            <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>
+            {{ estado|capfirst }}
+        </span>
+    {% elif estado_normalizado == "omitido" or estado_normalizado == "pendiente" %}
+        <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-neutral-bg px-2.5 py-0.5 text-xs font-medium text-neutral">
+            <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>
+            {{ estado|capfirst }}
+        </span>
+    {% endif %}
+{% endwith %}
