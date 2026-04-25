@@ -1,297 +1,271 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Tierra - SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-900 p-6 text-slate-200">
-    <div class="mx-auto max-w-7xl space-y-6">
-        <header class="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl sm:flex-row sm:items-start sm:justify-between">
+{% extends 'layouts/tierra.html' %}
+
+{% block nav_active %}dashboard{% endblock %}
+{% block page_title %}SITREP | Dashboard{% endblock %}
+
+{% block page_header %}
+<section class="sticky top-0 z-10 -mx-6 border-b border-surface-border bg-white px-6 pb-5 pt-1 lg:-mx-8 lg:px-8">
+    <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <p class="text-2xs font-semibold uppercase tracking-[0.28em] text-ink-muted">Panel de control</p>
+            <h1 class="mt-2 text-3xl font-bold text-navy">Dashboard</h1>
+            <p class="mt-2 text-sm text-ink-secondary">{{ naviera.nombre }}</p>
+        </div>
+
+        <div x-data="{ q: '{{ query_busqueda|escapejs }}' }" class="w-full max-w-md">
+            <label for="fleet-search" class="mb-2 block text-2xs font-semibold uppercase tracking-[0.24em] text-ink-muted">
+                Buscar nave
+            </label>
+            <div class="relative">
+                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-ink-muted">
+                    <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M13.2 13.2L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </span>
+                <input
+                    id="fleet-search"
+                    x-model="q"
+                    type="text"
+                    placeholder="Buscar nave o matrícula…"
+                    @keyup.enter="window.location.href = '?q=' + encodeURIComponent(q)"
+                    @input.debounce.500ms="if (q.length === 0) window.location.href = '?'"
+                    class="h-11 w-full rounded-xl border border-surface-border bg-white pl-10 pr-4 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand"
+                >
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block page_content %}
+<div class="space-y-6 pt-6">
+    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-surface-border bg-surface-card p-5 shadow-sm">
+            <p class="text-2xs font-semibold uppercase tracking-[0.26em] text-ink-muted">Naves activas</p>
+            <p class="mt-3 text-4xl font-bold text-navy">{{ page_obj.paginator.count }}</p>
+            <div class="mt-3">
+                {% include 'components/badge_estado.html' with estado='operativo' %}
+            </div>
+        </article>
+
+        <article class="rounded-2xl border border-surface-border bg-surface-card p-5 shadow-sm">
+            <p class="text-2xs font-semibold uppercase tracking-[0.26em] text-ink-muted">Usuarios</p>
+            <p class="mt-3 text-4xl font-bold text-navy">{{ total_usuarios }}</p>
+            <div class="mt-3">
+                {% include 'components/badge_estado.html' with estado='operativo' %}
+            </div>
+        </article>
+
+        <article class="rounded-2xl border border-surface-border bg-surface-card p-5 shadow-sm">
+            <p class="text-2xs font-semibold uppercase tracking-[0.26em] text-ink-muted">Dispositivos</p>
+            <p class="mt-3 text-4xl font-bold text-navy">{{ total_dispositivos }}</p>
+            <div class="mt-3">
+                {% include 'components/badge_estado.html' with estado='operativo' %}
+            </div>
+        </article>
+
+        <article class="rounded-2xl border {% if fichas_hoy_total == 0 %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-surface-card{% endif %} p-5 shadow-sm">
+            <p class="text-2xs font-semibold uppercase tracking-[0.26em] {% if fichas_hoy_total == 0 %}text-fail{% else %}text-ink-muted{% endif %}">
+                Fichas hoy
+            </p>
+            <p class="mt-3 text-4xl font-bold {% if fichas_hoy_total == 0 %}text-fail{% else %}text-navy{% endif %}">
+                {{ fichas_hoy_total }}
+            </p>
+            <div class="mt-3">
+                {% if fichas_hoy_total == 0 %}
+                    {% include 'components/badge_estado.html' with estado='warn' %}
+                {% else %}
+                    {% include 'components/badge_estado.html' with estado='operativo' %}
+                {% endif %}
+            </div>
+        </article>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-surface-border bg-surface-card shadow-sm">
+        <div class="flex flex-col gap-3 border-b border-surface-border bg-neutral-bg px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <h1 class="text-3xl font-bold text-emerald-400">{{ naviera.nombre }}</h1>
-                <p class="mt-2 text-sm text-slate-300">
-                    {% if request.user.first_name or request.user.last_name %}
-                        {{ request.user.first_name }} {{ request.user.last_name }}
-                    {% else %}
-                        {{ request.user.rut }}
-                    {% endif %}
-                    - {{ request.user.rol }}
+                <h2 class="text-sm font-bold uppercase tracking-[0.18em] text-navy">Estado de la flota</h2>
+                <p class="mt-1 text-sm text-ink-muted">
+                    {{ page_obj.paginator.count }} nave{{ page_obj.paginator.count|pluralize }} activa{{ page_obj.paginator.count|pluralize }}
                 </p>
             </div>
-            <form method="post" action="{% url 'inventory:logout_tierra' slug=slug %}">
-                {% csrf_token %}
-                <button
-                    type="submit"
-                    class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
+            {% if query_busqueda %}
+                <a
+                    href="{% url 'inventory:tenant_home' slug=slug %}"
+                    class="inline-flex items-center rounded-lg border border-surface-border bg-white px-3 py-2 text-xs font-semibold text-ink-secondary transition hover:border-brand hover:text-brand"
                 >
-                    Cerrar sesión
-                </button>
-            </form>
-        </header>
+                    Limpiar búsqueda
+                </a>
+            {% endif %}
+        </div>
 
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <p class="text-sm uppercase tracking-wide text-slate-400">Total naves activas</p>
-                <p class="mt-2 text-3xl font-bold text-white">{{ page_obj.paginator.count }}</p>
-            </article>
-            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <p class="text-sm uppercase tracking-wide text-slate-400">Total usuarios activos</p>
-                <p class="mt-2 text-3xl font-bold text-white">{{ total_usuarios }}</p>
-            </article>
-            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <p class="text-sm uppercase tracking-wide text-slate-400">Total dispositivos activos</p>
-                <p class="mt-2 text-3xl font-bold text-white">{{ total_dispositivos }}</p>
-            </article>
-            <article class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <p class="text-sm uppercase tracking-wide text-slate-400">Fichas registradas hoy</p>
-                <p class="mt-2 text-3xl font-bold text-white">{{ fichas_hoy_total }}</p>
-            </article>
-        </section>
-
-        <section class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
-            <div class="border-b border-slate-700 px-4 py-3">
-                <div class="space-y-3">
-                    <div>
-                        <h2 class="text-lg font-semibold text-white">Estado de la Flota</h2>
-                    </div>
-                    <form method="get" action="" class="flex gap-2">
-                        <input
-                            type="hidden"
-                            name="page"
-                            value="{{ request.GET.page|default:page_obj.number }}"
-                        >
-                        <input
-                            type="text"
-                            name="q"
-                            value="{{ query_busqueda }}"
-                            placeholder="Buscar por nombre o matrícula..."
-                            class="flex-1 rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                        >
-                        <button
-                            type="submit"
-                            class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
-                        >
-                            Buscar
-                        </button>
-                        {% if query_busqueda %}
-                            <a
-                                href="?"
-                                class="rounded-md border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-700"
-                            >
-                                Limpiar
-                            </a>
-                        {% endif %}
-                    </form>
-                </div>
-            </div>
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-800 text-slate-300">
-                    <tr>
-                        <th class="px-4 py-3 text-left font-semibold">Nave</th>
-                        <th class="px-4 py-3 text-left font-semibold">Matrícula</th>
-                        <th class="px-4 py-3 text-left font-semibold">Períodos abiertos activos</th>
-                        <th class="px-4 py-3 text-left font-semibold">Fallos activos</th>
-                        <th class="px-4 py-3 text-left font-semibold">Fichas registradas hoy</th>
-                        <th class="px-4 py-3 text-left font-semibold">Último registro</th>
-                        <th class="px-4 py-3 text-left font-semibold">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-700">
-                    {% for nave in page_obj %}
-                        <tr class="hover:bg-slate-700/30">
-                            <td class="px-4 py-3 text-white">
-                                <a
-                                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
-                                    class="font-semibold text-emerald-300 transition-colors hover:text-emerald-200"
-                                >
-                                    {{ nave.nombre }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-3">{{ nave.matricula }}</td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                    {{ nave.periodos_abiertos }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3">
-                                {% if nave.fallos_activos %}
-                                    <span class="inline-flex rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-xs font-semibold text-rose-200">
-                                        {{ nave.fallos_activos }}
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">
-                                        0
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full border border-blue-500/40 bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">
-                                    {{ nave.fichas_hoy }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-slate-300">
-                                {% if nave.ultimo_registro %}
-                                    {{ nave.ultimo_registro|date:"d/m/Y H:i" }}
-                                {% else %}
-                                    <span class="text-slate-500">Sin registros</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="flex flex-wrap gap-2">
+        {% if page_obj.object_list %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-neutral-bg text-ink-muted">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Nave</th>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Matrícula</th>
+                            <th class="px-5 py-3 text-center text-2xs font-semibold uppercase tracking-[0.18em]">Períodos abiertos</th>
+                            <th class="px-5 py-3 text-center text-2xs font-semibold uppercase tracking-[0.18em]">Fallos activos</th>
+                            <th class="px-5 py-3 text-center text-2xs font-semibold uppercase tracking-[0.18em]">Fichas hoy</th>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Último registro</th>
+                            <th class="px-5 py-3 text-right text-2xs font-semibold uppercase tracking-[0.18em]">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-surface-border">
+                        {% for nave in page_obj %}
+                            <tr class="transition hover:bg-info-bg">
+                                <td class="px-5 py-4">
                                     <a
                                         href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
-                                        class="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500"
+                                        class="font-semibold text-navy transition hover:text-brand"
                                     >
-                                        Ver Detalle
+                                        {{ nave.nombre }}
                                     </a>
-                                    {% if request.user.rol != "tierra" %}
+                                </td>
+                                <td class="px-5 py-4 font-mono text-xs text-ink-secondary">{{ nave.matricula }}</td>
+                                <td class="px-5 py-4 text-center">
+                                    <span class="inline-flex min-w-10 items-center justify-center rounded-lg border border-info-border bg-info-bg px-3 py-1 text-xs font-semibold text-info">
+                                        {{ nave.periodos_abiertos }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-4 text-center {% if nave.fallos_activos > 0 %}bg-fail-bg{% endif %}">
+                                    <div class="flex items-center justify-center gap-2">
+                                        {% if nave.fallos_activos > 0 %}
+                                            {% include 'components/badge_estado.html' with estado='con_falla' %}
+                                        {% else %}
+                                            {% include 'components/badge_estado.html' with estado='pendiente' %}
+                                        {% endif %}
+                                        <span class="font-semibold {% if nave.fallos_activos > 0 %}text-fail{% else %}text-ink-secondary{% endif %}">
+                                            {{ nave.fallos_activos }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-5 py-4 text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        {% if nave.fichas_hoy > 0 %}
+                                            {% include 'components/badge_estado.html' with estado='operativo' %}
+                                        {% else %}
+                                            {% include 'components/badge_estado.html' with estado='pendiente' %}
+                                        {% endif %}
+                                        <span class="font-semibold text-ink-secondary">{{ nave.fichas_hoy }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-5 py-4 text-sm text-ink-secondary">
+                                    {% if nave.ultimo_registro %}
+                                        <span class="font-mono text-xs text-ink-secondary">{{ nave.ultimo_registro|date:"d/m/Y H:i" }}</span>
+                                    {% else %}
+                                        <span class="text-ink-muted">Sin registros</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-5 py-4">
+                                    <div class="flex flex-wrap justify-end gap-2">
                                         <a
-                                            href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=nave.id %}"
-                                            class="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-100 transition-colors hover:bg-slate-600"
+                                            href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
+                                            class="inline-flex items-center rounded-lg border border-info-border bg-info-bg px-3 py-2 text-xs font-semibold text-info transition hover:border-brand hover:bg-brand hover:text-white"
                                         >
-                                            Ver Tripulación
+                                            Ver detalle
                                         </a>
-                                        {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
+                                        {% if request.user.rol == "admin_naviera" or request.user.rol == "admin_sitrep" %}
                                             <a
                                                 href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
-                                                class="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-500"
+                                                class="inline-flex items-center rounded-lg border border-warn-border bg-warn-bg px-3 py-2 text-xs font-semibold text-warn transition hover:border-warn hover:bg-warn hover:text-white"
                                             >
                                                 Editar
                                             </a>
                                         {% endif %}
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-slate-400">
-                                No hay naves activas registradas para esta naviera.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% if page_obj.has_other_pages %}
-                <div class="mt-4 flex justify-center gap-2 border-t border-slate-700 px-4 py-4">
-                    {% if page_obj.has_previous %}
-                        <a
-                            href="?page={{ page_obj.previous_page_number }}{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
-                            class="rounded-md border border-slate-600 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
-                        >
-                            Anterior
-                        </a>
-                    {% endif %}
-                    <span class="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-400">
-                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-                    </span>
-                    {% if page_obj.has_next %}
-                        <a
-                            href="?page={{ page_obj.next_page_number }}{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
-                            class="rounded-md border border-slate-600 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
-                        >
-                            Siguiente
-                        </a>
-                    {% endif %}
-                </div>
-            {% endif %}
-        </section>
-
-        <section class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-            <div class="flex items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-lg font-semibold text-white">Actividad Reciente</h2>
-                </div>
-            </div>
-            <div class="mt-4 overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="text-slate-300">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-semibold">Nave</th>
-                            <th class="px-4 py-3 text-left font-semibold">Recurso</th>
-                            <th class="px-4 py-3 text-left font-semibold">Período</th>
-                            <th class="px-4 py-3 text-left font-semibold">Registrado por</th>
-                            <th class="px-4 py-3 text-left font-semibold">Fecha</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-700">
-                        {% for ficha in ultimas_fichas %}
-                            <tr class="hover:bg-slate-700/30">
-                                <td class="px-4 py-3 text-white">{{ ficha.periodo.nave.nombre }}</td>
-                                <td class="px-4 py-3 text-slate-300">{{ ficha.recurso.nombre }}</td>
-                                <td class="px-4 py-3 text-slate-300">{{ ficha.periodo.periodicidad.nombre }}</td>
-                                <td class="px-4 py-3 text-slate-300">
-                                    {% if ficha.usuario.first_name or ficha.usuario.last_name %}
-                                        {{ ficha.usuario.first_name }} {{ ficha.usuario.last_name }}
-                                    {% else %}
-                                        {{ ficha.usuario.rut }}
-                                    {% endif %}
-                                </td>
-                                <td class="px-4 py-3 text-slate-300">{{ ficha.fecha_revision|date:"d/m/Y H:i" }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="5" class="px-4 py-8 text-center text-slate-400">
-                                    No hay registros recientes.
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </section>
 
-        {% if request.user.rol == "admin_naviera" or request.user.rol == "admin_sitrep" %}
-            <section class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <h2 class="text-lg font-semibold text-white">Navegación rápida</h2>
-                <div class="mt-4 flex flex-wrap gap-3">
-                    <a
-                        href="{% url 'inventory:listar_usuarios' slug=slug %}"
-                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                    >
-                        Gestión de Usuarios
-                    </a>
-                    <a
-                        href="{% url 'inventory:listar_naves' slug=slug %}"
-                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                    >
-                        Gestión de Naves
-                    </a>
-                    <a
-                        href="{% url 'inventory:listar_dispositivos' slug=slug %}"
-                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                    >
-                        Hardware Kiosco
-                    </a>
-                </div>
-            </section>
-        {% elif request.user.rol == "capitan" %}
-            <section class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <h2 class="text-lg font-semibold text-white">Navegación rápida</h2>
-                <div class="mt-4 flex flex-wrap gap-3">
-                    <a
-                        href="{% url 'inventory:listar_dispositivos' slug=slug %}"
-                        class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
-                    >
-                        Hardware Kiosco
-                    </a>
-                    {% for nave in naves_capitan %}
-                        <a
-                            href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=nave.id %}"
-                            class="inline-flex items-center justify-center rounded-md bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-600"
-                        >
-                            Tripulación {{ nave.nombre }}
-                        </a>
-                    {% empty %}
-                        <span class="inline-flex items-center rounded-md border border-slate-600 bg-slate-900 px-4 py-2 text-sm text-slate-400">
-                            Sin naves asignadas para tripulación
+            {% if page_obj.has_other_pages %}
+                <div class="flex flex-col gap-3 border-t border-surface-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-ink-muted">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </p>
+                    <div class="flex items-center gap-2">
+                        {% if page_obj.has_previous %}
+                            <a
+                                href="?page={{ page_obj.previous_page_number }}{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
+                                class="inline-flex items-center rounded-lg border border-surface-border bg-white px-3 py-2 text-sm font-medium text-ink-secondary transition hover:border-brand hover:text-brand"
+                            >
+                                Anterior
+                            </a>
+                        {% endif %}
+                        <span class="inline-flex items-center rounded-lg border border-navy bg-navy px-3 py-2 text-sm font-semibold text-white">
+                            {{ page_obj.number }}
                         </span>
-                    {% endfor %}
+                        {% if page_obj.has_next %}
+                            <a
+                                href="?page={{ page_obj.next_page_number }}{% if query_busqueda %}&q={{ query_busqueda }}{% endif %}"
+                                class="inline-flex items-center rounded-lg border border-surface-border bg-white px-3 py-2 text-sm font-medium text-ink-secondary transition hover:border-brand hover:text-brand"
+                            >
+                                Siguiente
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
-            </section>
+            {% endif %}
+        {% else %}
+            <div class="px-5">
+                {% include 'components/empty_state.html' with mensaje="No hay naves activas." %}
+            </div>
         {% endif %}
-    </div>
-</body>
-</html>
+    </section>
+
+    <section class="overflow-hidden rounded-2xl border border-surface-border bg-surface-card shadow-sm">
+        <div class="border-b border-surface-border bg-neutral-bg px-5 py-4">
+            <h2 class="text-sm font-bold uppercase tracking-[0.18em] text-navy">Actividad reciente</h2>
+            <p class="mt-1 text-sm text-ink-muted">Últimas fichas registradas en la flota</p>
+        </div>
+
+        {% if ultimas_fichas %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-neutral-bg text-ink-muted">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Nave</th>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Recurso</th>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Período</th>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Registrado por</th>
+                            <th class="px-5 py-3 text-left text-2xs font-semibold uppercase tracking-[0.18em]">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-surface-border">
+                        {% for ficha in ultimas_fichas %}
+                            <tr class="transition hover:bg-info-bg">
+                                <td class="px-5 py-4 font-semibold text-navy">{{ ficha.periodo.nave.nombre }}</td>
+                                <td class="px-5 py-4 text-ink-secondary">{{ ficha.recurso.nombre }}</td>
+                                <td class="px-5 py-4">
+                                    <div class="flex items-center gap-2">
+                                        {% include 'components/badge_estado.html' with estado='observado' %}
+                                        <span class="text-ink-secondary">{{ ficha.periodo.periodicidad.nombre }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-5 py-4 text-ink-secondary">
+                                    {% if ficha.usuario.first_name or ficha.usuario.last_name %}
+                                        {{ ficha.usuario.first_name }} {{ ficha.usuario.last_name }}
+                                    {% else %}
+                                        {{ ficha.usuario.rut }}
+                                    {% endif %}
+                                </td>
+                                <td class="px-5 py-4 font-mono text-xs text-ink-secondary">{{ ficha.fecha_revision|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="px-5">
+                {% include 'components/empty_state.html' with mensaje="No hay actividad reciente." %}
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
