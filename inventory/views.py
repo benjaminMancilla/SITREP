@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 
@@ -12,7 +13,17 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from .decorators import requiere_rol, tenant_member_required
-from .models import Dispositivo, FichaRegistro, MatrizNaveRecurso, Nave, PeriodoRevision, Recurso, Tripulacion, Usuario
+from .models import (
+    Dispositivo,
+    FichaRegistro,
+    MatrizNaveRecurso,
+    Nave,
+    Periodicidad,
+    PeriodoRevision,
+    Recurso,
+    Tripulacion,
+    Usuario,
+)
 from .services import MotorFichas, MotorPeriodos, TenantQueryService
 
 logger = logging.getLogger(__name__)
@@ -239,9 +250,33 @@ def dashboard_kiosco(request, slug):
     except Http404:
         return redirect(f"/{slug}/kiosco/login/")
 
+    fecha_desde_str = request.GET.get("fecha_desde", "")
+    fecha_hasta_str = request.GET.get("fecha_hasta", "")
+    estado_filtro = request.GET.get("estado", "")
+    periodicidad_id_filtro = request.GET.get("periodicidad", "")
+
+    fecha_desde = None
+    fecha_hasta = None
+    try:
+        if fecha_desde_str:
+            fecha_desde = date.fromisoformat(fecha_desde_str)
+        if fecha_hasta_str:
+            fecha_hasta = date.fromisoformat(fecha_hasta_str)
+    except ValueError:
+        fecha_desde = None
+        fecha_hasta = None
+
     periodos_abiertos = list(
         TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id")
     )
+    historial = TenantQueryService.get_periodos_historial_de_nave(
+        nave,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        estado=estado_filtro or None,
+        periodicidad_id=periodicidad_id_filtro or None,
+    )
+    periodicidades = Periodicidad.objects.all().order_by("nombre")
     fichas_completadas_por_periodo = _contar_fichas_completas_por_periodo(
         [periodo.id for periodo in periodos_abiertos]
     )
@@ -270,6 +305,12 @@ def dashboard_kiosco(request, slug):
         {
             "nave": nave,
             "periodos_resumen": periodos_resumen,
+            "historial": historial,
+            "periodicidades": periodicidades,
+            "fecha_desde_str": fecha_desde_str,
+            "fecha_hasta_str": fecha_hasta_str,
+            "estado_filtro": estado_filtro,
+            "periodicidad_id_filtro": periodicidad_id_filtro,
             "slug": slug,
             "usuario": request.user,
         },
