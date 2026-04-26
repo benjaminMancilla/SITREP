@@ -113,18 +113,51 @@ def _construir_periodos_detalle(nave, periodos):
     periodos_detalle = []
     # TODO: optimizar con annotate() y prefetch_related en Fase 4
     for periodo in periodos:
-        fichas = list(TenantQueryService.get_fichas_de_periodo(periodo))
-        total_recursos = MatrizNaveRecurso.objects.filter(
-            nave=nave,
-            es_visible=True,
-            recurso__periodicidad_id=periodo.periodicidad_id,
-        ).count()
+        fichas = list(TenantQueryService.get_fichas_de_periodo(periodo).order_by("recurso__nombre"))
+        matrices = list(
+            TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+                "recurso__nombre"
+            )
+        )
+        total_recursos = len(matrices)
+        fichas_count = _contar_fichas_completas(fichas)
+        fichas_por_recurso_id = {ficha.recurso_id: ficha for ficha in fichas}
+        registros = []
+        fallos_count = 0
+
+        for matriz in matrices:
+            ficha = fichas_por_recurso_id.get(matriz.recurso_id)
+            if ficha is None:
+                registros.append(
+                    {
+                        "tipo": "pendiente",
+                        "recurso": matriz.recurso,
+                    }
+                )
+                continue
+
+            if ficha.estado_operativo is False:
+                fallos_count += 1
+
+            registros.append(
+                {
+                    "tipo": "ficha",
+                    "recurso": matriz.recurso,
+                    "ficha": ficha,
+                    "estado_operativo": ficha.estado_operativo,
+                }
+            )
+
         periodos_detalle.append(
             {
                 "periodo": periodo,
                 "fichas": fichas,
+                "registros": registros,
                 "total_recursos": total_recursos,
-                "fichas_count": _contar_fichas_completas(fichas),
+                "fichas_count": fichas_count,
+                "fallos_count": fallos_count,
+                "has_fallos": fallos_count > 0,
+                "avance_pct": int((fichas_count * 100) / total_recursos) if total_recursos else 0,
             }
         )
     return periodos_detalle
@@ -847,12 +880,26 @@ def revocar_dispositivo(request, slug, id):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera")
 def listar_naves(request, slug):
-    naves = TenantQueryService.get_naves_del_tenant(request.naviera)
+    naves = TenantQueryService.get_naves_activas(request.naviera).annotate(
+        periodos_abiertos=Count(
+            "periodos",
+            filter=Q(periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS),
+            distinct=True,
+        ),
+        fallos_activos=Count(
+            "periodos__fichas",
+            filter=Q(
+                periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS,
+                periodos__fichas__estado_operativo=False,
+            ),
+            distinct=True,
+        ),
+    )
     return render(
         request,
         "inventory/naves_lista.html",
         {
-            "naves": naves,
+            "naves": naves.order_by("nombre"),
             "slug": slug,
         },
     )

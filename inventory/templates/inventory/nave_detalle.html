@@ -1,325 +1,373 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalle de Nave - SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-900 p-4 text-slate-200 sm:p-6">
-    <div class="mx-auto max-w-6xl space-y-6">
-        <header class="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div class="space-y-3">
-                    <div>
-                        <p class="text-sm uppercase tracking-wide text-slate-400">Detalle de nave</p>
-                        <h1 class="mt-1 text-3xl font-bold text-emerald-400">{{ nave.nombre }}</h1>
-                        <p class="mt-2 text-base text-slate-300">Matrícula: {{ nave.matricula }}</p>
-                    </div>
+{% extends 'layouts/tierra.html' %}
 
-                    <div class="flex flex-wrap gap-3 text-sm text-slate-300">
-                        <span class="inline-flex items-center rounded-full border border-slate-600 bg-slate-900/40 px-4 py-2">
-                            <span class="font-semibold text-white">Eslora:</span>&nbsp;{{ nave.eslora }}
-                        </span>
-                        <span class="inline-flex items-center rounded-full border border-slate-600 bg-slate-900/40 px-4 py-2">
-                            <span class="font-semibold text-white">Arqueo Bruto:</span>&nbsp;{{ nave.arqueo_bruto }}
-                        </span>
-                        <span class="inline-flex items-center rounded-full border border-slate-600 bg-slate-900/40 px-4 py-2">
-                            <span class="font-semibold text-white">Capacidad de Personas:</span>&nbsp;{{ nave.capacidad_personas }}
-                        </span>
-                    </div>
+{% block nav_active %}naves{% endblock %}
+{% block page_title %}SITREP | {{ nave.nombre }}{% endblock %}
+{% block topbar_title %}{{ nave.nombre }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="space-y-6">
+    <div class="mb-5 rounded-lg border border-surface-border bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <h1 class="text-[22px] font-bold text-navy">{{ nave.nombre }}</h1>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <span class="font-mono text-[12px] text-ink-secondary">{{ nave.matricula }}</span>
+                    <span class="inline-flex items-center gap-1 rounded-[4px] border border-surface-border bg-[#f8fafc] px-2 py-0.5 text-[11px] text-ink-muted">
+                        Eslora <strong class="text-ink">{{ nave.eslora|floatformat:"-2" }} m</strong>
+                    </span>
+                    <span class="inline-flex items-center gap-1 rounded-[4px] border border-surface-border bg-[#f8fafc] px-2 py-0.5 text-[11px] text-ink-muted">
+                        Arqueo <strong class="text-ink">{{ nave.arqueo_bruto }}</strong>
+                    </span>
+                    <span class="inline-flex items-center gap-1 rounded-[4px] border border-surface-border bg-[#f8fafc] px-2 py-0.5 text-[11px] text-ink-muted">
+                        Cap. <strong class="text-ink">{{ nave.capacidad_personas }}</strong>
+                    </span>
                 </div>
+            </div>
 
-                <div class="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                    <a
-                        href="{% url 'inventory:tenant_home' slug=slug %}"
-                        class="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-600 bg-slate-700 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-slate-600"
-                    >
-                        Volver al dashboard
-                    </a>
-                    {% if es_admin %}
-                        <a
-                            href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
-                            class="inline-flex min-h-12 items-center justify-center rounded-lg bg-amber-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-amber-500"
+            <div class="flex shrink-0 flex-wrap gap-2">
+                <a
+                    href="{% url 'inventory:listar_naves' slug=slug %}"
+                    class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary hover:bg-surface"
+                >
+                    Volver
+                </a>
+                {% if es_admin %}
+                <a
+                    href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=nave.id %}"
+                    class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary hover:bg-surface"
+                >
+                    Tripulación
+                </a>
+                <a
+                    href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
+                    class="rounded-md border border-warn-border bg-warn-bg px-3 py-1.5 text-[13px] font-semibold text-warn hover:bg-amber-100"
+                >
+                    Editar
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 divide-x divide-y divide-surface-border overflow-hidden rounded-md border border-surface-border bg-[#f8fafc] sm:grid-cols-4 sm:divide-y-0">
+            <div class="px-4 py-2.5 text-center">
+                <p class="text-[18px] font-bold text-navy">{{ periodos_abiertos_detalle|length }}</p>
+                <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Períodos abiertos</p>
+            </div>
+            <div class="px-4 py-2.5 text-center">
+                <p class="text-[18px] font-bold text-navy">{{ historial_detalle|length }}</p>
+                <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">En historial</p>
+            </div>
+            <div class="px-4 py-2.5 text-center">
+                <p class="text-[18px] font-bold text-ink-muted">—</p>
+                <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Fallos activos</p>
+            </div>
+            <div class="px-4 py-2.5 text-center">
+                <p class="text-[18px] font-bold text-ink-muted">—</p>
+                <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Recursos</p>
+            </div>
+        </div>
+    </div>
+
+    <section>
+        <div class="mb-3 flex items-center gap-3">
+            <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">Períodos abiertos</span>
+            <span class="h-px flex-1 bg-surface-border"></span>
+        </div>
+
+        <div class="space-y-2">
+            {% for item in periodos_abiertos_detalle %}
+            <article
+                x-data="{ abierto: {{ forloop.first|yesno:'true,false' }} }"
+                class="overflow-hidden rounded-lg border bg-white shadow-sm transition"
+                :class="abierto ? 'border-info-border' : '{% if item.has_fallos %}border-fail-border{% else %}border-surface-border{% endif %}'"
+            >
+                <button
+                    type="button"
+                    @click="abierto = !abierto"
+                    class="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-[#f8fafc]"
+                >
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-[14px] font-semibold text-navy">{{ item.periodo.periodicidad.nombre }}</span>
+                            {% include 'components/badge_estado.html' with estado=item.periodo.get_estado_display %}
+                            {% if item.has_fallos %}
+                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                    Con fallos
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="mt-1 font-mono text-[11px] text-ink-muted">
+                            {{ item.periodo.fecha_inicio|date:"d/m/Y" }} — {{ item.periodo.fecha_termino|date:"d/m/Y" }}
+                        </div>
+                    </div>
+
+                    <div class="flex shrink-0 items-center gap-3">
+                        <div class="h-1.5 w-[84px] overflow-hidden rounded-full bg-surface-border">
+                            <div
+                                class="h-full rounded-full {% if item.has_fallos %}bg-fail{% elif item.fichas_count == item.total_recursos and item.total_recursos > 0 %}bg-ok{% else %}bg-brand{% endif %}"
+                                style="width: {{ item.avance_pct }}%"
+                            ></div>
+                        </div>
+                        <span class="whitespace-nowrap text-[12px] font-medium text-ink-muted">
+                            <strong class="text-navy">{{ item.fichas_count }}</strong> / {{ item.total_recursos }}
+                        </span>
+                        <svg
+                            viewBox="0 0 14 14"
+                            class="h-4 w-4 text-ink-muted transition-transform"
+                            :class="abierto ? 'rotate-180' : ''"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
                         >
-                            Editar Nave
-                        </a>
-                        <a
-                            href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=nave.id %}"
-                            class="inline-flex min-h-12 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/20 px-5 py-3 text-base font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/30"
-                        >
-                            Ver Tripulación
-                        </a>
+                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </button>
+
+                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border">
+                    {% if item.registros %}
+                        {% for registro in item.registros %}
+                            {% if registro.tipo == "ficha" %}
+                            <div class="border-b border-[#f8fafc] px-5 py-3 last:border-b-0">
+                                <div class="flex items-start gap-3">
+                                    <span class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full {% if registro.estado_operativo == False %}bg-fail{% elif registro.estado_operativo %}bg-ok{% else %}bg-warn{% endif %}"></span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[13px] font-semibold text-ink">{{ registro.recurso.nombre }}</div>
+                                        <div class="mt-0.5 text-[11px] text-ink-muted">
+                                            Registró
+                                            {% if registro.ficha.usuario.first_name or registro.ficha.usuario.last_name %}
+                                                {{ registro.ficha.usuario.first_name }} {{ registro.ficha.usuario.last_name }}
+                                            {% else %}
+                                                {{ registro.ficha.usuario.rut }}
+                                            {% endif %}
+                                            · {{ registro.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                                        </div>
+                                        {% if registro.ficha.observacion_general %}
+                                            <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
+                                                {{ registro.ficha.observacion_general }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="shrink-0">
+                                        {% if registro.estado_operativo == False %}
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falla
+                                            </span>
+                                        {% elif registro.estado_operativo %}
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Operativo
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>En proceso
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="flex items-center gap-3 border-b border-[#f8fafc] px-5 py-3 text-[12px] text-ink-muted last:border-b-0">
+                                <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-surface-border"></span>
+                                <span>{{ registro.recurso.nombre }} · <em>Sin registrar</em></span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="px-5 py-4 text-[13px] text-ink-muted">Sin registros en este período.</div>
                     {% endif %}
                 </div>
-            </div>
-        </header>
-
-        <section class="space-y-4">
-            <div class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <h2 class="text-xl font-semibold text-white">Períodos Abiertos</h2>
-                <p class="mt-1 text-sm text-slate-400">Revisiones activas actualmente para esta nave.</p>
-            </div>
-
-            {% for item in periodos_abiertos_detalle %}
-                <article class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-3">
-                                <h3 class="text-2xl font-semibold text-white">{{ item.periodo.periodicidad.nombre }}</h3>
-                                {% if item.periodo.estado == "en_proceso" %}
-                                    <span class="inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
-                                        En proceso
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex rounded-full border border-slate-500/50 bg-slate-700/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200">
-                                        Pendiente
-                                    </span>
-                                {% endif %}
-                            </div>
-                            <p class="mt-2 text-sm text-slate-400">
-                                {{ item.periodo.fecha_inicio|date:"d/m/Y" }} - {{ item.periodo.fecha_termino|date:"d/m/Y" }}
-                            </p>
-                        </div>
-
-                        <div class="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3">
-                            <p class="text-xs uppercase tracking-wide text-slate-500">Progreso</p>
-                            <p class="mt-1 text-lg font-bold text-white">{{ item.fichas_count }} / {{ item.total_recursos }}</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-5 space-y-3">
-                        {% for ficha in item.fichas %}
-                            <article class="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-4">
-                                <div class="flex flex-col gap-3">
-                                    <p class="text-sm leading-6 text-slate-200">
-                                        {% if ficha.estado_operativo %}
-                                            <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                                Operativo
-                                            </span>
-                                        {% else %}
-                                            <span class="inline-flex rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300">
-                                                Con falla
-                                            </span>
-                                        {% endif %}
-                                        <span class="ml-2 font-semibold text-white">{{ ficha.recurso.nombre }}</span>
-                                        <span class="text-slate-400">
-                                            -
-                                            Registrado por:
-                                            {% if ficha.usuario.first_name or ficha.usuario.last_name %}
-                                                {{ ficha.usuario.first_name }} {{ ficha.usuario.last_name }} ({{ ficha.usuario.rut }})
-                                            {% else %}
-                                                {{ ficha.usuario.rut }}
-                                            {% endif %}
-                                            el {{ ficha.fecha_revision|date:"d/m/Y H:i" }}
-                                        </span>
-                                    </p>
-
-                                    {% if ficha.observacion_general %}
-                                        <p class="text-sm text-slate-300">
-                                            <span class="font-semibold text-slate-200">Observación:</span>
-                                            {{ ficha.observacion_general }}
-                                        </p>
-                                    {% endif %}
-
-                                    {% if ficha.modificado_por %}
-                                        <p class="text-sm text-slate-400">
-                                            <span class="font-semibold text-slate-300">Modificado por:</span>
-                                            {% if ficha.modificado_por.first_name or ficha.modificado_por.last_name %}
-                                                {{ ficha.modificado_por.first_name }} {{ ficha.modificado_por.last_name }}
-                                            {% else %}
-                                                {{ ficha.modificado_por.rut }}
-                                            {% endif %}
-                                            el {{ ficha.modificado_en|date:"d/m/Y H:i" }}
-                                        </p>
-                                    {% endif %}
-                                </div>
-                            </article>
-                        {% empty %}
-                            <article class="rounded-lg border border-dashed border-slate-600 bg-slate-900/30 px-4 py-5 text-sm text-slate-400">
-                                Sin registros en este período.
-                            </article>
-                        {% endfor %}
-                    </div>
-                </article>
+            </article>
             {% empty %}
-                <article class="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
-                    <p class="text-base text-slate-300">No hay revisiones activas para esta nave.</p>
-                </article>
+            <div class="rounded-lg border border-surface-border bg-white px-5 py-6 text-[13px] text-ink-muted shadow-sm">
+                No hay períodos abiertos para esta nave.
+            </div>
             {% endfor %}
-        </section>
+        </div>
+    </section>
 
-        <section class="space-y-4">
-            <div class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <h2 class="text-xl font-semibold text-white">Historial</h2>
-                <p class="mt-1 text-sm text-slate-400">Períodos cerrados de esta nave.</p>
+    <section class="space-y-3">
+        <div class="flex items-center gap-3">
+            <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">Historial</span>
+            <span class="h-px flex-1 bg-surface-border"></span>
+        </div>
+
+        <form
+            method="GET"
+            action="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
+            class="rounded-lg border border-surface-border bg-white p-4 shadow-sm"
+        >
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div>
+                    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Desde</label>
+                    <input
+                        type="date"
+                        name="fecha_desde"
+                        value="{{ fecha_desde_str }}"
+                        class="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+                    >
+                </div>
+                <div>
+                    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Hasta</label>
+                    <input
+                        type="date"
+                        name="fecha_hasta"
+                        value="{{ fecha_hasta_str }}"
+                        class="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+                    >
+                </div>
+                <div>
+                    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Estado</label>
+                    <select
+                        name="estado"
+                        class="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+                    >
+                        <option value="">Todos</option>
+                        <option value="conforme" {% if estado_filtro == "conforme" %}selected{% endif %}>Conforme</option>
+                        <option value="observado" {% if estado_filtro == "observado" %}selected{% endif %}>Observado</option>
+                        <option value="fallido" {% if estado_filtro == "fallido" %}selected{% endif %}>Fallido</option>
+                        <option value="omitido" {% if estado_filtro == "omitido" %}selected{% endif %}>Omitido</option>
+                        <option value="caduco" {% if estado_filtro == "caduco" %}selected{% endif %}>Caduco</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Periodicidad</label>
+                    <select
+                        name="periodicidad"
+                        class="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+                    >
+                        <option value="">Todas</option>
+                        {% for p in periodicidades %}
+                            <option value="{{ p.id }}" {% if periodicidad_id_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
 
-            <section class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                <h3 class="mb-4 text-lg font-semibold text-white">Buscar en historial</h3>
-                <form method="get" action="" class="space-y-3">
-                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-slate-400">Desde</label>
-                            <input
-                                type="date"
-                                name="fecha_desde"
-                                value="{{ fecha_desde_str }}"
-                                class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                            >
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-slate-400">Hasta</label>
-                            <input
-                                type="date"
-                                name="fecha_hasta"
-                                value="{{ fecha_hasta_str }}"
-                                class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                            >
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-slate-400">Estado</label>
-                            <select
-                                name="estado"
-                                class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                            >
-                                <option value="">Todos</option>
-                                <option value="conforme" {% if estado_filtro == "conforme" %}selected{% endif %}>Conforme</option>
-                                <option value="observado" {% if estado_filtro == "observado" %}selected{% endif %}>Observado</option>
-                                <option value="fallido" {% if estado_filtro == "fallido" %}selected{% endif %}>Fallido</option>
-                                <option value="omitido" {% if estado_filtro == "omitido" %}selected{% endif %}>Omitido</option>
-                                <option value="caduco" {% if estado_filtro == "caduco" %}selected{% endif %}>Caduco</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-slate-400">Periodicidad</label>
-                            <select
-                                name="periodicidad"
-                                class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                            >
-                                <option value="">Todas</option>
-                                {% for p in periodicidades %}
-                                    <option value="{{ p.id }}" {% if periodicidad_id_filtro == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button
-                            type="submit"
-                            class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
-                        >
-                            Filtrar
-                        </button>
-                        <a
-                            href="?"
-                            class="rounded-md border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-700"
-                        >
-                            Limpiar
-                        </a>
-                    </div>
-                </form>
-            </section>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button
+                    type="submit"
+                    class="rounded-md bg-navy px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+                >
+                    Filtrar
+                </button>
+                <a
+                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
+                    class="rounded-md border border-surface-border px-4 py-2 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                >
+                    Limpiar
+                </a>
+            </div>
+        </form>
 
+        <div class="space-y-2">
             {% for item in historial_detalle %}
-                <article class="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-xl">
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-3">
-                                <h3 class="text-2xl font-semibold text-white">{{ item.periodo.periodicidad.nombre }}</h3>
-                                {% if item.periodo.estado == "conforme" %}
-                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-300">
-                                        Conforme
-                                    </span>
-                                {% elif item.periodo.estado == "observado" %}
-                                    <span class="inline-flex rounded-full border border-sky-500/40 bg-sky-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
-                                        Observado
-                                    </span>
-                                {% elif item.periodo.estado == "fallido" %}
-                                    <span class="inline-flex rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-300">
-                                        Fallido
-                                    </span>
-                                {% elif item.periodo.estado == "omitido" %}
-                                    <span class="inline-flex rounded-full border border-slate-500/50 bg-slate-700/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-200">
-                                        Omitido
-                                    </span>
-                                {% elif item.periodo.estado == "caduco" %}
-                                    <span class="inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
-                                        Caduco
-                                    </span>
-                                {% endif %}
-                            </div>
-                            <p class="mt-2 text-sm text-slate-400">
-                                {{ item.periodo.fecha_inicio|date:"d/m/Y" }} - {{ item.periodo.fecha_termino|date:"d/m/Y" }}
-                            </p>
+            <article
+                x-data="{ abierto: false }"
+                class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm"
+            >
+                <button
+                    type="button"
+                    @click="abierto = !abierto"
+                    class="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-[#f8fafc]"
+                >
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-[13px] font-semibold text-ink">{{ item.periodo.periodicidad.nombre }}</span>
+                            {% include 'components/badge_estado.html' with estado=item.periodo.get_estado_display %}
                         </div>
-
-                        <div class="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-3">
-                            <p class="text-xs uppercase tracking-wide text-slate-500">Registros</p>
-                            <p class="mt-1 text-lg font-bold text-white">{{ item.fichas_count }} / {{ item.total_recursos }}</p>
+                        <div class="mt-1 font-mono text-[11px] text-ink-muted">
+                            {{ item.periodo.fecha_inicio|date:"d/m/Y" }} — {{ item.periodo.fecha_termino|date:"d/m/Y" }}
                         </div>
                     </div>
 
-                    <div class="mt-5 space-y-3">
-                        {% for ficha in item.fichas %}
-                            <article class="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-4">
-                                <div class="flex flex-col gap-3">
-                                    <p class="text-sm leading-6 text-slate-200">
-                                        {% if ficha.estado_operativo %}
-                                            <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                                Operativo
+                    <div class="flex shrink-0 items-center gap-3">
+                        <div class="h-1.5 w-[84px] overflow-hidden rounded-full bg-surface-border">
+                            <div
+                                class="h-full rounded-full {% if item.periodo.estado == 'conforme' %}bg-ok{% elif item.periodo.estado == 'observado' %}bg-info{% elif item.periodo.estado == 'fallido' %}bg-fail{% elif item.periodo.estado == 'caduco' %}bg-warn{% else %}bg-neutral{% endif %}"
+                                style="width: {{ item.avance_pct }}%"
+                            ></div>
+                        </div>
+                        <span class="whitespace-nowrap text-[12px] font-medium text-ink-muted">
+                            <strong class="text-navy">{{ item.fichas_count }}</strong> / {{ item.total_recursos }}
+                        </span>
+                        <svg
+                            viewBox="0 0 14 14"
+                            class="h-4 w-4 text-ink-muted transition-transform"
+                            :class="abierto ? 'rotate-180' : ''"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                        >
+                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </button>
+
+                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border">
+                    {% if item.registros %}
+                        {% for registro in item.registros %}
+                            {% if registro.tipo == "ficha" %}
+                            <div class="border-b border-[#f8fafc] px-5 py-3 last:border-b-0">
+                                <div class="flex items-start gap-3">
+                                    <span class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full {% if registro.estado_operativo == False %}bg-fail{% elif registro.estado_operativo %}bg-ok{% else %}bg-warn{% endif %}"></span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[13px] font-semibold text-ink">{{ registro.recurso.nombre }}</div>
+                                        <div class="mt-0.5 text-[11px] text-ink-muted">
+                                            {% if registro.ficha.usuario.first_name or registro.ficha.usuario.last_name %}
+                                                {{ registro.ficha.usuario.first_name }} {{ registro.ficha.usuario.last_name }}
+                                            {% else %}
+                                                {{ registro.ficha.usuario.rut }}
+                                            {% endif %}
+                                            · {{ registro.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                                        </div>
+                                        {% if registro.ficha.observacion_general %}
+                                            <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if item.periodo.estado == 'observado' %}border-info-border bg-info-bg text-info{% elif registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
+                                                {{ registro.ficha.observacion_general }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="shrink-0">
+                                        {% if registro.estado_operativo == False %}
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falla
+                                            </span>
+                                        {% elif registro.estado_operativo %}
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Operativo
                                             </span>
                                         {% else %}
-                                            <span class="inline-flex rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300">
-                                                Con falla
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>En proceso
                                             </span>
                                         {% endif %}
-                                        <span class="ml-2 font-semibold text-white">{{ ficha.recurso.nombre }}</span>
-                                        <span class="text-slate-400">
-                                            -
-                                            Registrado por:
-                                            {% if ficha.usuario.first_name or ficha.usuario.last_name %}
-                                                {{ ficha.usuario.first_name }} {{ ficha.usuario.last_name }} ({{ ficha.usuario.rut }})
-                                            {% else %}
-                                                {{ ficha.usuario.rut }}
-                                            {% endif %}
-                                            el {{ ficha.fecha_revision|date:"d/m/Y H:i" }}
-                                        </span>
-                                    </p>
-
-                                    {% if ficha.observacion_general %}
-                                        <p class="text-sm text-slate-300">
-                                            <span class="font-semibold text-slate-200">Observación:</span>
-                                            {{ ficha.observacion_general }}
-                                        </p>
-                                    {% endif %}
-
-                                    {% if ficha.modificado_por %}
-                                        <p class="text-sm text-slate-400">
-                                            <span class="font-semibold text-slate-300">Modificado por:</span>
-                                            {% if ficha.modificado_por.first_name or ficha.modificado_por.last_name %}
-                                                {{ ficha.modificado_por.first_name }} {{ ficha.modificado_por.last_name }}
-                                            {% else %}
-                                                {{ ficha.modificado_por.rut }}
-                                            {% endif %}
-                                            el {{ ficha.modificado_en|date:"d/m/Y H:i" }}
-                                        </p>
-                                    {% endif %}
+                                    </div>
                                 </div>
-                            </article>
-                        {% empty %}
-                            <article class="rounded-lg border border-dashed border-slate-600 bg-slate-900/30 px-4 py-5 text-sm text-slate-400">
-                                Sin registros en este período.
-                            </article>
+                            </div>
+                            {% else %}
+                            <div class="flex items-center gap-3 border-b border-[#f8fafc] px-5 py-3 text-[12px] text-ink-muted last:border-b-0">
+                                <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if item.periodo.estado == 'omitido' or item.periodo.estado == 'fallido' %}bg-fail{% else %}bg-surface-border{% endif %}"></span>
+                                <span>{{ registro.recurso.nombre }} · <em>Sin registrar{% if item.periodo.estado != 'conforme' and item.periodo.estado != 'observado' %} (período cerrado){% endif %}</em></span>
+                            </div>
+                            {% endif %}
                         {% endfor %}
-                    </div>
-                </article>
+                    {% else %}
+                        <div class="px-5 py-4 text-[13px] text-ink-muted">No hay registros en este período.</div>
+                    {% endif %}
+                </div>
+            </article>
             {% empty %}
-                <article class="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-xl">
-                    <p class="text-base text-slate-300">No hay revisiones históricas que coincidan con los filtros.</p>
-                </article>
+            <div class="rounded-lg border border-surface-border bg-white px-5 py-6 text-[13px] text-ink-muted shadow-sm">
+                No hay revisiones históricas que coincidan con los filtros.
+            </div>
             {% endfor %}
-        </section>
-    </div>
-</body>
-</html>
+        </div>
+    </section>
+</div>
+{% endblock %}
