@@ -1,88 +1,228 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tripulación - SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
-    <div class="max-w-5xl mx-auto space-y-6">
-        <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-            <h1 class="text-2xl font-bold text-emerald-400">Tripulación de {{ nave.nombre }}</h1>
-            <p class="mt-1 text-sm text-slate-400">Matrícula: {{ nave.matricula }}</p>
-        </div>
+{% extends 'layouts/tierra.html' %}
 
-        <div class="rounded-lg border border-slate-700 bg-slate-800 p-5 shadow-xl">
-            <h2 class="mb-4 text-lg font-semibold text-white">Agregar Tripulante</h2>
-            <form method="post" action="{% url 'inventory:agregar_tripulante' slug=slug nave_id=nave.id %}" class="flex flex-col gap-3 sm:flex-row">
-                {% csrf_token %}
-                <select
-                    name="usuario_id"
-                    required
-                    class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500 sm:flex-1"
-                >
-                    <option value="">Seleccionar usuario disponible</option>
-                    {% for usuario in usuarios_disponibles %}
-                        <option value="{{ usuario.id }}">
-                            {{ usuario.rut }}{% if usuario.first_name or usuario.last_name %} - {{ usuario.first_name }} {{ usuario.last_name }}{% endif %}
-                        </option>
-                    {% endfor %}
-                </select>
-                <button
-                    type="submit"
-                    class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500"
-                >
-                    Agregar
-                </button>
-            </form>
-        </div>
+{% block nav_active %}naves{% endblock %}
+{% block page_title %}SITREP | Tripulación | {{ nave.nombre }}{% endblock %}
+{% block topbar_title %}{{ nave.nombre }}{% endblock %}
 
-        <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+    .btn-ghost-fail:hover {
+        border-color: #dc2626;
+        background: #dc2626;
+        color: #ffffff;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div
+    x-data="{
+        q: '',
+        modalAbierto: false,
+        tripulanteNombre: '',
+        tripulanteRut: '',
+        tripulacionId: null,
+        visibles: {{ tripulacion|length }},
+        actionTemplate: '{% url "inventory:remover_tripulante" slug=slug nave_id=nave.id tripulacion_id=987654321 %}'.replace('987654321', '__ID__'),
+        actualizarConteo() {
+            this.$nextTick(() => {
+                this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not(.hidden)').length : 0;
+            });
+        },
+        abrirModal(nombre, rut, id) {
+            this.tripulanteNombre = nombre;
+            this.tripulanteRut = rut;
+            this.tripulacionId = id;
+            this.modalAbierto = true;
+        },
+        cerrarModal() {
+            this.modalAbierto = false;
+            this.tripulanteNombre = '';
+            this.tripulanteRut = '';
+            this.tripulacionId = null;
+        },
+        removerAction() {
+            return this.actionTemplate.replace('__ID__', String(this.tripulacionId ?? ''));
+        }
+    }"
+    x-effect="q; actualizarConteo()"
+    class="space-y-4"
+>
+    <div class="mb-5 flex flex-col gap-4 rounded-lg border border-surface-border bg-white p-5 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+        <div>
+            <h1 class="text-[20px] font-bold text-navy">Tripulación de {{ nave.nombre }}</h1>
+            <p class="mt-1 font-mono text-[12px] text-ink-muted">{{ nave.matricula }}</p>
+        </div>
+        <a
+            href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
+            class="inline-flex items-center justify-center rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+        >
+            Volver a la nave
+        </a>
+    </div>
+
+    <div class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <p class="mb-3 text-[13px] font-semibold text-navy">Agregar tripulante</p>
+        <form
+            method="post"
+            action="{% url 'inventory:agregar_tripulante' slug=slug nave_id=nave.id %}"
+            class="flex flex-wrap items-end gap-2"
+        >
+            {% csrf_token %}
+            <select
+                name="usuario_id"
+                required
+                class="h-9 min-w-[200px] flex-1 rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+            >
+                <option value="" disabled selected>Seleccionar usuario disponible</option>
+                {% for usuario in usuarios_disponibles %}
+                    <option value="{{ usuario.id }}">
+                        {{ usuario.rut }}{% if usuario.first_name or usuario.last_name %} — {{ usuario.first_name }} {{ usuario.last_name }}{% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <button
+                type="submit"
+                class="h-9 rounded-md bg-navy px-4 text-[13px] font-semibold text-white hover:bg-navy-light"
+            >
+                Agregar
+            </button>
+        </form>
+        {% if not usuarios_disponibles %}
+            <p class="mt-2 text-[12px] text-ink-muted">No hay usuarios disponibles para agregar.</p>
+        {% endif %}
+    </div>
+
+    <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/>
+                    <line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+            </span>
+            <input
+                x-model="q"
+                @input="actualizarConteo()"
+                type="text"
+                placeholder="Buscar por nombre o RUT…"
+                class="h-9 w-72 rounded-md border border-surface-border bg-white pl-9 pr-3 text-[13px] text-ink outline-none focus:border-brand"
+            >
+        </div>
+        <span class="ml-auto text-[12px] text-ink-muted">
+            <span x-text="visibles"></span> tripulantes
+        </span>
+    </div>
+
+    <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
+        <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-800 text-slate-300">
+                <thead class="bg-neutral-bg text-ink-muted">
                     <tr>
-                        <th class="px-4 py-3 text-left font-semibold">Nombre</th>
-                        <th class="px-4 py-3 text-left font-semibold">RUT</th>
-                        <th class="px-4 py-3 text-left font-semibold">Rol</th>
-                        <th class="px-4 py-3 text-left font-semibold">Acción</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Nombre</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Rol</th>
+                        <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-700">
+                <tbody x-ref="tbody">
                     {% for asignacion in tripulacion %}
-                        <tr class="hover:bg-slate-700/30">
-                            <td class="px-4 py-3 text-white">
+                    <tr
+                        :class="{
+                            'hidden': q && !('{{ asignacion.usuario.first_name|default_if_none:""|lower|escapejs }} {{ asignacion.usuario.last_name|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()) || '{{ asignacion.usuario.rut|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()))
+                        }"
+                        class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]"
+                    >
+                        <td class="px-4 py-3.5">
+                            <p class="font-semibold text-navy">
                                 {% if asignacion.usuario.first_name or asignacion.usuario.last_name %}
                                     {{ asignacion.usuario.first_name }} {{ asignacion.usuario.last_name }}
                                 {% else %}
-                                    <span class="text-slate-400">Sin nombre</span>
+                                    Sin nombre
                                 {% endif %}
-                            </td>
-                            <td class="px-4 py-3">{{ asignacion.usuario.rut }}</td>
-                            <td class="px-4 py-3">{{ asignacion.usuario.rol }}</td>
-                            <td class="px-4 py-3">
-                                <form method="post" action="{% url 'inventory:remover_tripulante' slug=slug nave_id=nave.id tripulacion_id=asignacion.id %}">
-                                    {% csrf_token %}
-                                    <button
-                                        type="submit"
-                                        onclick="return confirm('¿Remover a este tripulante de la nave?')"
-                                        class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
-                                    >
-                                        Remover
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="4" class="px-4 py-8 text-center text-slate-400">
-                                No hay tripulantes asignados a esta nave.
-                            </td>
-                        </tr>
+                            </p>
+                            <p class="mt-0.5 font-mono text-[12px] text-ink-muted">{{ asignacion.usuario.rut }}</p>
+                        </td>
+                        <td class="px-4 py-3.5">
+                            {% if asignacion.usuario.rol == "admin_naviera" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">Admin Naviera</span>
+                            {% elif asignacion.usuario.rol == "capitan" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Capitán</span>
+                            {% elif asignacion.usuario.rol == "tierra" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">Tierra</span>
+                            {% elif asignacion.usuario.rol == "mar" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">Mar</span>
+                            {% else %}
+                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">{{ asignacion.usuario.rol }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3.5">
+                            <div class="flex justify-end">
+                                <button
+                                    type="button"
+                                    @click="abrirModal(('{{ asignacion.usuario.first_name|default_if_none:""|escapejs }} {{ asignacion.usuario.last_name|default_if_none:""|escapejs }}').trim() || 'Sin nombre', '{{ asignacion.usuario.rut|escapejs }}', {{ asignacion.id }})"
+                                    class="btn-ghost-fail inline-flex items-center rounded-md border border-fail-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-fail transition"
+                                >
+                                    Remover
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        <div
+            x-show="visibles === 0"
+            x-cloak
+            class="px-5 py-8 text-center text-sm text-ink-muted"
+        >
+            {% if tripulacion %}
+                No se encontraron tripulantes con los filtros aplicados.
+            {% else %}
+                No hay tripulantes asignados a esta nave.
+            {% endif %}
+        </div>
     </div>
-</body>
-</html>
+
+    <div
+        x-show="modalAbierto"
+        x-cloak
+        x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
+        @click.self="cerrarModal()"
+    >
+        <div class="w-full max-w-[400px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+            <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
+                <div>
+                    <p class="text-[15px] font-bold text-navy">Remover tripulante</p>
+                    <p class="mt-0.5 text-[12px] text-ink-muted" x-text="tripulanteNombre ? `${tripulanteNombre} · ${tripulanteRut}` : ''"></p>
+                </div>
+                <button type="button" @click="cerrarModal()" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
+            </div>
+            <div class="px-5 py-4">
+                <p class="text-[13px] leading-relaxed text-ink-muted">El usuario será removido de la tripulación de esta nave, pero seguirá activo en el sistema.</p>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3">
+                <button
+                    type="button"
+                    @click="cerrarModal()"
+                    class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                >
+                    Cancelar
+                </button>
+                <form method="POST" :action="removerAction()">
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="rounded-md border border-fail-border bg-fail-bg px-3 py-1.5 text-[13px] font-semibold text-fail transition hover:bg-red-100"
+                    >
+                        Remover
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
