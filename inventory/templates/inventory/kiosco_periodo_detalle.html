@@ -148,13 +148,13 @@
                             {% for checklist in item.checklist_items %}
                                 <div
                                     x-data="{
-                                        cumple: {% if checklist.checked == True %}true{% elif checklist.checked == False %}false{% else %}undefined{% endif %},
+                                        cumple: {% if item.tiene_ficha %}{{ checklist.checked|yesno:'true,false' }}{% else %}null{% endif %},
                                         obs: '{{ checklist.observacion|default:''|escapejs }}'
                                     }"
                                     :class="{
                                         'border-ok-border bg-ok-bg': cumple === true,
                                         'border-fail-border bg-fail-bg': cumple === false,
-                                        'border-surface-border bg-[#fafcff]': cumple === undefined
+                                        'border-surface-border bg-[#fafcff]': cumple === null
                                     }"
                                     class="overflow-hidden rounded-lg border transition-colors"
                                 >
@@ -166,7 +166,7 @@
                                             @change="if (cumple) obs = ''; $dispatch('checklist-changed')"
                                             data-checklist-checkbox="true"
                                             class="h-[22px] w-[22px] rounded-[5px] border-2 border-surface-border text-brand"
-                                            {% if checklist.checked %}checked{% endif %}
+                                            {% if item.tiene_ficha and checklist.checked %}checked{% endif %}
                                         >
                                         <span class="flex-1 text-[15px] font-medium text-ink">{{ checklist.nombre }}</span>
                                         <span x-show="cumple === false" x-cloak class="text-[11px] font-semibold text-fail">Falló</span>
