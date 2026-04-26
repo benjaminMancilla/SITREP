@@ -207,7 +207,7 @@
                                     return cbs.length > 0 && cbs.every(cb => cb.checked);
                                 }
                             }"
-                            @checklist-changed="tick += 1; if (hayFallo) $refs.estadoOperativo.checked = false"
+                            @checklist-changed.window="tick += 1; if (hayFallo) $refs.estadoOperativo.checked = false"
                             :class="{
                                 'border-warn-border bg-warn-bg opacity-80': hayFallo,
                                 'border-ok-border bg-ok-bg': todosCumplidos && !hayFallo,
