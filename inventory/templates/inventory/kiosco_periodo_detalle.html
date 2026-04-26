@@ -9,281 +9,211 @@
 {% endblock %}
 
 {% block kiosco_header_extra %}
-{% with total_recursos=recursos_lista|length %}
-    {% if total_recursos > 0 %}
-        {% widthratio fichas_completadas_count total_recursos 100 as progreso_global %}
-    {% else %}
-        {% widthratio 0 1 100 as progreso_global %}
-    {% endif %}
-    <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-                <p class="text-2xs font-semibold uppercase tracking-[0.24em] text-white/60">Período activo</p>
-                <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span class="text-lg font-semibold text-white">{{ periodo.periodicidad.nombre }}</span>
-                    <span class="hidden h-1 w-1 rounded-full bg-white/30 sm:inline-block"></span>
-                    <span class="font-mono text-xs text-white/70">
-                        {{ periodo.fecha_inicio|date:"d/m/Y" }} - {{ periodo.fecha_termino|date:"d/m/Y" }}
-                    </span>
-                </div>
-            </div>
-
-            <div class="w-full max-w-sm">
-                <div class="mb-2 flex items-center justify-between gap-3 text-sm text-white/75">
-                    <span>Progreso de revisión</span>
-                    <span><strong class="font-semibold text-white">{{ fichas_completadas_count }}</strong> / {{ total_recursos }}</span>
-                </div>
-                <div class="h-2 overflow-hidden rounded-full bg-white/15">
-                    <div class="h-full rounded-full bg-brand-light transition-[width] duration-300" style="width: {{ progreso_global }}%;"></div>
-                </div>
-            </div>
+<div class="mt-3 flex items-center gap-3">
+    {% with total=recursos_lista|length %}
+        <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
+            <div
+                class="h-full rounded-full bg-white transition-all"
+                style="width: {% if total %}{% widthratio fichas_completadas_count total 100 %}{% else %}0{% endif %}%"
+            ></div>
         </div>
-    </div>
-{% endwith %}
+        <span class="text-xs font-medium text-white/70">
+            {{ fichas_completadas_count }}/{{ total }}
+        </span>
+    {% endwith %}
+</div>
 {% endblock %}
 
 {% block page_content %}
-<div class="space-y-6">
+<div class="space-y-4">
     <div class="flex items-center justify-between gap-4">
         <div>
-            <p class="text-2xs font-semibold uppercase tracking-[0.24em] text-ink-muted">Ficha de inspección</p>
+            <p class="text-2xs font-semibold uppercase tracking-[0.22em] text-ink-muted">Ficha de inspección</p>
             <h2 class="mt-1 text-2xl font-bold text-navy">{{ periodo.periodicidad.nombre }}</h2>
         </div>
-
         <a
             href="{% url 'inventory:kiosco_home' slug=slug %}"
-            class="inline-flex min-h-11 items-center justify-center rounded-xl border border-surface-border bg-white px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface hover:text-navy"
+            class="inline-flex min-h-11 items-center justify-center rounded-xl border border-surface-border bg-white px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:bg-surface hover:text-navy"
         >
-            Volver al dashboard
+            Volver
         </a>
     </div>
 
     <section class="space-y-3">
         {% for item in recursos_lista %}
             <article
-                data-recurso-id="{{ item.recurso.id }}"
                 x-data="{
-                    abierto: {% if item.recurso.id == error_recurso_id %}true{% else %}false{% endif %},
-                    estadoOperativo: {% if item.estado_operativo == True %}true{% else %}false{% endif %},
-                    checklist: [
-                        {% for checklist in item.checklist_items %}
-                            { checked: {% if checklist.checked %}true{% else %}false{% endif %}, observacion: '{{ checklist.observacion|default:''|escapejs }}' }{% if not forloop.last %},{% endif %}
-                        {% endfor %}
-                    ],
-                    init() {
-                        this.syncEstadoOperativo();
-                    },
-                    get tieneChecklist() {
-                        return this.checklist.length > 0;
-                    },
-                    get todosCumplen() {
-                        return this.checklist.every((check) => check.checked);
-                    },
-                    get algunRegistro() {
-                        return this.checklist.some((check) => check.checked || check.observacion.trim().length > 0);
-                    },
-                    get estadoBloqueado() {
-                        return this.tieneChecklist && !this.todosCumplen;
-                    },
-                    syncEstadoOperativo() {
-                        if (this.estadoBloqueado) {
-                            this.estadoOperativo = false;
-                        }
-                    }
+                    abierto: {{ item.recurso.id }} === {{ error_recurso_id|default:0 }},
+                    guardando: false
                 }"
-                class="overflow-hidden rounded-2xl border border-surface-border bg-surface-card shadow-sm shadow-slate-900/5"
+                data-recurso-id="{{ item.recurso.id }}"
+                class="rounded-2xl border border-surface-border bg-white shadow-sm"
             >
                 <button
                     type="button"
                     @click="abierto = !abierto"
-                    :aria-expanded="abierto.toString()"
-                    class="flex w-full items-start gap-4 text-left"
+                    class="flex w-full items-start justify-between gap-4 px-5 py-5 text-left"
                 >
-                    <span class="w-1.5 self-stretch {% if item.tiene_ficha %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-lg font-semibold text-navy">{{ item.recurso.nombre }}</span>
+                        <span class="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
+                            {% if item.recurso.proposito %}
+                                <span>{{ item.recurso.proposito.tipo }}</span>
+                                <span class="text-ink-muted">·</span>
+                            {% endif %}
+                            <span>Cantidad: {{ item.matriz.cantidad }}</span>
+                        </span>
+                    </span>
 
-                    <span class="flex min-w-0 flex-1 flex-col gap-4 px-5 py-5 md:flex-row md:items-start md:justify-between">
-                        <span class="min-w-0">
-                            <span class="block text-lg font-semibold text-navy">{{ item.recurso.nombre }}</span>
-                            <span class="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
-                                {% if item.recurso.proposito %}
-                                    <span>{{ item.recurso.proposito.tipo }}</span>
-                                    <span class="text-ink-muted">·</span>
-                                    <span>{{ item.recurso.proposito.categoria }}</span>
-                                    <span class="text-ink-muted">·</span>
-                                {% endif %}
-                                <span>Cantidad: {{ item.matriz.cantidad }}</span>
-                            </span>
-                            {% if item.tiene_ficha %}
-                                <span class="mt-2 block text-xs text-ink-muted">
-                                    Registrado por
-                                    {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
-                                        {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
-                                    {% else %}
-                                        {{ item.ficha.usuario.rut }}
-                                    {% endif %}
-                                    el {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                    <span class="flex shrink-0 items-center gap-3">
+                        {% if item.tiene_ficha %}
+                            {% if item.estado_operativo == True %}
+                                {% include 'components/badge_estado.html' with estado='operativo' %}
+                            {% elif item.estado_operativo == False %}
+                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                    Con falla
                                 </span>
-                            {% endif %}
-                        </span>
-
-                        <span class="flex shrink-0 items-center gap-3">
-                            {% if item.tiene_ficha %}
-                                {% if item.estado_operativo == True %}
-                                    {% include 'components/badge_estado.html' with estado='operativo' %}
-                                {% elif item.estado_operativo == False %}
-                                    <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
-                                        Con falla
-                                    </span>
-                                {% else %}
-                                    {% include 'components/badge_estado.html' with estado='en_proceso' %}
-                                {% endif %}
                             {% else %}
-                                {% include 'components/badge_estado.html' with estado='pendiente' %}
+                                {% include 'components/badge_estado.html' with estado='en_proceso' %}
                             {% endif %}
+                        {% else %}
+                            {% include 'components/badge_estado.html' with estado='pendiente' %}
+                        {% endif %}
 
-                            <svg
-                                class="h-5 w-5 shrink-0 text-ink-muted transition-transform duration-200"
-                                :class="abierto ? 'rotate-180' : ''"
-                                viewBox="0 0 18 18"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                aria-hidden="true"
-                            >
-                                <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </span>
+                        <svg
+                            viewBox="0 0 18 18"
+                            class="h-5 w-5 text-ink-muted transition-transform"
+                            :class="abierto ? 'rotate-180' : ''"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                        >
+                            <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </span>
                 </button>
 
-                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border">
-                    <form method="post" action="{{ item.action_url }}" class="space-y-6 px-5 py-5 sm:px-6" data-recurso-form="true">
+                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border px-5 py-5 sm:px-6">
+                    {% if error_recurso_id == item.recurso.id %}
+                        <div class="mb-5 rounded-xl border border-fail-border bg-fail-bg px-4 py-3 text-sm text-fail">
+                            {{ error_msg }}
+                        </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ item.action_url }}" @submit="guardando = true" class="space-y-5">
                         {% csrf_token %}
 
-                        {% if item.recurso.id == error_recurso_id and error_msg %}
-                            <div class="rounded-xl border border-fail-border bg-fail-bg px-4 py-3 text-sm font-medium text-fail">
-                                {{ error_msg }}
+                        {% if item.checklist_items %}
+                            {% for checklist in item.checklist_items %}
+                                <div
+                                    x-data="{
+                                        cumple: {{ checklist.checked|yesno:'true,false' }},
+                                        obs: '{{ checklist.observacion|default:''|escapejs }}'
+                                    }"
+                                    class="rounded-xl border border-surface-border p-4"
+                                >
+                                    <label class="flex cursor-pointer items-center gap-3">
+                                        <input
+                                            type="checkbox"
+                                            name="req_{{ checklist.index }}"
+                                            x-model="cumple"
+                                            @change="if (cumple) obs = ''; $dispatch('checklist-changed')"
+                                            data-checklist-checkbox="true"
+                                            class="h-5 w-5 rounded border-surface-border text-brand"
+                                            {% if checklist.checked %}checked{% endif %}
+                                        >
+                                        <span class="text-sm font-medium text-ink">{{ checklist.nombre }}</span>
+                                    </label>
+                                    <div x-show="!cumple" x-transition x-cloak class="mt-3">
+                                        <input
+                                            type="text"
+                                            name="obs_{{ checklist.index }}"
+                                            x-model="obs"
+                                            placeholder="Observación obligatoria si falla…"
+                                            class="w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:ring-2"
+                                            :class="!cumple && !obs.trim() ? 'border-fail-border bg-fail-bg text-fail placeholder:text-fail/60 focus:border-fail focus:ring-fail' : 'border-surface-border focus:border-brand focus:ring-brand'"
+                                        >
+                                    </div>
+                                    <input type="hidden" name="obs_{{ checklist.index }}" :value="obs">
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
+                                Este recurso no tiene requerimientos específicos.
                             </div>
                         {% endif %}
 
-                        <div>
-                            <p class="mb-3 text-2xs font-semibold uppercase tracking-[0.22em] text-ink-muted">Requerimientos</p>
-
-                            {% if item.checklist_items %}
-                                <div class="space-y-3">
-                                    {% for checklist in item.checklist_items %}
-                                        <div class="rounded-xl border border-surface-border bg-surface p-4" :class="checklist[{{ forloop.counter0 }}].checked ? 'border-ok-border bg-ok-bg/40' : (checklist[{{ forloop.counter0 }}].observacion.trim().length ? 'border-fail-border bg-fail-bg/40' : 'border-surface-border bg-surface')">
-                                            <label class="flex cursor-pointer items-start gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    name="req_{{ checklist.index }}"
-                                                    class="mt-0.5 h-5 w-5 rounded border-surface-border text-brand focus:ring-brand"
-                                                    x-model="checklist[{{ forloop.counter0 }}].checked"
-                                                    @change="if (checklist[{{ forloop.counter0 }}].checked) checklist[{{ forloop.counter0 }}].observacion = ''; syncEstadoOperativo()"
-                                                    {% if checklist.checked %}checked{% endif %}
-                                                >
-                                                <span class="min-w-0 flex-1">
-                                                    <span class="block text-sm font-medium text-ink">{{ checklist.nombre }}</span>
-                                                    <span x-show="!checklist[{{ forloop.counter0 }}].checked" x-cloak class="mt-1 block text-xs font-medium text-fail">
-                                                        Observación obligatoria cuando el requerimiento falla.
-                                                    </span>
-                                                </span>
-                                            </label>
-
-                                            <div x-show="!checklist[{{ forloop.counter0 }}].checked" x-transition x-cloak class="mt-3">
-                                                <textarea
-                                                    name="obs_{{ checklist.index }}"
-                                                    rows="2"
-                                                    x-model="checklist[{{ forloop.counter0 }}].observacion"
-                                                    class="w-full rounded-xl border border-surface-border bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none"
-                                                    placeholder="Observación obligatoria al fallar..."
-                                                >{{ checklist.observacion }}</textarea>
-                                            </div>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
-                                    Este recurso no tiene requerimientos específicos.
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="rounded-2xl border p-4 transition-colors" :class="estadoBloqueado ? 'border-warn-border bg-warn-bg/60' : 'border-ok-border bg-ok-bg/40'">
-                            <label class="flex items-start gap-3" :class="estadoBloqueado ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'">
+                        <div
+                            x-data="{
+                                tick: 0,
+                                get hayFallo() {
+                                    this.tick;
+                                    return Array.from(
+                                        document.querySelectorAll('[data-recurso-id=\'{{ item.recurso.id }}\'] input[data-checklist-checkbox=\'true\']')
+                                    ).some(cb => !cb.checked);
+                                }
+                            }"
+                            @checklist-changed="tick += 1; if (hayFallo) $refs.estadoOperativo.checked = false"
+                            class="rounded-xl border border-surface-border p-4"
+                        >
+                            <label class="flex cursor-pointer items-center gap-3">
                                 <input
                                     type="checkbox"
                                     name="estado_operativo"
-                                    class="mt-0.5 h-5 w-5 rounded border-surface-border text-brand focus:ring-brand"
-                                    x-model="estadoOperativo"
-                                    :disabled="estadoBloqueado"
-                                    {% if item.estado_operativo == True %}checked{% endif %}
+                                    x-ref="estadoOperativo"
+                                    :disabled="hayFallo"
+                                    {% if item.estado_operativo %}checked{% endif %}
+                                    class="h-5 w-5 rounded border-surface-border text-brand disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                <span class="min-w-0">
-                                    <span class="block text-sm font-semibold text-ink">Recurso operativo</span>
-                                    <span x-show="estadoBloqueado" x-cloak class="mt-1 block text-xs text-warn">
-                                        Un requerimiento falló o falta completarlo. No se puede marcar como operativo.
-                                    </span>
-                                    <span x-show="!estadoBloqueado" x-cloak class="mt-1 block text-xs text-ink-secondary">
-                                        {% if item.checklist_items %}
-                                            Todos los requerimientos están cumplidos. Puedes marcar este recurso como operativo.
-                                        {% else %}
-                                            Este recurso no tiene bloqueos por checklist. Puedes marcarlo como operativo si corresponde.
-                                        {% endif %}
-                                    </span>
-                                </span>
+                                <span class="text-sm font-semibold text-ink">Recurso operativo</span>
                             </label>
+                            <p x-show="hayFallo" x-cloak class="mt-2 text-xs text-fail">
+                                Un requerimiento falló — el recurso no puede marcarse como operativo.
+                            </p>
                         </div>
 
-                        <div>
-                            <label for="observacion_general_{{ item.recurso.id }}" class="mb-2 block text-sm font-semibold text-ink">Observación general</label>
-                            <textarea
-                                id="observacion_general_{{ item.recurso.id }}"
-                                name="observacion_general"
-                                rows="4"
-                                class="w-full rounded-2xl border border-surface-border bg-white px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none"
-                                placeholder="Detalle observaciones de la revisión..."
-                            >{{ item.observacion_general }}</textarea>
-                        </div>
+                        <textarea
+                            name="observacion_general"
+                            rows="3"
+                            placeholder="Observación general…"
+                            class="w-full rounded-xl border border-surface-border px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand"
+                        >{{ item.observacion_general }}</textarea>
 
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <button
-                                type="submit"
-                                class="inline-flex min-h-12 items-center justify-center rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-navy-light"
-                            >
-                                {% if item.tiene_ficha %}Actualizar registro{% else %}Guardar registro{% endif %}
-                            </button>
-
-                            {% if item.tiene_ficha %}
-                                <div class="text-right text-xs text-ink-muted">
-                                    <p>
-                                        Registrado por
-                                        {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
-                                            {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
-                                        {% else %}
-                                            {{ item.ficha.usuario.rut }}
-                                        {% endif %}
-                                        el {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
-                                    </p>
-                                    {% if item.ficha.modificado_por %}
-                                        <p class="mt-1">
-                                            Última modificación por
-                                            {% if item.ficha.modificado_por.first_name or item.ficha.modificado_por.last_name %}
-                                                {{ item.ficha.modificado_por.first_name }} {{ item.ficha.modificado_por.last_name }}
-                                            {% else %}
-                                                {{ item.ficha.modificado_por.rut }}
-                                            {% endif %}
-                                            el {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
-                                        </p>
+                        {% if item.tiene_ficha %}
+                            <p class="text-xs text-ink-muted">
+                                Registrado por
+                                {% if item.ficha.usuario.first_name %}
+                                    {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
+                                {% else %}
+                                    {{ item.ficha.usuario.rut }}
+                                {% endif %}
+                                el {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                                {% if item.ficha.modificado_por %}
+                                    · Modificado por
+                                    {% if item.ficha.modificado_por.first_name %}
+                                        {{ item.ficha.modificado_por.first_name }}
+                                    {% else %}
+                                        {{ item.ficha.modificado_por.rut }}
                                     {% endif %}
-                                </div>
-                            {% endif %}
-                        </div>
+                                    el {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
+                                {% endif %}
+                            </p>
+                        {% endif %}
+
+                        <button
+                            type="submit"
+                            :disabled="guardando"
+                            class="w-full rounded-xl bg-navy px-4 py-3 text-sm font-bold text-white transition hover:bg-navy-light disabled:opacity-60"
+                        >
+                            <span x-show="!guardando">{% if item.tiene_ficha %}Guardar cambios{% else %}Guardar ficha{% endif %}</span>
+                            <span x-show="guardando" x-cloak>Guardando…</span>
+                        </button>
                     </form>
                 </div>
             </article>
         {% empty %}
-            <div class="rounded-2xl border border-surface-border bg-surface-card px-6">
+            <div class="rounded-2xl border border-surface-border bg-white px-6">
                 {% include 'components/empty_state.html' with mensaje='No hay recursos visibles para este período.' %}
             </div>
         {% endfor %}

@@ -445,9 +445,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         error_recurso_id = None
 
     recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
-    fichas_completadas_count = _contar_fichas_completas(
-        [item["ficha"] for item in recursos_lista if item.get("ficha")]
-    )
+    fichas_completadas_count = sum(1 for item in recursos_lista if item["tiene_ficha"])
 
     return render(
         request,
