@@ -75,7 +75,17 @@
         </div>
     </section>
 
-    <section x-data="{ abierto: false }" class="space-y-4">
+    <section
+        x-data="{
+            abierto: Boolean(
+                new URLSearchParams(window.location.search).get('fecha_desde') ||
+                new URLSearchParams(window.location.search).get('fecha_hasta') ||
+                new URLSearchParams(window.location.search).get('estado') ||
+                new URLSearchParams(window.location.search).get('periodicidad')
+            )
+        }"
+        class="space-y-4"
+    >
         <button
             type="button"
             @click="abierto = !abierto"
