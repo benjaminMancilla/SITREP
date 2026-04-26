@@ -1,95 +1,161 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Usuario - SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
-    <div class="mx-auto w-full max-w-2xl rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-xl">
-        <h1 class="mb-6 text-2xl font-bold text-emerald-400">Crear Usuario</h1>
+{% extends 'layouts/tierra.html' %}
 
-        {% if error %}
-            <div class="mb-6 rounded-md border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-200">
-                {{ error }}
-            </div>
-        {% endif %}
+{% block nav_active %}usuarios{% endblock %}
+{% block page_title %}SITREP | Crear Usuario{% endblock %}
+{% block topbar_title %}Usuarios{% endblock %}
 
-        <form method="post" action="" class="space-y-5">
-            {% csrf_token %}
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}
 
+{% block page_content %}
+<div class="fixed inset-0 z-40 flex items-center justify-center bg-navy/50 px-4 py-8 backdrop-blur-sm">
+    <div class="w-full max-w-[520px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
             <div>
-                <label for="rut" class="mb-2 block text-sm font-medium">RUT</label>
-                <input id="rut" name="rut" type="text" value="{{ form_data.rut }}" required class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+                <p class="text-[15px] font-bold text-navy">Crear usuario</p>
+                <p class="mt-0.5 text-[12px] text-ink-muted">
+                    {% if naviera %}
+                        {{ naviera.nombre }}
+                    {% elif request.naviera %}
+                        {{ request.naviera.nombre }}
+                    {% endif %}
+                </p>
             </div>
+            <a href="{% url 'inventory:listar_usuarios' slug=slug %}" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</a>
+        </div>
 
-            <div>
-                <label for="email" class="mb-2 block text-sm font-medium">Email (opcional)</label>
-                <input id="email" name="email" type="email" value="{{ form_data.email }}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
-            </div>
-
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <div>
-                    <label for="first_name" class="mb-2 block text-sm font-medium">Nombre (opcional)</label>
-                    <input id="first_name" name="first_name" type="text" value="{{ form_data.first_name }}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+        <div class="max-h-[70vh] overflow-y-auto px-5 py-5">
+            {% if error %}
+                <div class="mb-4 flex items-center gap-2 rounded-md border border-fail-border bg-fail-bg px-3 py-2.5 text-[13px] text-fail">
+                    {{ error }}
                 </div>
+            {% endif %}
+
+            <form
+                method="POST"
+                action="{% url 'inventory:crear_usuario' slug=slug %}"
+                x-data="{ rol: '{{ form_data.rol|default:"admin_naviera"|escapejs }}', pin: '' }"
+                class="space-y-4"
+            >
+                {% csrf_token %}
+
                 <div>
-                    <label for="last_name" class="mb-2 block text-sm font-medium">Apellido (opcional)</label>
-                    <input id="last_name" name="last_name" type="text" value="{{ form_data.last_name }}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
+                    <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">RUT</label>
+                    <input
+                        name="rut"
+                        type="text"
+                        value="{{ form_data.rut }}"
+                        required
+                        placeholder="12.345.678-9"
+                        class="w-full rounded-md border border-surface-border px-3 py-2.5 font-mono text-[14px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                    >
+                    <p class="mt-1 text-[11px] text-ink-muted">Formato: 12.345.678-9</p>
                 </div>
-            </div>
 
-            <div>
-                <label for="rol" class="mb-2 block text-sm font-medium">Rol</label>
-                <select id="rol" name="rol" required class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
-                    <option value="admin_naviera" {% if form_data.rol == "admin_naviera" or not form_data.rol %}selected{% endif %}>Admin Naviera</option>
-                    <option value="tierra" {% if form_data.rol == "tierra" %}selected{% endif %}>Tierra</option>
-                    <option value="capitan" {% if form_data.rol == "capitan" %}selected{% endif %}>Capitán</option>
-                    <option value="mar" {% if form_data.rol == "mar" %}selected{% endif %}>Mar</option>
-                </select>
-            </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">
+                            Nombre <span class="font-normal normal-case text-ink-muted">(opcional)</span>
+                        </label>
+                        <input
+                            name="first_name"
+                            type="text"
+                            value="{{ form_data.first_name }}"
+                            class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+                        >
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">
+                            Apellido <span class="font-normal normal-case text-ink-muted">(opcional)</span>
+                        </label>
+                        <input
+                            name="last_name"
+                            type="text"
+                            value="{{ form_data.last_name }}"
+                            class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+                        >
+                    </div>
+                </div>
 
-            <div id="pin-container" class="hidden">
-                <label for="pin" class="mb-2 block text-sm font-medium">PIN (4 dígitos)</label>
-                <input id="pin" name="pin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">
+                        Email <span class="font-normal normal-case text-ink-muted">(opcional)</span>
+                    </label>
+                    <input
+                        name="email"
+                        type="email"
+                        value="{{ form_data.email }}"
+                        class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+                    >
+                </div>
 
-            <div id="password-container">
-                <label for="password" class="mb-2 block text-sm font-medium">Contraseña</label>
-                <input id="password" name="password" type="password" class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500">
-            </div>
+                <div>
+                    <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Rol</label>
+                    <select
+                        name="rol"
+                        x-model="rol"
+                        required
+                        class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+                    >
+                        <option value="admin_naviera">Admin Naviera</option>
+                        <option value="tierra">Tierra</option>
+                        <option value="capitan">Capitán</option>
+                        <option value="mar">Mar</option>
+                    </select>
+                </div>
 
-            <div class="flex flex-col gap-3 pt-2 sm:flex-row">
-                <button type="submit" class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500">
-                    Crear Usuario
-                </button>
-                <a href="/{{ slug }}/usuarios/" class="inline-flex items-center justify-center rounded-md border border-slate-600 px-4 py-2 font-semibold text-slate-200 transition-colors hover:bg-slate-700">
-                    Volver al listado
-                </a>
-            </div>
-        </form>
+                <div x-show="rol !== 'mar' && rol !== 'capitan'" x-cloak>
+                    <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Contraseña</label>
+                    <input
+                        name="password"
+                        type="password"
+                        :required="rol !== 'mar' && rol !== 'capitan'"
+                        class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
+                    >
+                </div>
+
+                <div x-show="rol === 'mar' || rol === 'capitan'" x-cloak>
+                    <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">PIN (4 dígitos)</label>
+                    <input
+                        name="pin"
+                        type="password"
+                        inputmode="numeric"
+                        maxlength="4"
+                        pattern="[0-9]{4}"
+                        x-model="pin"
+                        @input="pin = pin.replace(/\D/g, '').slice(0, 4)"
+                        :required="rol === 'mar' || rol === 'capitan'"
+                        class="w-full rounded-md border border-surface-border px-3 py-2.5 font-mono text-[18px] tracking-[0.4em] text-navy outline-none focus:border-brand"
+                    >
+                    <div class="mt-2 flex gap-2">
+                        <template x-for="i in 4" :key="i">
+                            <span
+                                class="h-3 w-3 rounded-full transition-colors"
+                                :class="pin.length >= i ? 'bg-navy' : 'bg-surface-border'"
+                            ></span>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+                    <a
+                        href="{% url 'inventory:listar_usuarios' slug=slug %}"
+                        class="rounded-md border border-surface-border px-4 py-2 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                    >
+                        Cancelar
+                    </a>
+                    <button
+                        type="submit"
+                        class="rounded-md bg-navy px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+                    >
+                        Crear usuario
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-
-    <script>
-        const rolSelect = document.getElementById("rol");
-        const pinContainer = document.getElementById("pin-container");
-        const pinInput = document.getElementById("pin");
-        const passwordContainer = document.getElementById("password-container");
-        const passwordInput = document.getElementById("password");
-
-        function actualizarCredencialesPorRol() {
-            const requierePin = rolSelect.value === "mar" || rolSelect.value === "capitan";
-
-            pinContainer.classList.toggle("hidden", !requierePin);
-            passwordContainer.classList.toggle("hidden", requierePin);
-
-            pinInput.required = requierePin;
-            passwordInput.required = !requierePin;
-        }
-
-        rolSelect.addEventListener("change", actualizarCredencialesPorRol);
-        actualizarCredencialesPorRol();
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

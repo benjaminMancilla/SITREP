@@ -1,49 +1,104 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cambiar PIN - SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
-    <div class="mx-auto w-full max-w-md rounded-lg border border-slate-700 bg-slate-800 p-6 shadow-xl">
-        <h1 class="mb-2 text-2xl font-bold text-emerald-400">Cambiar PIN</h1>
-        <p class="mb-6 text-sm text-slate-300">
-            Usuario: <span class="font-semibold text-white">{{ usuario.first_name }} {{ usuario.last_name }}</span>
-            <span class="text-slate-400">({{ usuario.rut }})</span>
-        </p>
+{% extends 'layouts/tierra.html' %}
 
-        {% if error %}
-            <div class="mb-5 rounded-md border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-200">
-                {{ error }}
-            </div>
-        {% endif %}
+{% block nav_active %}usuarios{% endblock %}
+{% block page_title %}SITREP | Cambiar PIN{% endblock %}
+{% block topbar_title %}Usuarios{% endblock %}
 
-        <form method="post" action="" class="space-y-5">
-            {% csrf_token %}
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="fixed inset-0 z-40 flex items-center justify-center bg-navy/50 px-4 py-8 backdrop-blur-sm">
+    <div class="w-full max-w-[400px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
             <div>
-                <label for="pin" class="mb-2 block text-sm font-medium">PIN (4 dígitos)</label>
-                <input
-                    id="pin"
-                    name="pin"
-                    type="password"
-                    inputmode="numeric"
-                    maxlength="4"
-                    pattern="[0-9]{4}"
-                    required
-                    class="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-emerald-500"
-                >
+                <p class="text-[15px] font-bold text-navy">Cambiar PIN</p>
+                <p class="mt-0.5 text-[12px] text-ink-muted">
+                    {% if usuario.first_name or usuario.last_name %}
+                        {{ usuario.first_name }} {{ usuario.last_name }}
+                    {% else %}
+                        {{ usuario.rut }}
+                    {% endif %}
+                </p>
             </div>
-            <div class="flex flex-col gap-3 sm:flex-row">
-                <button type="submit" class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500">
-                    Guardar PIN
-                </button>
-                <a href="/{{ slug }}/usuarios/" class="inline-flex items-center justify-center rounded-md border border-slate-600 px-4 py-2 font-semibold text-slate-200 transition-colors hover:bg-slate-700">
-                    Volver
-                </a>
+            <a href="{% url 'inventory:listar_usuarios' slug=slug %}" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</a>
+        </div>
+
+        <form
+            method="POST"
+            action="{% url 'inventory:cambiar_pin' slug=slug id=usuario.id %}"
+            x-data="{ vals: ['', '', '', ''] }"
+            x-init="$nextTick(() => $refs.pin0.focus())"
+        >
+            {% csrf_token %}
+
+            <div class="px-5 py-5">
+                {% if error %}
+                    <div class="mb-4 flex items-center gap-2 rounded-md border border-fail-border bg-fail-bg px-3 py-2.5 text-[13px] text-fail">
+                        {{ error }}
+                    </div>
+                {% endif %}
+
+                <label class="mb-2 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">PIN (4 dígitos)</label>
+
+                <div class="flex justify-center gap-2.5">
+                    <input
+                        x-ref="pin0"
+                        type="password"
+                        inputmode="numeric"
+                        maxlength="1"
+                        class="h-14 w-14 rounded-xl border border-surface-border text-center font-mono text-2xl font-bold text-navy outline-none transition focus:border-brand focus:ring-2 focus:ring-brand"
+                        @input="$event.target.value = $event.target.value.replace(/\D/g, '').slice(-1); vals[0] = $event.target.value; if (vals[0]) $refs.pin1.focus()"
+                    >
+                    <input
+                        x-ref="pin1"
+                        type="password"
+                        inputmode="numeric"
+                        maxlength="1"
+                        class="h-14 w-14 rounded-xl border border-surface-border text-center font-mono text-2xl font-bold text-navy outline-none transition focus:border-brand focus:ring-2 focus:ring-brand"
+                        @input="$event.target.value = $event.target.value.replace(/\D/g, '').slice(-1); vals[1] = $event.target.value; if (vals[1]) $refs.pin2.focus()"
+                        @keydown.backspace="if (!vals[1]) $refs.pin0.focus()"
+                    >
+                    <input
+                        x-ref="pin2"
+                        type="password"
+                        inputmode="numeric"
+                        maxlength="1"
+                        class="h-14 w-14 rounded-xl border border-surface-border text-center font-mono text-2xl font-bold text-navy outline-none transition focus:border-brand focus:ring-2 focus:ring-brand"
+                        @input="$event.target.value = $event.target.value.replace(/\D/g, '').slice(-1); vals[2] = $event.target.value; if (vals[2]) $refs.pin3.focus()"
+                        @keydown.backspace="if (!vals[2]) $refs.pin1.focus()"
+                    >
+                    <input
+                        x-ref="pin3"
+                        type="password"
+                        inputmode="numeric"
+                        maxlength="1"
+                        class="h-14 w-14 rounded-xl border border-surface-border text-center font-mono text-2xl font-bold text-navy outline-none transition focus:border-brand focus:ring-2 focus:ring-brand"
+                        @input="$event.target.value = $event.target.value.replace(/\D/g, '').slice(-1); vals[3] = $event.target.value"
+                        @keydown.backspace="if (!vals[3]) $refs.pin2.focus()"
+                    >
+                </div>
+                <input type="hidden" name="pin" :value="vals.join('')">
+
+                <div class="mt-5 flex justify-end gap-2 border-t border-surface-border pt-4">
+                    <a
+                        href="{% url 'inventory:listar_usuarios' slug=slug %}"
+                        class="rounded-md border border-surface-border px-4 py-2 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                    >
+                        Cancelar
+                    </a>
+                    <button
+                        type="submit"
+                        class="rounded-md bg-navy px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+                    >
+                        Guardar PIN
+                    </button>
+                </div>
             </div>
         </form>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

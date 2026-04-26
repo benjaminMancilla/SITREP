@@ -1,98 +1,227 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Usuarios - SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-slate-200 min-h-screen p-6">
-    <div class="max-w-6xl mx-auto space-y-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 class="text-3xl font-bold text-emerald-400">Gestión de Usuarios</h1>
-            <a
-                href="{% url 'inventory:crear_usuario' slug=slug %}"
-                class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-500"
-            >
-                Crear Usuario
-            </a>
-        </div>
+{% extends 'layouts/tierra.html' %}
 
-        <div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/80 shadow-xl">
+{% block nav_active %}usuarios{% endblock %}
+{% block page_title %}SITREP | Usuarios{% endblock %}
+{% block topbar_title %}Usuarios{% endblock %}
+
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+    .btn-ghost-warn:hover {
+        border-color: #f59e0b;
+        background: #f59e0b;
+        color: #ffffff;
+    }
+    .btn-ghost-fail:hover {
+        border-color: #dc2626;
+        background: #dc2626;
+        color: #ffffff;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div
+    x-data="{
+        q: '',
+        rol: '',
+        modalAbierto: false,
+        usuarioNombre: '',
+        usuarioId: null,
+        visibles: {{ usuarios|length }},
+        actionTemplate: '{% url "inventory:desactivar_usuario" slug=slug id=987654321 %}'.replace('987654321', '__ID__'),
+        actualizarConteo() {
+            this.$nextTick(() => {
+                this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not([hidden])').length : 0;
+            });
+        },
+        abrirModal(nombre, id) {
+            this.usuarioNombre = nombre;
+            this.usuarioId = id;
+            this.modalAbierto = true;
+        },
+        cerrarModal() {
+            this.modalAbierto = false;
+            this.usuarioNombre = '';
+            this.usuarioId = null;
+        },
+        desactivarAction() {
+            return this.actionTemplate.replace('__ID__', String(this.usuarioId ?? ''));
+        }
+    }"
+    x-init="actualizarConteo()"
+    x-effect="q; rol; actualizarConteo()"
+    class="space-y-4"
+>
+    <div class="mb-5 flex items-center justify-between">
+        <div>
+            <h1 class="text-[20px] font-bold text-navy">Gestión de Usuarios</h1>
+            <p class="mt-0.5 text-[12px] text-ink-muted">Usuarios activos de la naviera</p>
+        </div>
+        <a
+            href="{% url 'inventory:crear_usuario' slug=slug %}"
+            class="inline-flex items-center gap-1.5 rounded-md bg-navy px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+        >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                <line x1="6.5" y1="1" x2="6.5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="1" y1="6.5" x2="12" y2="6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            Crear usuario
+        </a>
+    </div>
+
+    <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/>
+                    <line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+            </span>
+            <input
+                x-model="q"
+                @input="actualizarConteo()"
+                type="text"
+                placeholder="Buscar por nombre, RUT o email…"
+                class="h-9 w-72 rounded-md border border-surface-border bg-white pl-9 pr-3 text-[13px] text-ink outline-none focus:border-brand"
+            >
+        </div>
+        <select
+            x-model="rol"
+            @change="actualizarConteo()"
+            class="h-9 rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+        >
+            <option value="">Todos los roles</option>
+            <option value="admin_naviera">Admin Naviera</option>
+            <option value="tierra">Tierra</option>
+            <option value="capitan">Capitán</option>
+            <option value="mar">Mar</option>
+        </select>
+        <span class="ml-auto text-[12px] text-ink-muted">
+            <span x-text="visibles"></span> usuarios
+        </span>
+    </div>
+
+    <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
+        <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-800 text-slate-300">
+                <thead class="bg-neutral-bg text-ink-muted">
                     <tr>
-                        <th class="px-4 py-3 text-left font-semibold">Nombre</th>
-                        <th class="px-4 py-3 text-left font-semibold">RUT</th>
-                        <th class="px-4 py-3 text-left font-semibold">Email</th>
-                        <th class="px-4 py-3 text-left font-semibold">Rol</th>
-                        <th class="px-4 py-3 text-left font-semibold">Estado</th>
-                        <th class="px-4 py-3 text-left font-semibold">Acciones</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Nombre</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">RUT</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Rol</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Estado</th>
+                        <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-700">
+                <tbody x-ref="tbody">
                     {% for usuario in usuarios %}
-                        <tr class="hover:bg-slate-700/30">
-                            <td class="px-4 py-3 text-white">
+                    <tr
+                        :hidden="
+                            (q && !('{{ usuario.first_name|default_if_none:""|lower|escapejs }} {{ usuario.last_name|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()) ||
+                                     '{{ usuario.rut|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()) ||
+                                     '{{ usuario.email|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()))) ||
+                            (rol && rol !== '{{ usuario.rol|escapejs }}')
+                        "
+                        class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]"
+                    >
+                        <td class="px-4 py-3.5">
+                            <p class="font-semibold text-navy">
                                 {% if usuario.first_name or usuario.last_name %}
                                     {{ usuario.first_name }} {{ usuario.last_name }}
                                 {% else %}
-                                    <span class="text-slate-400">Sin nombre</span>
+                                    Sin nombre
                                 {% endif %}
-                            </td>
-                            <td class="px-4 py-3">{{ usuario.rut }}</td>
-                            <td class="px-4 py-3">{{ usuario.email|default:"-" }}</td>
-                            <td class="px-4 py-3">
-                                {% if usuario.rol == "admin_naviera" %}
-                                    <span class="inline-flex rounded-full border border-blue-500/40 bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-200">Admin Naviera</span>
-                                {% elif usuario.rol == "capitan" %}
-                                    <span class="inline-flex rounded-full border border-yellow-500/40 bg-yellow-500/20 px-3 py-1 text-xs font-semibold text-yellow-200">Capitán</span>
-                                {% elif usuario.rol == "tierra" %}
-                                    <span class="inline-flex rounded-full border border-slate-500/40 bg-slate-500/20 px-3 py-1 text-xs font-semibold text-slate-200">Tierra</span>
-                                {% elif usuario.rol == "mar" %}
-                                    <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-200">Mar</span>
-                                {% else %}
-                                    <span class="inline-flex rounded-full border border-indigo-500/40 bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-200">{{ usuario.rol }}</span>
+                            </p>
+                            <p class="mt-0.5 text-[12px] text-ink-muted">{{ usuario.email|default:"Sin email" }}</p>
+                        </td>
+                        <td class="px-4 py-3.5 font-mono text-[12px] text-ink-secondary">{{ usuario.rut }}</td>
+                        <td class="px-4 py-3.5">
+                            {% if usuario.rol == "admin_naviera" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">Admin Naviera</span>
+                            {% elif usuario.rol == "capitan" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Capitán</span>
+                            {% elif usuario.rol == "tierra" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">Tierra</span>
+                            {% elif usuario.rol == "mar" %}
+                                <span class="inline-flex items-center rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">Mar</span>
+                            {% else %}
+                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">{{ usuario.rol }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3.5">
+                            <span class="inline-flex items-center rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">Activo</span>
+                        </td>
+                        <td class="px-4 py-3.5">
+                            <div class="flex flex-wrap justify-end gap-1.5">
+                                {% if usuario.rol == "mar" or usuario.rol == "capitan" %}
+                                <a
+                                    href="{% url 'inventory:cambiar_pin' slug=slug id=usuario.id %}"
+                                    class="btn-ghost-warn inline-flex items-center rounded-md border border-warn-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-warn transition"
+                                >
+                                    Cambiar PIN
+                                </a>
                                 {% endif %}
-                            </td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                    Activo
-                                </span>
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="flex flex-wrap gap-2">
-                                    {% if usuario.rol == "mar" or usuario.rol == "capitan" %}
-                                        <a
-                                            href="{% url 'inventory:cambiar_pin' slug=slug id=usuario.id %}"
-                                            class="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-500"
-                                        >
-                                            Cambiar PIN
-                                        </a>
-                                    {% endif %}
-                                    <form method="post" action="{% url 'inventory:desactivar_usuario' slug=slug id=usuario.id %}">
-                                        {% csrf_token %}
-                                        <button
-                                            type="submit"
-                                            onclick="return confirm('¿Confirmar desactivación de usuario?')"
-                                            class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
-                                        >
-                                            Desactivar
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-400">
-                                No hay usuarios activos registrados para esta naviera.
-                            </td>
-                        </tr>
+                                <button
+                                    type="button"
+                                    @click="abrirModal(('{{ usuario.first_name|default_if_none:""|escapejs }} {{ usuario.last_name|default_if_none:""|escapejs }}').trim() || '{{ usuario.rut|escapejs }}', {{ usuario.id }})"
+                                    class="btn-ghost-fail inline-flex items-center rounded-md border border-fail-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-fail transition"
+                                >
+                                    Desactivar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        <div
+            x-show="visibles === 0"
+            x-cloak
+            class="px-5 py-8 text-center text-sm text-ink-muted"
+        >
+            No se encontraron usuarios con los filtros aplicados.
+        </div>
     </div>
-</body>
-</html>
+
+    <div
+        x-show="modalAbierto"
+        x-cloak
+        x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
+        @click.self="cerrarModal()"
+    >
+        <div class="w-full max-w-[400px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+            <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
+                <div>
+                    <p class="text-[15px] font-bold text-navy">Desactivar usuario</p>
+                    <p class="mt-0.5 text-[12px] text-ink-muted" x-text="usuarioNombre"></p>
+                </div>
+                <button @click="cerrarModal()" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
+            </div>
+            <div class="px-5 py-4">
+                <p class="text-[13px] leading-relaxed text-ink-muted">El usuario perderá acceso al sistema de forma inmediata.</p>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3">
+                <button
+                    @click="cerrarModal()"
+                    class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                >
+                    Cancelar
+                </button>
+                <form method="POST" :action="desactivarAction()">
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="rounded-md border border-fail-border bg-fail-bg px-3 py-1.5 text-[13px] font-semibold text-fail transition hover:bg-red-100"
+                    >
+                        Desactivar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
