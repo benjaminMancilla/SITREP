@@ -15,102 +15,122 @@
     <aside class="w-full bg-navy text-white lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col lg:overflow-y-auto">
         <div class="flex h-full flex-col p-5">
             <div class="border-b border-white/10 pb-5">
-                <a href="{% url 'inventory:tenant_home' slug=slug %}" class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 items-center justify-center rounded-xl border border-white/15 bg-white/5">
-                        <svg viewBox="0 0 48 48" class="h-8 w-8" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <rect x="14" y="14" width="20" height="20" rx="2" transform="rotate(45 24 24)" stroke="currentColor" stroke-width="2"/>
-                            <path d="M24 6V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M24 32V42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M6 24H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M32 24H42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </span>
-                    <span>
-                        <span class="block text-xl font-bold tracking-[0.16em]">SITREP</span>
-                        <span class="block text-2xs font-medium uppercase tracking-[0.28em] text-white/55">Tierra</span>
-                    </span>
+                <a href="{% url 'inventory:tenant_home' slug=slug %}" class="flex items-center gap-2.5">
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="12" y="2" width="10" height="10" rx="1" transform="rotate(45 12 2)" fill="white" fill-opacity="0.12"/>
+                        <rect x="12" y="2" width="10" height="10" rx="1" transform="rotate(45 12 2)" stroke="white" stroke-width="1.5"/>
+                        <circle cx="12" cy="12" r="2" fill="white"/>
+                        <line x1="12" y1="2" x2="12" y2="5.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="12" y1="18.5" x2="12" y2="22" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="2" y1="12" x2="5.5" y2="12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="18.5" y1="12" x2="22" y2="12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <span class="text-sm font-bold tracking-[0.14em] text-white">SITREP</span>
                 </a>
-                <p class="mt-4 text-sm text-white/60">
-                    {% if naviera %}
-                        {{ naviera.nombre }}
-                    {% elif request.naviera %}
-                        {{ request.naviera.nombre }}
-                    {% else %}
-                        Tenant no resuelto
-                    {% endif %}
-                </p>
+                <div class="mt-4 rounded-[5px] bg-white/[0.07] px-2.5 py-2">
+                    <p class="text-[10px] uppercase tracking-[0.08em] text-white/40">Naviera</p>
+                    <p class="mt-0.5 text-xs font-semibold text-white/90">
+                        {% if naviera %}
+                            {{ naviera.nombre }}
+                        {% elif request.naviera %}
+                            {{ request.naviera.nombre }}
+                        {% else %}
+                            Tenant no resuelto
+                        {% endif %}
+                    </p>
+                </div>
             </div>
 
-            <nav class="mt-5 space-y-1.5">
+            <nav class="mt-3 space-y-0.5 px-0">
                 <a
                     href="{% url 'inventory:tenant_home' slug=slug %}"
-                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
-                    :class="navActive === 'dashboard' ? 'border-white bg-navy-light text-white' : ''"
+                    class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+                    :class="navActive === 'dashboard'
+                        ? 'border-[#3b82f6] bg-[rgba(29,78,216,0.22)] text-[#93c5fd] font-semibold'
+                        : 'border-transparent'"
                 >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="1" y="1" width="6" height="6" rx="1" fill="currentColor"/>
+                        <rect x="9" y="1" width="6" height="6" rx="1" fill="currentColor" opacity=".5"/>
+                        <rect x="1" y="9" width="6" height="6" rx="1" fill="currentColor" opacity=".5"/>
+                        <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" opacity=".5"/>
                     </svg>
                     <span>Dashboard</span>
                 </a>
 
                 <a
                     href="{% url 'inventory:listar_naves' slug=slug %}"
-                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
-                    :class="navActive === 'naves' ? 'border-white bg-navy-light text-white' : ''"
+                    class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+                    :class="navActive === 'naves'
+                        ? 'border-[#3b82f6] bg-[rgba(29,78,216,0.22)] text-[#93c5fd] font-semibold'
+                        : 'border-transparent'"
                 >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M3 15.5h18l-2.5 3.5H5.5L3 15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                        <path d="M6 15.5 9 8h6l3 7.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M2 10L8 4L14 10L12 14H4Z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+                        <line x1="8" y1="4" x2="8" y2="14" stroke="currentColor" stroke-width="1.2"/>
                     </svg>
-                    <span>Gestión de Naves</span>
+                    <span>Naves</span>
                 </a>
 
                 <a
                     href="{% url 'inventory:listar_usuarios' slug=slug %}"
-                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
-                    :class="navActive === 'usuarios' ? 'border-white bg-navy-light text-white' : ''"
+                    class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+                    :class="navActive === 'usuarios'
+                        ? 'border-[#3b82f6] bg-[rgba(29,78,216,0.22)] text-[#93c5fd] font-semibold'
+                        : 'border-transparent'"
                 >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="8" cy="5.5" r="3" stroke="currentColor" stroke-width="1.4"/>
+                        <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
                     </svg>
                     <span>Usuarios</span>
                 </a>
 
                 <a
                     href="{% url 'inventory:listar_dispositivos' slug=slug %}"
-                    class="flex items-center gap-3 border-l-2 border-transparent px-4 py-3 text-sm font-medium text-white/75 transition-colors hover:bg-navy-light hover:text-white"
-                    :class="navActive === 'hardware' ? 'border-white bg-navy-light text-white' : ''"
+                    class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+                    :class="navActive === 'hardware'
+                        ? 'border-[#3b82f6] bg-[rgba(29,78,216,0.22)] text-[#93c5fd] font-semibold'
+                        : 'border-transparent'"
                 >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <rect x="7" y="3.5" width="10" height="17" rx="2" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M10 6.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <path d="M11 17.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="2" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                        <line x1="5" y1="13" x2="11" y2="13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        <line x1="8" y1="11" x2="8" y2="13" stroke="currentColor" stroke-width="1.3"/>
                     </svg>
-                    <span>Hardware Kiosco</span>
+                    <span>Dispositivos</span>
                 </a>
             </nav>
 
-            <div class="mt-auto border-t border-white/10 pt-5">
-                <div class="mb-4">
-                    <p class="text-sm font-medium text-white">
-                        {% if request.user.first_name or request.user.last_name %}
-                            {{ request.user.first_name }} {{ request.user.last_name }}
+            <div class="mt-auto border-t border-white/10 pt-4">
+                <div class="mb-3 flex items-center gap-2.5">
+                    <div class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full border border-white/[0.18] bg-navy-light text-[11px] font-bold text-blue-300">
+                        {% if request.user.first_name %}
+                            {{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}
                         {% else %}
-                            {{ request.user.rut|default:request.user.username }}
+                            {{ request.user.rut|slice:":2"|upper }}
                         {% endif %}
-                    </p>
-                    <p class="mt-1 text-xs uppercase tracking-[0.18em] text-white/55">
-                        {{ request.user.get_rol_display|default:request.user.rol }}
-                    </p>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="truncate text-xs font-semibold text-white">
+                            {% if request.user.first_name or request.user.last_name %}
+                                {{ request.user.first_name }} {{ request.user.last_name }}
+                            {% else %}
+                                {{ request.user.rut }}
+                            {% endif %}
+                        </p>
+                        <p class="text-[10px] uppercase tracking-[0.05em] text-white/[0.38]">
+                            {{ request.user.get_rol_display|default:request.user.rol }}
+                        </p>
+                    </div>
                 </div>
-
                 <form method="post" action="{% url 'inventory:logout_tierra' slug=slug %}">
                     {% csrf_token %}
-                    <button
-                        type="submit"
-                        class="flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-                    >
+                    <button type="submit" class="flex w-full items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-white/[0.45] transition hover:bg-white/[0.08] hover:text-white/[0.65]">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M5 2H2.5A1.5 1.5 0 001 3.5v7A1.5 1.5 0 002.5 12H5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            <path d="M9 10l3-3-3-3M12 7H5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                         Cerrar sesión
                     </button>
                 </form>
@@ -119,8 +139,36 @@
     </aside>
 
     <main class="flex-1 overflow-y-auto bg-surface p-6 lg:p-8">
+        <div class="sticky top-0 z-10 -mx-6 -mt-6 mb-6 flex h-[52px] items-center justify-between border-b border-surface-border bg-white px-6 lg:-mx-8 lg:px-8">
+            <div class="flex items-center gap-2 text-xs text-ink-muted">
+                <span class="font-semibold text-navy">
+                    {% if naviera %}{{ naviera.nombre }}{% elif request.naviera %}{{ request.naviera.nombre }}{% endif %}
+                </span>
+                <span class="text-surface-border">/</span>
+                <span>{% block topbar_title %}Dashboard{% endblock %}</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-ink-muted" id="topbar-date"></span>
+                <span class="rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">
+                    {{ request.user.get_rol_display|default:request.user.rol }}
+                </span>
+            </div>
+        </div>
+
         {% block page_header %}{% endblock %}
         {% block page_content %}{% block content %}{% endblock %}{% endblock %}
     </main>
 </div>
+
+<script>
+    (function() {
+        const el = document.getElementById('topbar-date');
+        if (!el) return;
+        const now = new Date();
+        el.textContent = now.toLocaleDateString('es-CL', {
+            weekday: 'long', day: 'numeric', month: 'short', year: 'numeric'
+        }).replace(/^\w/, c => c.toUpperCase()) + ' — ' +
+        now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    })();
+</script>
 {% endblock %}

@@ -213,6 +213,11 @@ def dashboard_tierra(request, slug):
         periodo__nave__naviera=request.naviera,
         fecha_revision__date=timezone.localdate(),
     ).count()
+    fallos_activos_total = FichaRegistro.objects.filter(
+        periodo__nave__naviera=request.naviera,
+        periodo__estado__in=TenantQueryService.ESTADOS_ABIERTOS,
+        estado_operativo=False,
+    ).count()
     naves_capitan = Nave.objects.none()
     if request.user.rol == "capitan":
         naves_capitan = (
@@ -280,9 +285,13 @@ def dashboard_tierra(request, slug):
             "total_usuarios": total_usuarios,
             "total_dispositivos": total_dispositivos,
             "fichas_hoy_total": fichas_hoy_total,
+            "fallos_activos_total": fallos_activos_total,
             "naves_capitan": naves_capitan,
             "slug": slug,
             "naviera": request.naviera,
+            "usuarios_url": f"/{slug}/usuarios/",
+            "naves_url": f"/{slug}/naves/",
+            "dispositivos_url": f"/{slug}/kiosco/hardware/",
         },
     )
 
