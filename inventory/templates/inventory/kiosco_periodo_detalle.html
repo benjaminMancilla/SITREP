@@ -148,32 +148,38 @@
                             {% for checklist in item.checklist_items %}
                                 <div
                                     x-data="{
-                                        cumple: {{ checklist.checked|yesno:'true,false' }},
+                                        cumple: {% if checklist.checked == True %}true{% elif checklist.checked == False %}false{% else %}undefined{% endif %},
                                         obs: '{{ checklist.observacion|default:''|escapejs }}'
                                     }"
-                                    class="rounded-xl border border-surface-border p-4"
+                                    :class="{
+                                        'border-ok-border bg-ok-bg': cumple === true,
+                                        'border-fail-border bg-fail-bg': cumple === false,
+                                        'border-surface-border bg-[#fafcff]': cumple === undefined
+                                    }"
+                                    class="overflow-hidden rounded-lg border transition-colors"
                                 >
-                                    <label class="flex cursor-pointer items-center gap-3">
+                                    <label class="flex cursor-pointer items-center gap-3.5 px-4 py-3.5">
                                         <input
                                             type="checkbox"
                                             name="req_{{ checklist.index }}"
                                             x-model="cumple"
                                             @change="if (cumple) obs = ''; $dispatch('checklist-changed')"
                                             data-checklist-checkbox="true"
-                                            class="h-5 w-5 rounded border-surface-border text-brand"
+                                            class="h-[22px] w-[22px] rounded-[5px] border-2 border-surface-border text-brand"
                                             {% if checklist.checked %}checked{% endif %}
                                         >
-                                        <span class="text-sm font-medium text-ink">{{ checklist.nombre }}</span>
+                                        <span class="flex-1 text-[15px] font-medium text-ink">{{ checklist.nombre }}</span>
+                                        <span x-show="cumple === false" x-cloak class="text-[11px] font-semibold text-fail">Falló</span>
                                     </label>
-                                    <div x-show="!cumple" x-transition x-cloak class="mt-3">
-                                        <input
-                                            type="text"
-                                            name="obs_{{ checklist.index }}"
+                                    <div x-show="cumple === false" x-transition x-cloak class="px-4 pb-3">
+                                        <textarea
                                             x-model="obs"
+                                            rows="2"
                                             placeholder="Observación obligatoria si falla…"
-                                            class="w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:ring-2"
-                                            :class="!cumple && !obs.trim() ? 'border-fail-border bg-fail-bg text-fail placeholder:text-fail/60 focus:border-fail focus:ring-fail' : 'border-surface-border focus:border-brand focus:ring-brand'"
-                                        >
+                                            class="w-full resize-none rounded-md border border-fail-border bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-fail focus:ring-2 focus:ring-fail/10"
+                                            :class="!obs.trim() ? 'ring-1 ring-fail/30' : ''"
+                                        ></textarea>
+                                        <p x-show="!obs.trim()" x-cloak class="mt-1 text-[11px] text-fail">Obligatoria al fallar</p>
                                     </div>
                                     <input type="hidden" name="obs_{{ checklist.index }}" :value="obs">
                                 </div>
@@ -192,33 +198,57 @@
                                     return Array.from(
                                         document.querySelectorAll('[data-recurso-id=\'{{ item.recurso.id }}\'] input[data-checklist-checkbox=\'true\']')
                                     ).some(cb => !cb.checked);
+                                },
+                                get todosCumplidos() {
+                                    this.tick;
+                                    const cbs = Array.from(
+                                        document.querySelectorAll('[data-recurso-id=\'{{ item.recurso.id }}\'] input[data-checklist-checkbox=\'true\']')
+                                    );
+                                    return cbs.length > 0 && cbs.every(cb => cb.checked);
                                 }
                             }"
                             @checklist-changed="tick += 1; if (hayFallo) $refs.estadoOperativo.checked = false"
-                            class="rounded-xl border border-surface-border p-4"
+                            :class="{
+                                'border-warn-border bg-warn-bg opacity-80': hayFallo,
+                                'border-ok-border bg-ok-bg': todosCumplidos && !hayFallo,
+                                'border-surface-border bg-[#f8fafc]': !hayFallo && !todosCumplidos,
+                            }"
+                            class="rounded-lg border-[1.5px] p-4 transition-all"
                         >
                             <label class="flex cursor-pointer items-center gap-3">
                                 <input
                                     type="checkbox"
                                     name="estado_operativo"
                                     x-ref="estadoOperativo"
-                                    :disabled="hayFallo"
+                                    :disabled="hayFallo || (!todosCumplidos && {% if item.checklist_items %}true{% else %}false{% endif %})"
                                     {% if item.estado_operativo %}checked{% endif %}
-                                    class="h-5 w-5 rounded border-surface-border text-brand disabled:cursor-not-allowed disabled:opacity-60"
+                                    class="h-[22px] w-[22px] rounded-[5px] border-2 border-surface-border checked:border-brand checked:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                <span class="text-sm font-semibold text-ink">Recurso operativo</span>
+                                <span class="text-[15px] font-semibold text-ink">Recurso operativo</span>
                             </label>
-                            <p x-show="hayFallo" x-cloak class="mt-2 text-xs text-fail">
+                            <p x-show="hayFallo" x-cloak class="mt-2 text-[11px] text-warn">
                                 Un requerimiento falló — el recurso no puede marcarse como operativo.
+                            </p>
+                            <p x-show="todosCumplidos && !hayFallo" x-cloak class="mt-2 text-[11px] text-ok">
+                                Todos los requerimientos cumplidos. Puedes marcarlo como operativo.
+                            </p>
+                            <p x-show="!hayFallo && !todosCumplidos && {% if item.checklist_items %}true{% else %}false{% endif %}" x-cloak class="mt-2 text-[11px] text-ink-muted">
+                                Marca todos los requerimientos para habilitar esta opción.
                             </p>
                         </div>
 
-                        <textarea
-                            name="observacion_general"
-                            rows="3"
-                            placeholder="Observación general…"
-                            class="w-full rounded-xl border border-surface-border px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand"
-                        >{{ item.observacion_general }}</textarea>
+                        <div>
+                            <div class="mb-1 flex items-center justify-between">
+                                <label class="text-[13px] font-semibold text-ink">Observación general</label>
+                                <span class="text-[11px] text-ink-muted">Opcional</span>
+                            </div>
+                            <textarea
+                                name="observacion_general"
+                                rows="3"
+                                placeholder="Observación general…"
+                                class="w-full rounded-xl border border-surface-border px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand"
+                            >{{ item.observacion_general }}</textarea>
+                        </div>
 
                         {% if item.tiene_ficha %}
                             <p class="text-xs text-ink-muted">
