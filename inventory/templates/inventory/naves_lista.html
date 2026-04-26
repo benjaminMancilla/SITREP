@@ -37,7 +37,7 @@
         actionTemplate: '{% url "inventory:desactivar_nave" slug=slug nave_id=987654321 %}'.replace('987654321', '__ID__'),
         actualizarConteo() {
             this.$nextTick(() => {
-                this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not([hidden])').length : 0;
+                this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not(.hidden)').length : 0;
             });
         },
         abrirModal(nombre, matricula, id) {
@@ -115,7 +115,9 @@
                 <tbody x-ref="tbody">
                     {% for nave in naves %}
                     <tr
-                        :hidden="q && !('{{ nave.nombre|default_if_none:""|lower|escapejs }}{{ nave.matricula|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()))"
+                        :class="{
+                            'hidden': q && !('{{ nave.nombre|default_if_none:""|lower|escapejs }}{{ nave.matricula|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()))
+                        }"
                         class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]"
                     >
                         <td class="px-4 py-3.5">
