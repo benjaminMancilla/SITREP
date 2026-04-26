@@ -1,35 +1,81 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Aprovisionamiento de Hardware - SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-slate-200 h-screen flex items-center justify-center">
-    <div class="bg-slate-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-slate-700">
-        <h2 class="text-2xl font-bold mb-6 text-emerald-400">Registrar Nuevo Kiosco</h2>
-        
-        <form method="POST" action="">
-            {% csrf_token %}
-            <div class="mb-4">
-                <label class="block text-sm font-medium mb-2">Nombre del Dispositivo</label>
-                <input type="text" name="nombre_dispositivo" required placeholder="Ej: Tablet Puente Mando" 
-                       class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-emerald-500 outline-none">
+{% extends 'layouts/tierra.html' %}
+
+{% block nav_active %}hardware{% endblock %}
+{% block page_title %}SITREP | Registrar Dispositivo{% endblock %}
+{% block topbar_title %}Hardware Kiosco{% endblock %}
+
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="fixed inset-0 z-40 flex items-center justify-center bg-navy/50 px-4 py-8 backdrop-blur-sm">
+    <div class="w-full max-w-[520px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
+            <div>
+                <p class="text-[15px] font-bold text-navy">Registrar dispositivo</p>
+                <p class="mt-0.5 text-[12px] text-ink-muted">
+                    {% if naviera %}
+                        {{ naviera.nombre }}
+                    {% elif request.naviera %}
+                        {{ request.naviera.nombre }}
+                    {% endif %}
+                </p>
             </div>
-            
-            <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Asignar a Nave</label>
-                <select name="nave_id" required class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none">
-                    {% for nave in naves %}
-                        <option value="{{ nave.id }}">{{ nave.nombre }} ({{ nave.matricula }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded transition-colors">
-                Generar Token Criptográfico
-            </button>
-        </form>
+            <a href="{% url 'inventory:listar_dispositivos' slug=request.naviera.slug %}" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</a>
+        </div>
+
+        <div class="max-h-[70vh] overflow-y-auto px-5 py-5">
+            <form
+                method="POST"
+                action="{% url 'inventory:setup_kiosco' slug=request.naviera.slug %}"
+                class="space-y-4"
+            >
+                {% csrf_token %}
+
+                <div>
+                    <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Nombre del dispositivo</label>
+                    <input
+                        name="nombre_dispositivo"
+                        type="text"
+                        required
+                        placeholder="Ej: Tablet Puente Mando"
+                        class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                    >
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Nave</label>
+                    <select
+                        name="nave_id"
+                        required
+                        class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
+                    >
+                        <option value="" selected disabled>Selecciona una nave</option>
+                        {% for nave in naves %}
+                            <option value="{{ nave.id }}">{{ nave.nombre }} ({{ nave.matricula }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+                    <a
+                        href="{% url 'inventory:listar_dispositivos' slug=request.naviera.slug %}"
+                        class="rounded-md border border-surface-border px-4 py-2 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                    >
+                        Cancelar
+                    </a>
+                    <button
+                        type="submit"
+                        class="rounded-md bg-navy px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+                    >
+                        Generar token
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
