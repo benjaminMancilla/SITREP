@@ -138,26 +138,28 @@
         </div>
     </aside>
 
-    <main class="flex-1 overflow-y-auto bg-surface p-6 lg:p-8">
-        <div class="sticky top-0 z-10 -mx-6 -mt-6 mb-6 flex h-[52px] items-center justify-between border-b border-surface-border bg-white px-6 lg:-mx-8 lg:px-8">
-            <div class="flex items-center gap-2 text-xs text-ink-muted">
-                <span class="font-semibold text-navy">
-                    {% if naviera %}{{ naviera.nombre }}{% elif request.naviera %}{{ request.naviera.nombre }}{% endif %}
-                </span>
-                <span class="text-surface-border">/</span>
-                <span>{% block topbar_title %}Dashboard{% endblock %}</span>
+    <main class="flex-1 bg-surface">
+            <div class="sticky top-0 z-30 flex h-[52px] w-full items-center justify-between border-b border-surface-border bg-white px-6 lg:px-8 shadow-sm">
+                <div class="flex items-center gap-2 text-xs text-ink-muted">
+                    <span class="font-semibold text-navy">
+                        {% if naviera %}{{ naviera.nombre }}{% elif request.naviera %}{{ request.naviera.nombre }}{% endif %}
+                    </span>
+                    <span class="text-surface-border">/</span>
+                    <span>{% block topbar_title %}Dashboard{% endblock %}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-ink-muted" id="topbar-date"></span>
+                    <span class="rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">
+                        {{ request.user.get_rol_display|default:request.user.rol }}
+                    </span>
+                </div>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="text-xs text-ink-muted" id="topbar-date"></span>
-                <span class="rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">
-                    {{ request.user.get_rol_display|default:request.user.rol }}
-                </span>
-            </div>
-        </div>
 
-        {% block page_header %}{% endblock %}
-        {% block page_content %}{% block content %}{% endblock %}{% endblock %}
-    </main>
+            <div class="p-6 lg:p-8">
+                {% block page_header %}{% endblock %}
+                {% block page_content %}{% block content %}{% endblock %}{% endblock %}
+            </div>
+        </main>
 </div>
 
 <script>
