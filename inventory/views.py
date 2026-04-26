@@ -344,17 +344,20 @@ def dashboard_kiosco(request, slug):
     periodos_abiertos = list(
         TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id")
     )
-    historial = TenantQueryService.get_periodos_historial_de_nave(
-        nave,
-        fecha_desde=filtros_historial["fecha_desde"],
-        fecha_hasta=filtros_historial["fecha_hasta"],
-        estado=filtros_historial["estado_filtro"] or None,
-        periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
+    historial = list(
+        TenantQueryService.get_periodos_historial_de_nave(
+            nave,
+            fecha_desde=filtros_historial["fecha_desde"],
+            fecha_hasta=filtros_historial["fecha_hasta"],
+            estado=filtros_historial["estado_filtro"] or None,
+            periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
+        )
     )
     periodicidades = Periodicidad.objects.all().order_by("nombre")
     fichas_completadas_por_periodo = _contar_fichas_completas_por_periodo(
         [periodo.id for periodo in periodos_abiertos]
     )
+    fichas_completadas_count = _contar_fichas_completas_por_periodo([periodo.id for periodo in historial])
 
     periodos_resumen = []
     # TODO: optimizar con annotate() en Fase 4
@@ -373,6 +376,8 @@ def dashboard_kiosco(request, slug):
                 "completado": fichas_completadas >= total_recursos,
             }
         )
+    for periodo in historial:
+        periodo.fichas_completadas_count = fichas_completadas_count.get(periodo.id, 0)
 
     return render(
         request,
@@ -386,6 +391,7 @@ def dashboard_kiosco(request, slug):
             "fecha_hasta_str": filtros_historial["fecha_hasta_str"],
             "estado_filtro": filtros_historial["estado_filtro"],
             "periodicidad_id_filtro": filtros_historial["periodicidad_id_filtro"],
+            "fichas_completadas_count": fichas_completadas_count,
             "slug": slug,
             "usuario": request.user,
         },
@@ -439,6 +445,9 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         error_recurso_id = None
 
     recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
+    fichas_completadas_count = _contar_fichas_completas(
+        [item["ficha"] for item in recursos_lista if item.get("ficha")]
+    )
 
     return render(
         request,
@@ -447,6 +456,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
             "nave": nave,
             "periodo": periodo,
             "recursos_lista": recursos_lista,
+            "fichas_completadas_count": fichas_completadas_count,
             "error_recurso_id": error_recurso_id,
             "error_msg": error_msg,
             "slug": slug,
