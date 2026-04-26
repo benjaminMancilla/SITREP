@@ -45,7 +45,13 @@
                                     {% if usuario.first_name or usuario.last_name %}
                                         {{ usuario.first_name }} {{ usuario.last_name }}
                                     {% else %}
-                                        {{ usuario.rut|default:usuario.username }}
+                                        {% if usuario.first_name or usuario.last_name %}
+                                            {{ usuario.first_name }} {{ usuario.last_name }}
+                                        {% elif request.user.first_name or request.user.last_name %}
+                                            {{ request.user.first_name }} {{ request.user.last_name }}
+                                        {% else %}
+                                            {{ usuario.rut|default:request.user.rut|default:request.user.username }}
+                                        {% endif %}
                                     {% endif %}
                                 {% else %}
                                     {% if request.user.first_name or request.user.last_name %}
