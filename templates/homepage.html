@@ -1,74 +1,83 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SITREP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-900 text-slate-200">
-    <div class="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-8 sm:px-6 lg:px-8">
-        <header class="border-b border-slate-800 pb-8">
-            <p class="text-sm uppercase tracking-[0.35em] text-emerald-400">SITREP</p>
-            <h1 class="mt-4 text-4xl font-bold text-white sm:text-5xl">
-                Sistema de Trazabilidad y Registro de Equipos de Puerto
-            </h1>
-            <p class="mt-4 max-w-3xl text-lg text-slate-400">
-                Plataforma de gestión de seguridad marítima para navieras
-            </p>
-        </header>
+{% extends 'base.html' %}
 
-        <main class="flex-1 py-10">
-            <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div class="rounded-2xl border border-slate-800 bg-slate-800/70 p-8 shadow-2xl shadow-slate-950/30">
-                    <p class="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-400">Acceder</p>
+{% block title %}SITREP{% endblock %}
+
+{% block body_class %}min-h-screen bg-[#edf3f8] font-sans text-ink antialiased{% endblock %}
+
+{% block layout %}
+    <div class="relative overflow-hidden">
+        <div class="absolute inset-x-0 top-0 h-[340px] bg-[radial-gradient(circle_at_top_left,_rgba(29,78,216,0.14),_transparent_40%),radial-gradient(circle_at_top_right,_rgba(15,45,74,0.14),_transparent_38%)]"></div>
+
+        <main class="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+            <header class="mb-8 flex flex-col gap-4 border-b border-white/70 pb-6 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</p>
+                    <h1 class="mt-3 max-w-3xl text-4xl font-bold leading-tight text-navy sm:text-5xl">
+                        Control operacional y trazabilidad para flotas marítimas.
+                    </h1>
+                </div>
+                <div class="rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm text-ink-secondary shadow-sm backdrop-blur">
+                    {{ navieras|length }} naviera{{ navieras|length|pluralize }} disponible{{ navieras|length|pluralize }}
+                </div>
+            </header>
+
+            <section class="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+                <div class="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-[0_20px_70px_rgba(15,45,74,0.08)] backdrop-blur">
+                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand">Acceso centralizado</p>
+                    <p class="mt-5 max-w-2xl text-lg leading-8 text-ink-secondary">
+                        SITREP reúne navegación, tripulación, hardware kiosco y trazabilidad de revisiones en un punto de acceso por naviera.
+                    </p>
+
+                    <div class="mt-8 grid gap-4 sm:grid-cols-3">
+                        <div class="rounded-2xl border border-surface-border bg-[#f8fbfd] p-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Operación</p>
+                            <p class="mt-2 text-lg font-semibold text-navy">Períodos y recursos</p>
+                        </div>
+                        <div class="rounded-2xl border border-surface-border bg-[#f8fbfd] p-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Tierra</p>
+                            <p class="mt-2 text-lg font-semibold text-navy">Usuarios y naves</p>
+                        </div>
+                        <div class="rounded-2xl border border-surface-border bg-[#f8fbfd] p-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Kiosco</p>
+                            <p class="mt-2 text-lg font-semibold text-navy">Registro en terreno</p>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="rounded-[28px] border border-navy/10 bg-navy p-8 text-white shadow-[0_20px_70px_rgba(15,45,74,0.18)]">
+                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-200">Ingresar</p>
+                    <p class="mt-4 text-base leading-7 text-white/72">
+                        Selecciona una naviera para entrar al tenant correspondiente.
+                    </p>
 
                     {% if navieras %}
-                        <div class="mt-6 space-y-4">
+                        <div class="mt-6 space-y-3">
                             {% for naviera in navieras %}
-                                <div class="flex flex-col gap-4 rounded-xl border border-slate-700 bg-slate-900/70 p-5 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <h2 class="text-xl font-semibold text-white">{{ naviera.nombre }}</h2>
-                                        <p class="mt-1 text-sm text-slate-400">Tenant disponible para ingreso al sistema.</p>
+                                <a
+                                    href="{% url 'inventory:tenant_home' slug=naviera.slug %}"
+                                    class="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 transition hover:border-blue-200/50 hover:bg-white/[0.1]"
+                                >
+                                    <div class="min-w-0">
+                                        <p class="truncate text-base font-semibold text-white">{{ naviera.nombre }}</p>
+                                        <p class="mt-1 font-mono text-[12px] text-blue-200/80">{{ naviera.slug }}</p>
                                     </div>
-                                    <a
-                                        href="/{{ naviera.slug }}/"
-                                        class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-emerald-500"
-                                    >
+                                    <span class="inline-flex shrink-0 items-center rounded-full border border-blue-200/35 bg-blue-300/10 px-3 py-1 text-xs font-semibold text-blue-100">
                                         Ingresar
-                                    </a>
-                                </div>
+                                    </span>
+                                </a>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div class="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-100">
-                            No hay navieras disponibles. Contacte al administrador.
+                        <div class="mt-6 rounded-2xl border border-blue-200/20 bg-white/[0.06] px-5 py-4 text-sm text-blue-100/90">
+                            No hay navieras disponibles en este momento.
                         </div>
                     {% endif %}
-                </div>
-
-                <aside class="rounded-2xl border border-slate-800 bg-slate-800/40 p-8">
-                    <p class="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-400">Plataforma</p>
-                    <p class="mt-4 text-base leading-7 text-slate-300">
-                        Punto de entrada centralizado para las navieras registradas en SITREP.
-                    </p>
-                    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                        <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-                            <p class="text-sm text-slate-400">Diseño</p>
-                            <p class="mt-2 text-lg font-semibold text-white">Modo oscuro consistente</p>
-                        </div>
-                        <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-                            <p class="text-sm text-slate-400">Acceso</p>
-                            <p class="mt-2 text-lg font-semibold text-white">Ingreso por tenant</p>
-                        </div>
-                    </div>
                 </aside>
             </section>
-        </main>
 
-        <footer class="border-t border-slate-800 pt-6 text-sm text-slate-500">
-            SITREP © 2026
-        </footer>
+            <footer class="mt-8 border-t border-white/70 pt-5 text-sm text-ink-muted">
+                Plataforma pública de entrada para tenants SITREP.
+            </footer>
+        </main>
     </div>
-</body>
-</html>
+{% endblock %}
