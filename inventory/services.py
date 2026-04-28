@@ -165,7 +165,12 @@ class TenantQueryService:
         """
         Retorna queryset de MatrizNaveRecurso visibles de la nave
         cuya periodicidad coincide con la del periodo dado.
-        Incluye select_related('recurso', 'recurso__proposito', 'recurso__periodicidad').
+        Incluye select_related(
+            'recurso',
+            'recurso__area',
+            'recurso__proposito',
+            'recurso__periodicidad',
+        ).
         """
         return MatrizNaveRecurso.objects.filter(
             nave=nave,
@@ -173,6 +178,7 @@ class TenantQueryService:
             recurso__periodicidad_id=periodo.periodicidad_id,
         ).select_related(
             "recurso",
+            "recurso__area",
             "recurso__proposito",
             "recurso__periodicidad",
         )
@@ -593,6 +599,34 @@ class MotorFichas:
             return True
 
         return all(bool(payload_checklist.get(req, {}).get("cumple")) for req in requerimientos)
+
+    @classmethod
+    def derivar_estado_operativo_desde_checklist(cls, recurso, payload_checklist):
+        """
+        Deriva el estado operativo desde el checklist:
+        - True si no hay requerimientos o si todos están cumplidos
+        - False si el checklist está completo y al menos uno falló
+        - None si aún faltan requerimientos por registrar
+        """
+        payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
+        requerimientos = recurso.requerimientos or []
+        if not requerimientos:
+            return True
+
+        checklist_completo, _faltantes = cls.validar_payload_checklist_completo(
+            recurso,
+            payload_checklist,
+        )
+        if not checklist_completo:
+            return None
+
+        if any(payload_checklist.get(req, {}).get("cumple") is False for req in requerimientos):
+            return False
+
+        if all(payload_checklist.get(req, {}).get("cumple") is True for req in requerimientos):
+            return True
+
+        return None
 
     @classmethod
     def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist):

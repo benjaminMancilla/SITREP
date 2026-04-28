@@ -195,12 +195,19 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None):
         )
         checklist_items = []
         for index, requerimiento in enumerate(matriz.recurso.requerimientos or []):
+            payload_requerimiento = payload_actual.get(requerimiento, {})
+            checked = None
+            observacion = ""
+            if isinstance(payload_requerimiento, dict) and "cumple" in payload_requerimiento:
+                checked = payload_requerimiento.get("cumple")
+                observacion = payload_requerimiento.get("observacion", "")
+
             checklist_items.append(
                 {
                     "index": index,
                     "nombre": requerimiento,
-                    "checked": payload_actual.get(requerimiento, {}).get("cumple", False),
-                    "observacion": payload_actual.get(requerimiento, {}).get("observacion", ""),
+                    "checked": checked,
+                    "observacion": observacion,
                 }
             )
 
@@ -220,6 +227,65 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None):
         recursos_lista.append(item)
 
     return recursos_lista
+
+
+def _agrupar_recursos_por_area(recursos_lista):
+    """
+    Agrupa recursos_lista por área. Los recursos sin área van al final
+    en un grupo especial con area=None.
+    Retorna lista de dicts:
+    [
+        {
+            "area": <Area instance o None>,
+            "nombre_display": "Salvamento" o "Sin área",
+            "recursos": [...items de recursos_lista...],
+            "total": int,
+            "con_ficha": int,
+            "tiene_fallo": bool,
+        },
+        ...
+    ]
+    """
+    grupos_por_area = {}
+
+    for item in recursos_lista:
+        area = item["recurso"].area
+        area_id = area.id if area is not None else None
+
+        if area_id not in grupos_por_area:
+            nombre_display = "Sin área"
+            if area is not None:
+                nombre_display = (area.nombre_tecnico or area.nombre or "").strip() or area.nombre
+
+            grupos_por_area[area_id] = {
+                "area": area,
+                "nombre_display": nombre_display,
+                "recursos": [],
+                "total": 0,
+                "con_ficha": 0,
+                "tiene_fallo": False,
+            }
+
+        grupo = grupos_por_area[area_id]
+        grupo["recursos"].append(item)
+        grupo["total"] += 1
+        if item["tiene_ficha"]:
+            grupo["con_ficha"] += 1
+        if item["estado_operativo"] is False:
+            grupo["tiene_fallo"] = True
+
+    grupos_con_area = [
+        grupo
+        for grupo in grupos_por_area.values()
+        if grupo["area"] is not None
+    ]
+    grupos_con_area.sort(key=lambda grupo: grupo["nombre_display"].casefold())
+
+    grupo_sin_area = grupos_por_area.get(None)
+    if grupo_sin_area is not None:
+        grupos_con_area.append(grupo_sin_area)
+
+    return grupos_con_area
 
 
 def _cargar_payload_json(request):
@@ -550,6 +616,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         error_recurso_id = None
 
     recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
+    areas_grupos = _agrupar_recursos_por_area(recursos_lista)
     fichas_completadas_count = sum(1 for item in recursos_lista if item["tiene_ficha"])
 
     return render(
@@ -559,6 +626,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
             "nave": nave,
             "periodo": periodo,
             "recursos_lista": recursos_lista,
+            "areas_grupos": areas_grupos,
             "fichas_completadas_count": fichas_completadas_count,
             "error_recurso_id": error_recurso_id,
             "error_msg": error_msg,
@@ -1650,12 +1718,19 @@ def api_guardar_fichas_periodo(request, slug, periodo_id):
             if recurso is None:
                 raise ValueError("Recurso no encontrado.")
 
+            estado_operativo = data["estado_operativo"]
+            if estado_operativo is None:
+                estado_operativo = MotorFichas.derivar_estado_operativo_desde_checklist(
+                    recurso,
+                    data["payload_checklist"],
+                )
+
             ficha_existente = fichas_existentes.get(recurso_id)
             if ficha_existente is not None:
                 ficha = MotorFichas.modificar_ficha(
                     ficha=ficha_existente,
                     usuario_modificador=request.user,
-                    estado_operativo=data["estado_operativo"],
+                    estado_operativo=estado_operativo,
                     observacion_general=data["observacion_general"],
                     payload_checklist=data["payload_checklist"],
                 )
@@ -1664,7 +1739,7 @@ def api_guardar_fichas_periodo(request, slug, periodo_id):
                     periodo=periodo,
                     recurso=recurso,
                     usuario=request.user,
-                    estado_operativo=data["estado_operativo"],
+                    estado_operativo=estado_operativo,
                     observacion_general=data["observacion_general"],
                     payload_checklist=data["payload_checklist"],
                 )

@@ -9,7 +9,11 @@
 {% endblock %}
 
 {% block layout %}
-<div class="min-h-screen bg-surface">
+<div
+    x-data="periodoFichaDetalle({ saveUrl: '{% url "inventory:api_guardar_fichas_periodo" slug=slug periodo_id=periodo.id %}', csrfToken: '{{ csrf_token }}' })"
+    @recurso-modificado.window="registrarCambio($event.detail.recursoId, $event.detail.payload)"
+    class="min-h-screen bg-surface"
+>
     <header class="sticky top-0 z-30 border-b border-surface-border bg-white px-6" style="min-height:60px">
         <div class="mx-auto flex h-[60px] max-w-3xl items-center gap-4">
             <a
@@ -39,91 +43,32 @@
                 <span class="whitespace-nowrap text-xs font-medium text-ink-muted">
                     <strong class="text-navy">{{ fichas_completadas_count }}</strong>/{{ recursos_lista|length }}
                 </span>
+                <span
+                    x-show="totalCambios > 0"
+                    x-cloak
+                    class="whitespace-nowrap rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-[11px] font-semibold text-warn"
+                    x-text="totalCambios + ' sin guardar'"
+                ></span>
             </div>
         </div>
     </header>
 
-    <main class="mx-auto max-w-3xl px-4 py-5 pb-16 sm:px-6">
+    <main class="mx-auto max-w-3xl px-4 py-5 pb-28 sm:px-6">
         <div class="space-y-3">
-            <section class="space-y-3">
-                {% for item in recursos_lista %}
-            <article
-                x-data="{
-                    abierto: {{ item.recurso.id }} === {{ error_recurso_id|default:0 }},
-                    guardando: false,
-                    get estadoCard() {
-                        {% if item.tiene_ficha %}
-                            {% if item.estado_operativo == True %}return 'ok';
-                            {% elif item.estado_operativo == False %}return 'fail';
-                            {% else %}return 'proc';{% endif %}
-                        {% else %}return 'pend';{% endif %}
-                    }
-                }"
-                data-recurso-id="{{ item.recurso.id }}"
-                :class="[
-                    {
-                        'border-ok-border': estadoCard === 'ok',
-                        'border-fail-border': estadoCard === 'fail',
-                        'border-warn-border': estadoCard === 'proc',
-                        'border-surface-border': estadoCard === 'pend',
-                    },
-                    abierto ? 'shadow-[0_4px_16px_rgba(0,0,0,0.08)]' : ''
-                ]"
-                class="overflow-hidden rounded-[10px] border-[1.5px] bg-white transition-all"
-            >
-                <button
-                    type="button"
-                    @click="abierto = !abierto"
-                    class="flex w-full items-center gap-4 px-5 py-[18px] text-left transition hover:bg-[#f8fafc]"
-                    :class="abierto ? 'bg-[#fafcff]' : ''"
-                >
-                    <span
-                        class="h-9 w-1 shrink-0 rounded-sm transition-colors"
-                        :class="{
-                            'bg-ok': estadoCard === 'ok',
-                            'bg-fail': estadoCard === 'fail',
-                            'bg-warn': estadoCard === 'proc',
-                            'bg-neutral-border': estadoCard === 'pend',
-                        }"
-                    ></span>
-
-                    <span class="min-w-0 flex-1">
-                        <span class="block text-base font-bold text-navy">{{ item.recurso.nombre }}</span>
-                        <span class="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
-                            {% if item.recurso.proposito %}
-                                <span>{{ item.recurso.proposito.tipo }}</span>
-                                <span class="text-ink-muted">·</span>
-                            {% endif %}
-                            <span>Cantidad: {{ item.matriz.cantidad }}</span>
-                        </span>
-                        {% if item.tiene_ficha and item.ficha.usuario %}
-                            <div class="mt-1 font-mono text-[11px] text-ink-muted">
-                                Registrado por
-                                {% if item.ficha.usuario.first_name %}{{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}{% else %}{{ item.ficha.usuario.rut }}{% endif %}
-                                · {{ item.ficha.fecha_revision|date:"d/m H:i" }}
-                            </div>
-                        {% endif %}
-                    </span>
-
-                    <span class="flex shrink-0 items-center gap-3">
-                        {% if item.tiene_ficha %}
-                            {% if item.estado_operativo == True %}
-                                {% include 'components/badge_estado.html' with estado='operativo' %}
-                            {% elif item.estado_operativo == False %}
-                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
-                                    Con falla
-                                </span>
-                            {% else %}
-                                {% include 'components/badge_estado.html' with estado='en_proceso' %}
-                            {% endif %}
-                        {% else %}
-                            {% include 'components/badge_estado.html' with estado='pendiente' %}
-                        {% endif %}
-
+            {% for grupo in areas_grupos %}
+            <section class="space-y-2">
+                <div x-data="{ abierto: true }" class="space-y-2">
+                    <button
+                        type="button"
+                        @click="abierto = !abierto"
+                        class="flex w-full items-center gap-3 rounded-lg border border-surface-border bg-neutral-bg px-4 py-3 text-left transition hover:bg-[#edf2f7]"
+                    >
+                        <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if grupo.tiene_fallo %}bg-fail{% elif grupo.con_ficha == grupo.total and grupo.total > 0 %}bg-ok{% elif grupo.con_ficha > 0 %}bg-warn{% else %}bg-neutral{% endif %}"></span>
+                        <span class="flex-1 text-[13px] font-bold text-navy">{{ grupo.nombre_display }}</span>
+                        <span class="text-[11px] text-ink-muted">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
                         <svg
                             viewBox="0 0 18 18"
-                            class="h-5 w-5 text-ink-muted transition-transform"
+                            class="h-4 w-4 text-ink-muted transition-transform"
                             :class="abierto ? 'rotate-180' : ''"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
@@ -131,164 +76,389 @@
                         >
                             <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                    </span>
-                </button>
+                    </button>
 
-                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border px-5 py-5 sm:px-6">
-                    {% if error_recurso_id == item.recurso.id %}
-                        <div class="mb-5 rounded-xl border border-fail-border bg-fail-bg px-4 py-3 text-sm text-fail">
-                            {{ error_msg }}
-                        </div>
-                    {% endif %}
-
-                    <form method="POST" action="{{ item.action_url }}" @submit="guardando = true" class="space-y-5">
-                        {% csrf_token %}
-
-                        {% if item.checklist_items %}
-                            {% for checklist in item.checklist_items %}
-                                <div
-                                    x-data="{
-                                        cumple: {% if item.tiene_ficha %}{{ checklist.checked|yesno:'true,false' }}{% else %}null{% endif %},
-                                        obs: '{{ checklist.observacion|default:''|escapejs }}'
-                                    }"
-                                    :class="{
-                                        'border-ok-border bg-ok-bg': cumple === true,
-                                        'border-fail-border bg-fail-bg': cumple === false,
-                                        'border-surface-border bg-[#fafcff]': cumple === null
-                                    }"
-                                    class="overflow-hidden rounded-lg border transition-colors"
-                                >
-                                    <label class="flex cursor-pointer items-center gap-3.5 px-4 py-3.5">
-                                        <input
-                                            type="checkbox"
-                                            name="req_{{ checklist.index }}"
-                                            x-model="cumple"
-                                            @change="if (cumple) obs = ''; $dispatch('checklist-changed')"
-                                            data-checklist-checkbox="true"
-                                            class="h-[22px] w-[22px] rounded-[5px] border-2 border-surface-border text-brand"
-                                            {% if item.tiene_ficha and checklist.checked %}checked{% endif %}
-                                        >
-                                        <span class="flex-1 text-[15px] font-medium text-ink">{{ checklist.nombre }}</span>
-                                        <span x-show="cumple === false" x-cloak class="text-[11px] font-semibold text-fail">Falló</span>
-                                    </label>
-                                    <div x-show="cumple === false" x-transition x-cloak class="px-4 pb-3">
-                                        <textarea
-                                            x-model="obs"
-                                            rows="2"
-                                            placeholder="Observación obligatoria si falla…"
-                                            class="w-full resize-none rounded-md border border-fail-border bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-fail focus:ring-2 focus:ring-fail/10"
-                                            :class="!obs.trim() ? 'ring-1 ring-fail/30' : ''"
-                                        ></textarea>
-                                        <p x-show="!obs.trim()" x-cloak class="mt-1 text-[11px] text-fail">Obligatoria al fallar</p>
-                                    </div>
-                                    <input type="hidden" name="obs_{{ checklist.index }}" :value="obs">
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
-                                Este recurso no tiene requerimientos específicos.
-                            </div>
-                        {% endif %}
-
-                        <div
-                            x-data="{
-                                tick: 0,
-                                get hayFallo() {
-                                    this.tick;
-                                    return Array.from(
-                                        document.querySelectorAll('[data-recurso-id=\'{{ item.recurso.id }}\'] input[data-checklist-checkbox=\'true\']')
-                                    ).some(cb => !cb.checked);
-                                },
-                                get todosCumplidos() {
-                                    this.tick;
-                                    const cbs = Array.from(
-                                        document.querySelectorAll('[data-recurso-id=\'{{ item.recurso.id }}\'] input[data-checklist-checkbox=\'true\']')
-                                    );
-                                    return cbs.length > 0 && cbs.every(cb => cb.checked);
-                                }
-                            }"
-                            @checklist-changed.window="tick += 1; if (hayFallo) $refs.estadoOperativo.checked = false"
-                            :class="{
-                                'border-warn-border bg-warn-bg opacity-80': hayFallo,
-                                'border-ok-border bg-ok-bg': todosCumplidos && !hayFallo,
-                                'border-surface-border bg-[#f8fafc]': !hayFallo && !todosCumplidos,
-                            }"
-                            class="rounded-lg border-[1.5px] p-4 transition-all"
+                    <div x-show="abierto" x-transition x-cloak class="space-y-2 pl-2">
+                        {% for item in grupo.recursos %}
+                        <article
+                            x-data="recursoFichaPeriodo({
+                                recursoId: {{ item.recurso.id }},
+                                abiertoInicial: {{ item.recurso.id }} === {{ error_recurso_id|default:0 }},
+                                observacionGeneralInicial: '{{ item.observacion_general|default:''|escapejs }}',
+                                checklistInicial: [
+                                    {% for checklist in item.checklist_items %}
+                                    {
+                                        nombre: '{{ checklist.nombre|escapejs }}',
+                                        estado: {{ checklist.checked|yesno:'true,false,null' }},
+                                        estadoInicial: {{ checklist.checked|yesno:'true,false,null' }},
+                                        obs: '{{ checklist.observacion|default:''|escapejs }}',
+                                        obsInicial: '{{ checklist.observacion|default:''|escapejs }}'
+                                    }{% if not forloop.last %},{% endif %}
+                                    {% endfor %}
+                                ]
+                            })"
+                            data-recurso-id="{{ item.recurso.id }}"
+                            :class="abierto ? 'shadow-[0_4px_16px_rgba(0,0,0,0.08)]' : ''"
+                            class="overflow-hidden rounded-[10px] border-[1.5px] bg-white transition-all {% if item.tiene_ficha %}{% if item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}{% else %}border-surface-border{% endif %}"
                         >
-                            <label class="flex cursor-pointer items-center gap-3">
-                                <input
-                                    type="checkbox"
-                                    name="estado_operativo"
-                                    x-ref="estadoOperativo"
-                                    :disabled="hayFallo || (!todosCumplidos && {% if item.checklist_items %}true{% else %}false{% endif %})"
-                                    {% if item.estado_operativo %}checked{% endif %}
-                                    class="h-[22px] w-[22px] rounded-[5px] border-2 border-surface-border checked:border-brand checked:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                <span class="text-[15px] font-semibold text-ink">Recurso operativo</span>
-                            </label>
-                            <p x-show="hayFallo" x-cloak class="mt-2 text-[11px] text-warn">
-                                Un requerimiento falló — el recurso no puede marcarse como operativo.
-                            </p>
-                            <p x-show="todosCumplidos && !hayFallo" x-cloak class="mt-2 text-[11px] text-ok">
-                                Todos los requerimientos cumplidos. Puedes marcarlo como operativo.
-                            </p>
-                            <p x-show="!hayFallo && !todosCumplidos && {% if item.checklist_items %}true{% else %}false{% endif %}" x-cloak class="mt-2 text-[11px] text-ink-muted">
-                                Marca todos los requerimientos para habilitar esta opción.
-                            </p>
-                        </div>
+                            <button
+                                type="button"
+                                @click="abierto = !abierto"
+                                class="flex w-full items-center gap-4 px-5 py-[18px] text-left transition hover:bg-[#f8fafc]"
+                                :class="abierto ? 'bg-[#fafcff]' : ''"
+                            >
+                                <span class="h-9 w-1 shrink-0 rounded-sm {% if item.tiene_ficha %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"></span>
 
-                        <div>
-                            <div class="mb-1 flex items-center justify-between">
-                                <label class="text-[13px] font-semibold text-ink">Observación general</label>
-                                <span class="text-[11px] text-ink-muted">Opcional</span>
-                            </div>
-                            <textarea
-                                name="observacion_general"
-                                rows="3"
-                                placeholder="Observación general…"
-                                class="w-full rounded-xl border border-surface-border px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand"
-                            >{{ item.observacion_general }}</textarea>
-                        </div>
-
-                        {% if item.tiene_ficha %}
-                            <p class="text-xs text-ink-muted">
-                                Registrado por
-                                {% if item.ficha.usuario.first_name %}
-                                    {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
-                                {% else %}
-                                    {{ item.ficha.usuario.rut }}
-                                {% endif %}
-                                el {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
-                                {% if item.ficha.modificado_por %}
-                                    · Modificado por
-                                    {% if item.ficha.modificado_por.first_name %}
-                                        {{ item.ficha.modificado_por.first_name }}
-                                    {% else %}
-                                        {{ item.ficha.modificado_por.rut }}
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-base font-bold text-navy">{{ item.recurso.nombre }}</span>
+                                    <span class="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
+                                        {% if item.recurso.proposito %}
+                                            <span>{{ item.recurso.proposito.tipo }}</span>
+                                            <span class="text-ink-muted">·</span>
+                                        {% endif %}
+                                        <span>Cantidad: {{ item.matriz.cantidad }}</span>
+                                    </span>
+                                    {% if item.tiene_ficha and item.ficha.usuario %}
+                                        <div class="mt-1 font-mono text-[11px] text-ink-muted">
+                                            Registrado por
+                                            {% if item.ficha.usuario.first_name %}
+                                                {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
+                                            {% else %}
+                                                {{ item.ficha.usuario.rut }}
+                                            {% endif %}
+                                            · {{ item.ficha.fecha_revision|date:"d/m H:i" }}
+                                        </div>
                                     {% endif %}
-                                    el {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
-                                {% endif %}
-                            </p>
-                        {% endif %}
+                                </span>
 
-                        <button
-                            type="submit"
-                            :disabled="guardando"
-                            class="w-full rounded-xl bg-navy px-4 py-3 text-sm font-bold text-white transition hover:bg-navy-light disabled:opacity-60"
-                        >
-                            <span x-show="!guardando">{% if item.tiene_ficha %}Guardar cambios{% else %}Guardar ficha{% endif %}</span>
-                            <span x-show="guardando" x-cloak>Guardando…</span>
-                        </button>
-                    </form>
-                </div>
-            </article>
-                {% empty %}
-                    <div class="rounded-2xl border border-surface-border bg-white px-6">
-                        {% include 'components/empty_state.html' with mensaje='No hay recursos visibles para este período.' %}
+                                <span class="flex shrink-0 items-center gap-3">
+                                    {% if item.tiene_ficha %}
+                                        {% if item.estado_operativo == True %}
+                                            {% include 'components/badge_estado.html' with estado='operativo' %}
+                                        {% elif item.estado_operativo == False %}
+                                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                                Con falla
+                                            </span>
+                                        {% else %}
+                                            {% include 'components/badge_estado.html' with estado='en_proceso' %}
+                                        {% endif %}
+                                    {% else %}
+                                        {% include 'components/badge_estado.html' with estado='pendiente' %}
+                                    {% endif %}
+
+                                    <svg
+                                        viewBox="0 0 18 18"
+                                        class="h-5 w-5 text-ink-muted transition-transform"
+                                        :class="abierto ? 'rotate-180' : ''"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        aria-hidden="true"
+                                    >
+                                        <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                            </button>
+
+                            <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border px-5 py-5 sm:px-6">
+                                {% if error_recurso_id == item.recurso.id %}
+                                    <div class="mb-5 rounded-xl border border-fail-border bg-fail-bg px-4 py-3 text-sm text-fail">
+                                        {{ error_msg }}
+                                    </div>
+                                {% endif %}
+
+                                <form method="POST" action="{{ item.action_url }}" class="space-y-5">
+                                    {% csrf_token %}
+
+                                    {% if item.checklist_items %}
+                                        <section class="space-y-3">
+                                            {% for checklist in item.checklist_items %}
+                                            <div
+                                                :class="{
+                                                    'border-ok-border bg-ok-bg': checklist[{{ forloop.counter0 }}].estado === true,
+                                                    'border-fail-border bg-fail-bg': checklist[{{ forloop.counter0 }}].estado === false,
+                                                    'border-surface-border bg-[#fafcff]': checklist[{{ forloop.counter0 }}].estado === null
+                                                }"
+                                                class="overflow-hidden rounded-lg border transition-colors"
+                                            >
+                                                <div class="flex items-center gap-3 px-4 py-3">
+                                                    <span class="flex-1 text-[14px] font-medium text-ink">{{ checklist.nombre }}</span>
+
+                                                    <div class="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            @click="limpiarEstado({{ forloop.counter0 }})"
+                                                            class="flex h-7 w-7 items-center justify-center rounded-md transition"
+                                                            :class="checklist[{{ forloop.counter0 }}].estado === null ? 'border border-neutral-border bg-neutral-bg' : 'hover:bg-surface'"
+                                                            title="Sin registrar"
+                                                        >
+                                                            <span class="h-2 w-2 rounded-full bg-ink-muted"></span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            @click="marcarCumple({{ forloop.counter0 }})"
+                                                            class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
+                                                            :class="checklist[{{ forloop.counter0 }}].estado === true ? 'bg-ok text-white' : 'text-ok hover:bg-ok-bg'"
+                                                            title="Cumple"
+                                                        >
+                                                            ✓
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            @click="marcarFalla({{ forloop.counter0 }})"
+                                                            class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
+                                                            :class="checklist[{{ forloop.counter0 }}].estado === false ? 'bg-fail text-white' : 'text-fail hover:bg-fail-bg'"
+                                                            title="Falla"
+                                                        >
+                                                            ✗
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div x-show="checklist[{{ forloop.counter0 }}].estado === false" x-transition x-cloak class="px-4 pb-3">
+                                                    <textarea
+                                                        x-model="checklist[{{ forloop.counter0 }}].obs"
+                                                        @input="notificarCambio()"
+                                                        rows="2"
+                                                        placeholder="Observación obligatoria si falla…"
+                                                        class="w-full resize-none rounded-md border border-fail-border bg-white px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-fail/10"
+                                                        :class="!checklist[{{ forloop.counter0 }}].obs.trim() ? 'ring-1 ring-fail/30' : ''"
+                                                    ></textarea>
+                                                </div>
+
+                                                <input
+                                                    type="hidden"
+                                                    name="req_{{ checklist.index }}"
+                                                    :value="checklist[{{ forloop.counter0 }}].estado === null ? '' : (checklist[{{ forloop.counter0 }}].estado ? 'on' : '')"
+                                                >
+                                                <input type="hidden" name="obs_{{ checklist.index }}" :value="checklist[{{ forloop.counter0 }}].obs">
+                                            </div>
+                                            {% endfor %}
+                                        </section>
+                                    {% else %}
+                                        <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
+                                            Este recurso no tiene requerimientos específicos.
+                                        </div>
+                                    {% endif %}
+
+                                    <div>
+                                        <div class="mb-1 flex items-center justify-between">
+                                            <label class="text-[13px] font-semibold text-ink">Observación general</label>
+                                            <span class="text-[11px] text-ink-muted">Opcional</span>
+                                        </div>
+                                        <textarea
+                                            name="observacion_general"
+                                            x-model="observacionGeneral"
+                                            @input="notificarCambio()"
+                                            rows="3"
+                                            placeholder="Observación general…"
+                                            class="w-full rounded-xl border border-surface-border px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand"
+                                        ></textarea>
+                                    </div>
+
+                                    {% if item.tiene_ficha %}
+                                        <p class="text-xs text-ink-muted">
+                                            Registrado por
+                                            {% if item.ficha.usuario.first_name %}
+                                                {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
+                                            {% else %}
+                                                {{ item.ficha.usuario.rut }}
+                                            {% endif %}
+                                            el {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                                            {% if item.ficha.modificado_por %}
+                                                · Modificado por
+                                                {% if item.ficha.modificado_por.first_name %}
+                                                    {{ item.ficha.modificado_por.first_name }}
+                                                {% else %}
+                                                    {{ item.ficha.modificado_por.rut }}
+                                                {% endif %}
+                                                el {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
+                                            {% endif %}
+                                        </p>
+                                    {% endif %}
+                                </form>
+                            </div>
+                        </article>
+                        {% endfor %}
                     </div>
-                {% endfor %}
+                </div>
             </section>
+            {% empty %}
+                <div class="rounded-2xl border border-surface-border bg-white px-6">
+                    {% include 'components/empty_state.html' with mensaje='No hay recursos visibles para este período.' %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div
+            x-show="totalCambios > 0"
+            x-cloak
+            x-transition
+            class="fixed inset-x-0 bottom-0 z-40 border-t border-surface-border bg-white px-4 py-3 sm:px-6"
+        >
+            <div class="mx-auto flex max-w-3xl items-center justify-between gap-4">
+                <span class="text-[13px] text-ink-muted">
+                    <strong class="text-navy" x-text="totalCambios"></strong> recurso<span x-show="totalCambios !== 1">s</span> con cambios
+                </span>
+                <button
+                    type="button"
+                    @click="guardarTodo()"
+                    :disabled="guardandoTodo"
+                    class="rounded-xl bg-navy px-6 py-2.5 text-[13px] font-bold text-white transition hover:bg-navy-light disabled:opacity-60"
+                >
+                    <span x-show="!guardandoTodo">Guardar todo</span>
+                    <span x-show="guardandoTodo" x-cloak>Guardando…</span>
+                </button>
+            </div>
         </div>
     </main>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function periodoFichaDetalle(config) {
+        return {
+            totalCambios: 0,
+            guardandoTodo: false,
+            cambiosPorRecurso: {},
+
+            registrarCambio(recursoId, payload) {
+                if (payload === null) {
+                    delete this.cambiosPorRecurso[recursoId];
+                } else {
+                    this.cambiosPorRecurso[recursoId] = payload;
+                }
+                this.totalCambios = Object.keys(this.cambiosPorRecurso).length;
+            },
+
+            async guardarTodo() {
+                if (this.guardandoTodo || this.totalCambios === 0) {
+                    return;
+                }
+                this.guardandoTodo = true;
+
+                const fichas = Object.entries(this.cambiosPorRecurso).map(function(entry) {
+                    return {
+                        recurso_id: parseInt(entry[0], 10),
+                        ...entry[1],
+                    };
+                });
+
+                try {
+                    const resp = await fetch(config.saveUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': config.csrfToken,
+                        },
+                        body: JSON.stringify({ fichas: fichas }),
+                    });
+
+                    let data = {};
+                    try {
+                        data = await resp.json();
+                    } catch (error) {
+                        data = {};
+                    }
+
+                    if (!resp.ok) {
+                        alert(data.error || 'No se pudieron guardar los cambios.');
+                        this.guardandoTodo = false;
+                        return;
+                    }
+
+                    if (data.errores && data.errores.length > 0) {
+                        alert('Algunos recursos no se guardaron: ' + data.errores.map(function(item) {
+                            return item.error;
+                        }).join(', '));
+                    }
+
+                    window.location.reload();
+                } catch (error) {
+                    alert('Error de conexión. Intenta nuevamente.');
+                    this.guardandoTodo = false;
+                }
+            },
+        };
+    }
+
+    function recursoFichaPeriodo(config) {
+        return {
+            recursoId: config.recursoId,
+            abierto: config.abiertoInicial,
+            observacionGeneral: config.observacionGeneralInicial,
+            observacionGeneralInicial: config.observacionGeneralInicial,
+            checklist: config.checklistInicial.map(function(item) {
+                return {
+                    nombre: item.nombre,
+                    estado: item.estado,
+                    estadoInicial: item.estadoInicial,
+                    obs: item.obs,
+                    obsInicial: item.obsInicial,
+                };
+            }),
+
+            buildChecklist() {
+                const payload = {};
+                this.checklist.forEach(function(item) {
+                    if (item.estado === null) {
+                        return;
+                    }
+                    payload[item.nombre] = {
+                        cumple: item.estado,
+                        observacion: item.obs,
+                    };
+                });
+                return payload;
+            },
+
+            hayCambios() {
+                if (this.observacionGeneral !== this.observacionGeneralInicial) {
+                    return true;
+                }
+
+                return this.checklist.some(function(item) {
+                    return item.estado !== item.estadoInicial || item.obs !== item.obsInicial;
+                });
+            },
+
+            notificarCambio() {
+                if (!this.hayCambios()) {
+                    this.$dispatch('recurso-modificado', {
+                        recursoId: this.recursoId,
+                        payload: null,
+                    });
+                    return;
+                }
+
+                this.$dispatch('recurso-modificado', {
+                    recursoId: this.recursoId,
+                    payload: {
+                        estado_operativo: null,
+                        observacion_general: this.observacionGeneral,
+                        payload_checklist: this.buildChecklist(),
+                    },
+                });
+            },
+
+            limpiarEstado(index) {
+                this.checklist[index].estado = null;
+                this.checklist[index].obs = '';
+                this.notificarCambio();
+            },
+
+            marcarCumple(index) {
+                this.checklist[index].estado = true;
+                this.checklist[index].obs = '';
+                this.notificarCambio();
+            },
+
+            marcarFalla(index) {
+                this.checklist[index].estado = false;
+                this.notificarCambio();
+            },
+        };
+    }
+</script>
 {% endblock %}
