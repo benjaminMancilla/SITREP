@@ -64,11 +64,13 @@
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">En historial</p>
             </div>
             <div class="px-4 py-2.5 text-center">
-                <p class="text-[18px] font-bold text-ink-muted">—</p>
+                <p class="text-[18px] font-bold {% if fallos_activos_nave > 0 %}text-fail{% else %}text-navy{% endif %}">
+                    {{ fallos_activos_nave }}
+                </p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Fallos activos</p>
             </div>
             <div class="px-4 py-2.5 text-center">
-                <p class="text-[18px] font-bold text-ink-muted">—</p>
+                <p class="text-[18px] font-bold text-navy">{{ total_recursos_nave }}</p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Recursos</p>
             </div>
         </div>
