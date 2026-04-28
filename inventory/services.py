@@ -595,6 +595,17 @@ class MotorFichas:
         return all(bool(payload_checklist.get(req, {}).get("cumple")) for req in requerimientos)
 
     @classmethod
+    def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist):
+        ficha_temporal = FichaRegistro(
+            recurso=recurso,
+            estado_operativo=estado_operativo,
+            payload_checklist=payload_checklist,
+        )
+        if MotorPeriodos._es_ficha_completa(ficha_temporal):
+            return "completa"
+        return "en_progreso"
+
+    @classmethod
     def crear_ficha(
         cls,
         periodo,
@@ -650,6 +661,7 @@ class MotorFichas:
                     periodo=periodo,
                     recurso=recurso,
                     usuario=usuario,
+                    estado_ficha="en_progreso",
                     estado_operativo=estado_operativo,
                     observacion_general=observacion_general,
                     payload_checklist=payload_checklist,
@@ -706,6 +718,11 @@ class MotorFichas:
                     "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
                 )
 
+            ficha.estado_ficha = cls.calcular_estado_ficha(
+                recurso=ficha.recurso,
+                estado_operativo=estado_operativo,
+                payload_checklist=payload_checklist,
+            )
             ficha.estado_operativo = estado_operativo
             ficha.observacion_general = observacion_general
             ficha.payload_checklist = payload_checklist
@@ -713,6 +730,7 @@ class MotorFichas:
             ficha.modificado_en = timezone.now()
             ficha.save(
                 update_fields=[
+                    "estado_ficha",
                     "estado_operativo",
                     "observacion_general",
                     "payload_checklist",

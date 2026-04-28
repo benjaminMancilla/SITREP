@@ -234,6 +234,18 @@ class Proposito(models.Model):
         return f" {self.tipo} de {self.nombre} ({self.categoria})"
 
 
+class Area(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ["nombre"]
+        verbose_name = "Área"
+        verbose_name_plural = "Áreas"
+
+    def __str__(self):
+        return self.nombre
+
+
 class Periodicidad(models.Model):
     """
     Tipo de periodicidades (diaria, semanal, mensual, etc) que pueden tener los recursos.
@@ -321,6 +333,17 @@ class Recurso(models.Model):
     # PROTECT: No permitimos borrar un propósito si hay recursos usándolo.
     proposito = models.ForeignKey(Proposito, on_delete=models.PROTECT)
     periodicidad = models.ForeignKey(Periodicidad, on_delete=models.PROTECT)
+    area = models.ForeignKey(
+        "Area",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recursos",
+        help_text=(
+            "Área operacional a la que pertenece el recurso "
+            "(ej: Salvamento, Incendio)."
+        ),
+    )
     
     nombre = models.CharField(max_length=255)
     
@@ -407,6 +430,12 @@ class FichaRegistro(models.Model):
     Un recurso solo puede estar operativo si TODOS sus requerimientos están operativos, pero un
     recurso puede estar FALLADO aunque se cumplan todos los requerimientos.
     """
+    ESTADOS_FICHA = [
+        ("pendiente", "Pendiente"),
+        ("en_progreso", "En progreso"),
+        ("completa", "Completa"),
+    ]
+
     periodo = models.ForeignKey(PeriodoRevision, on_delete=models.CASCADE, related_name='fichas')
     recurso = models.ForeignKey(Recurso, on_delete=models.PROTECT)
     # PROTECT al usuario: Mantiene el historial aunque el marinero se vaya (se complementa con el Soft Delete)
@@ -414,6 +443,15 @@ class FichaRegistro(models.Model):
     fecha_revision = models.DateTimeField(auto_now_add=True)
 
     # Datos de la ficha
+    estado_ficha = models.CharField(
+        max_length=20,
+        choices=ESTADOS_FICHA,
+        default="en_progreso",
+        help_text=(
+            "Estado de completitud de la ficha independiente del "
+            "resultado operativo."
+        ),
+    )
     estado_operativo = models.BooleanField(
         null=True,
         default=None,
@@ -454,4 +492,3 @@ class FichaRegistro(models.Model):
         else:
             estado = "FALLA"
         return f"[{estado}] {self.recurso.nombre} - Periodo: {self.periodo.id}"
-
