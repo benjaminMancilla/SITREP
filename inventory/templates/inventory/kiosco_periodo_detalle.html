@@ -61,14 +61,14 @@
                     <button
                         type="button"
                         @click="abierto = !abierto"
-                        class="flex w-full items-center gap-3 rounded-lg border border-surface-border bg-neutral-bg px-4 py-3 text-left transition hover:bg-[#edf2f7]"
+                        class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition hover:opacity-95 {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}"
                     >
                         <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if grupo.tiene_fallo %}bg-fail{% elif grupo.con_ficha == grupo.total and grupo.total > 0 %}bg-ok{% elif grupo.con_ficha > 0 %}bg-warn{% else %}bg-neutral{% endif %}"></span>
-                        <span class="flex-1 text-[13px] font-bold text-navy">{{ grupo.nombre_display }}</span>
-                        <span class="text-[11px] text-ink-muted">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
+                        <span class="flex-1 text-[13px] font-bold">{{ grupo.nombre_display }}</span>
+                        <span class="text-[11px] opacity-80">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
                         <svg
                             viewBox="0 0 18 18"
-                            class="h-4 w-4 text-ink-muted transition-transform"
+                            class="h-4 w-4 transition-transform opacity-75"
                             :class="abierto ? 'rotate-180' : ''"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
