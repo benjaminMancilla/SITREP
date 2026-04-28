@@ -14,7 +14,12 @@
             <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
             {{ estado|capfirst }}
         </span>
-    {% elif estado_normalizado == "caduco" or estado_normalizado == "en_proceso" or estado_normalizado == "warn" %}
+    {% elif estado_normalizado == "en_proceso" or estado_normalizado == "en proceso" %}
+        <span class="inline-flex items-center gap-1 rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-xs font-medium text-warn">
+            <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>
+            En proceso
+        </span>
+    {% elif estado_normalizado == "caduco" or estado_normalizado == "warn" %}
         <span class="inline-flex items-center gap-1 rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-xs font-medium text-warn">
             <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>
             {{ estado|capfirst }}

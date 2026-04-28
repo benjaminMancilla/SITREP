@@ -380,7 +380,7 @@ class PeriodoRevision(models.Model):
     
     ESTADOS = [
         ('pendiente', 'Pendiente'),
-        ('en_proceso', 'En Proceso'),
+        ('en_proceso', 'En proceso'),
         ('conforme', 'Conforme'),
         ('observado', 'Observado'),
         ('fallido', 'Fallido'),
