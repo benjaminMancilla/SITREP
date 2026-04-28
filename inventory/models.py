@@ -256,7 +256,7 @@ class Area(models.Model):
 
     nombre = models.CharField(max_length=100, unique=True)
 
-    nombre_tecnico = models.CharField(max_length=100, unique=True)
+    nombre_tecnico = models.CharField(max_length=100, unique=False, null=True, blank=True)
 
     token_color = models.CharField(
         max_length=30,
