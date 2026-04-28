@@ -61,9 +61,9 @@
                     <button
                         type="button"
                         @click="abierto = !abierto"
-                        class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition hover:opacity-95 {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}"
+                        class="-mx-[5px] flex w-[calc(100%+10px)] items-center gap-3 rounded-lg border px-[21px] py-3 text-left transition hover:opacity-95 {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}"
                     >
-                        <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if grupo.tiene_fallo %}bg-fail{% elif grupo.con_ficha == grupo.total and grupo.total > 0 %}bg-ok{% elif grupo.con_ficha > 0 %}bg-warn{% else %}bg-neutral{% endif %}"></span>
+                        <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-current opacity-70"></span>
                         <span class="flex-1 text-[13px] font-bold">{{ grupo.nombre_display }}</span>
                         <span class="text-[11px] opacity-80">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
                         <svg
