@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
@@ -27,6 +28,16 @@ from .models import (
 from .services import MotorFichas, MotorPeriodos, TenantQueryService
 
 logger = logging.getLogger(__name__)
+
+
+def _normalizar_rut(rut: str) -> str:
+    return rut.strip().upper().replace(".", "").replace(" ", "")
+
+
+def _rut_valido(rut: str) -> bool:
+    """Valida formato RUT chileno: dígitos con puntos opcionales + guión + dígito verificador."""
+    rut = _normalizar_rut(rut)
+    return bool(re.match(r"^\d{7,8}-[\dK]$", rut))
 
 
 def _pin_valido_4_digitos(raw_pin):
@@ -748,7 +759,7 @@ def login_unificado(request, slug, modo_default="tierra"):
 
     if request.method == "POST":
         if modo == "mar":
-            rut = request.POST.get("rut")
+            rut = _normalizar_rut(request.POST.get("rut") or "")
             pin = request.POST.get("pin")
             dispositivo_token = request.POST.get("dispositivo_token")
 
@@ -1076,19 +1087,31 @@ def crear_usuario(request, slug):
     if request.method != "POST":
         return HttpResponseNotAllowed(["GET", "POST"])
 
-    rut = (request.POST.get("rut") or "").strip()
+    rut_input = (request.POST.get("rut") or "").strip()
+    rut = _normalizar_rut(rut_input)
     email = (request.POST.get("email") or "").strip() or None
     rol = (request.POST.get("rol") or "").strip()
     first_name = (request.POST.get("first_name") or "").strip()
     last_name = (request.POST.get("last_name") or "").strip()
     raw_pin = (request.POST.get("pin") or "").strip()
     form_data = {
-        "rut": rut,
+        "rut": rut_input,
         "email": email or "",
         "rol": rol,
         "first_name": first_name,
         "last_name": last_name,
     }
+
+    if not _rut_valido(rut_input):
+        return render(
+            request,
+            "inventory/usuario_form.html",
+            {
+                "error": "Formato de RUT inválido. Use el formato 12.345.678-9.",
+                "slug": slug,
+                "form_data": form_data,
+            },
+        )
 
     if Usuario.objects.filter(naviera=request.naviera, rut=rut).exists():
         return render(
@@ -1306,7 +1329,7 @@ def api_periodos_nave(request, slug):
                 "periodicidad": periodo.periodicidad.nombre,
                 "fecha_inicio": periodo.fecha_inicio.isoformat(),
                 "fecha_termino": periodo.fecha_termino.isoformat(),
-                "estado": periodo.estado,
+                "estado": periodo.get_estado_display(),
                 "total_recursos": recursos_por_periodicidad.get(periodo.periodicidad_id, 0),
                 "fichas_completadas": fichas_por_periodo.get(periodo.id, 0),
             }
