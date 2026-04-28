@@ -222,31 +222,72 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None):
     return recursos_lista
 
 
-def _extraer_payload_ficha_desde_json(request):
+def _cargar_payload_json(request):
     try:
-        payload = json.loads(request.body)
+        return json.loads(request.body), None
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None, _json_error("JSON inválido.", 400)
 
+
+def _validar_payload_ficha_dict(payload, require_recurso_id=False):
     if not isinstance(payload, dict):
-        return None, _json_error("El body debe ser un objeto JSON.", 400)
+        return None, "La ficha debe ser un objeto JSON."
+
+    data = {}
+    if require_recurso_id:
+        recurso_id = payload.get("recurso_id")
+        if type(recurso_id) is not int:
+            return None, "recurso_id debe ser entero."
+        data["recurso_id"] = recurso_id
 
     estado_operativo = payload.get("estado_operativo")
     observacion_general = payload.get("observacion_general", "")
     payload_checklist = payload.get("payload_checklist", {})
 
     if estado_operativo is not None and type(estado_operativo) is not bool:
-        return None, _json_error("estado_operativo debe ser booleano o null.", 400)
+        return None, "estado_operativo debe ser booleano o null."
     if not isinstance(observacion_general, str):
-        return None, _json_error("observacion_general debe ser texto.", 400)
+        return None, "observacion_general debe ser texto."
     if not isinstance(payload_checklist, dict):
-        return None, _json_error("payload_checklist debe ser un objeto JSON.", 400)
+        return None, "payload_checklist debe ser un objeto JSON."
 
-    return {
-        "estado_operativo": estado_operativo,
-        "observacion_general": observacion_general,
-        "payload_checklist": payload_checklist,
-    }, None
+    data.update(
+        {
+            "estado_operativo": estado_operativo,
+            "observacion_general": observacion_general,
+            "payload_checklist": payload_checklist,
+        }
+    )
+    return data, None
+
+
+def _extraer_payload_ficha_desde_json(request):
+    payload, error = _cargar_payload_json(request)
+    if error:
+        return None, error
+
+    data, mensaje_error = _validar_payload_ficha_dict(payload)
+    if mensaje_error:
+        if not isinstance(payload, dict):
+            return None, _json_error("El body debe ser un objeto JSON.", 400)
+        return None, _json_error(mensaje_error, 400)
+
+    return data, None
+
+
+def _extraer_payload_fichas_bulk_desde_json(request):
+    payload, error = _cargar_payload_json(request)
+    if error:
+        return None, error
+
+    if not isinstance(payload, dict):
+        return None, _json_error("El body debe ser un objeto JSON.", 400)
+
+    fichas = payload.get("fichas")
+    if not isinstance(fichas, list):
+        return None, _json_error("fichas debe ser una lista.", 400)
+
+    return fichas, None
 
 
 @tenant_member_required
@@ -1550,3 +1591,114 @@ def api_modificar_ficha(request, slug, periodo_id, recurso_id):
         return _json_error(str(exc), 400)
 
     return JsonResponse({"id": ficha.id, "modified": True}, status=200)
+
+
+@tenant_member_required
+@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+def api_guardar_fichas_periodo(request, slug, periodo_id):
+    """
+    POST: recibe lista de fichas con cambios y las crea/actualiza en una transacción.
+    Solo procesa los recursos incluidos en el payload — no sobreescribe lo no enviado.
+    """
+    if request.method != "POST":
+        return _json_error("Método no permitido.", 405)
+
+    nave, error = _obtener_nave_activa_desde_sesion(request)
+    if error:
+        return error
+
+    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    if periodo is None or periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
+        return _json_error("Período no encontrado.", 404)
+
+    fichas_payload, error = _extraer_payload_fichas_bulk_desde_json(request)
+    if error:
+        return error
+
+    recurso_ids = [
+        item.get("recurso_id")
+        for item in fichas_payload
+        if isinstance(item, dict) and type(item.get("recurso_id")) is int
+    ]
+    recursos_por_id = {
+        recurso.id: recurso
+        for recurso in Recurso.objects.filter(id__in=recurso_ids)
+    }
+    fichas_existentes = {
+        ficha.recurso_id: ficha
+        for ficha in FichaRegistro.objects.filter(
+            periodo=periodo,
+            recurso_id__in=recurso_ids,
+        ).select_related("periodo", "recurso")
+    }
+
+    guardadas = 0
+    errores = []
+
+    for ficha_payload in fichas_payload:
+        recurso_id = ficha_payload.get("recurso_id") if isinstance(ficha_payload, dict) else None
+        try:
+            data, mensaje_error = _validar_payload_ficha_dict(
+                ficha_payload,
+                require_recurso_id=True,
+            )
+            if mensaje_error:
+                raise ValueError(mensaje_error)
+
+            recurso_id = data["recurso_id"]
+            recurso = recursos_por_id.get(recurso_id)
+            if recurso is None:
+                raise ValueError("Recurso no encontrado.")
+
+            ficha_existente = fichas_existentes.get(recurso_id)
+            if ficha_existente is not None:
+                ficha = MotorFichas.modificar_ficha(
+                    ficha=ficha_existente,
+                    usuario_modificador=request.user,
+                    estado_operativo=data["estado_operativo"],
+                    observacion_general=data["observacion_general"],
+                    payload_checklist=data["payload_checklist"],
+                )
+            else:
+                ficha = MotorFichas.crear_ficha(
+                    periodo=periodo,
+                    recurso=recurso,
+                    usuario=request.user,
+                    estado_operativo=data["estado_operativo"],
+                    observacion_general=data["observacion_general"],
+                    payload_checklist=data["payload_checklist"],
+                )
+
+            fichas_existentes[recurso_id] = ficha
+            guardadas += 1
+        except ValueError as exc:
+            logger.error(
+                (
+                    "api_guardar_fichas_periodo validation error "
+                    "(periodo_id=%s, recurso_id=%s, user_id=%s)"
+                ),
+                periodo.id,
+                recurso_id,
+                getattr(request.user, "id", None),
+                exc_info=True,
+            )
+            errores.append({"recurso_id": recurso_id, "error": str(exc)})
+        except Exception:
+            logger.error(
+                (
+                    "api_guardar_fichas_periodo unexpected error "
+                    "(periodo_id=%s, recurso_id=%s, user_id=%s)"
+                ),
+                periodo.id,
+                recurso_id,
+                getattr(request.user, "id", None),
+                exc_info=True,
+            )
+            errores.append(
+                {
+                    "recurso_id": recurso_id,
+                    "error": "Error interno procesando la ficha.",
+                }
+            )
+
+    return JsonResponse({"guardadas": guardadas, "errores": errores}, status=200)

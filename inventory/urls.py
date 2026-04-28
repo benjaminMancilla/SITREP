@@ -62,6 +62,11 @@ urlpatterns = [
         views.api_modificar_ficha,
         name='api_modificar_ficha',
     ),
+    path(
+        'api/periodos/<int:periodo_id>/fichas/bulk/',
+        views.api_guardar_fichas_periodo,
+        name='api_guardar_fichas_periodo',
+    ),
 
     path('kiosco/hardware/', views.listar_dispositivos, name='listar_dispositivos'),
     path('kiosco/hardware/setup/', views.setup_kiosco, name='setup_kiosco'),

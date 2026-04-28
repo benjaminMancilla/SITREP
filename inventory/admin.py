@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .models import (
+    Area,
     Dispositivo,
     FichaRegistro,
     MatrizNaveRecurso,
@@ -15,6 +16,12 @@ from .models import (
     Usuario,
 )
 from .services import MotorReglasSITREP
+
+
+@admin.register(Area)
+class AreaAdmin(admin.ModelAdmin):
+    list_display = ["nombre"]
+    search_fields = ["nombre"]
 
 
 @admin.register(Usuario)
