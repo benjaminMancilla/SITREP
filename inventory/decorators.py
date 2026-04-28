@@ -18,7 +18,9 @@ def tenant_member_required(view_func):
             return redirect_to_login(request.get_full_path(), login_url=login_url)
 
         if getattr(request.user, "naviera", None) != getattr(request, "naviera", None):
-            return HttpResponseForbidden("Acceso denegado: usuario fuera de jurisdicción.")
+            slug = kwargs.get("slug")
+            login_url = resolve_url(f"/{slug}/login/") if slug else resolve_url("/")
+            return redirect_to_login(request.get_full_path(), login_url=login_url)
 
         return view_func(request, *args, **kwargs)
 
