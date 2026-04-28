@@ -235,7 +235,35 @@ class Proposito(models.Model):
 
 
 class Area(models.Model):
+    """
+    Área operacional a la que pertenece el recurso (ej: Salvamento, Incendio).
+    Esta clasificación es principalmente para organizar la ficha de recursos,
+    y no tiene implicaciones funcionales. Un recurso sin área se muestra en
+    una sección general al final de la ficha. Cada area tiene un color asociado
+    y ademas su nombre tecnico (nombre completo fiel a la definicion del cliente)
+    """
+    class AreaToken(models.TextChoices):
+            # Mapeo semántico de la paleta del cliente
+            TELECOM = 'telecom', 'Telecomunicaciones'
+            NAVEGACION = 'navegacion', 'Navegación'
+            MAQUINAS = 'maquinas', 'Máquinas'
+            GOBIERNO = 'gobierno', 'Gobierno y Control'
+            CONTAMINACION = 'contaminacion', 'Contaminación'
+            SALVAMENTO = 'salvamento', 'Salvamento'
+            INUNDACION = 'inundacion', 'Inundación'
+            INCENDIO = 'incendio', 'Incendio'
+            GENERAL = 'general', 'General'
+
     nombre = models.CharField(max_length=100, unique=True)
+
+    nombre_tecnico = models.CharField(max_length=100, unique=True)
+
+    token_color = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True,
+        help_text="Identificador para la paleta del cliente en el frontend (ej: 'salvamento', 'cubierta')"
+    )
 
     class Meta:
         ordering = ["nombre"]
@@ -244,6 +272,34 @@ class Area(models.Model):
 
     def __str__(self):
         return self.nombre
+    
+    @property
+    def css_classes(self):
+        """
+        Transforma los colores 'Word' del cliente en una paleta UI profesional.
+        Usa escalas de 50 para fondo (suave) y 700 para texto (contraste alto).
+        """
+        mapa = {
+            # #8ed873 -> Emerald/Green
+            'telecom': 'bg-emerald-50 border-emerald-200 text-emerald-700',
+            # #45afe1 -> Sky/Blue
+            'navegacion': 'bg-sky-50 border-sky-200 text-sky-700',
+            # #e77132 -> Orange
+            'maquinas': 'bg-orange-50 border-orange-200 text-orange-700',
+            # #ffff00 -> Yellow (ajustado a Amber para legibilidad)
+            'gobierno': 'bg-amber-50 border-amber-200 text-amber-700',
+            # #adadad -> Slate
+            'contaminacion': 'bg-slate-100 border-slate-300 text-slate-700',
+            # #ffc000 -> Amber/Yellow fuerte
+            'salvamento': 'bg-yellow-50 border-yellow-300 text-yellow-800',
+            # #ff66ff -> Fuchsia
+            'inundacion': 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700',
+            # #ff0000 -> Red/Rose (suavizado para no parecer un error de sistema)
+            'incendio': 'bg-rose-50 border-rose-200 text-rose-700',
+            # #ffffff -> Neutral
+            'general': 'bg-white border-surface-border text-ink-secondary',
+        }
+        return mapa.get(self.tema_color, mapa['general'])
 
 
 class Periodicidad(models.Model):
