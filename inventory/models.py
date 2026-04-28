@@ -299,7 +299,7 @@ class Area(models.Model):
             # #ffffff -> Neutral
             'general': 'bg-white border-surface-border text-ink-secondary',
         }
-        return mapa.get(self.tema_color, mapa['general'])
+        return mapa.get(self.token_color, mapa['general'])
 
 
 class Periodicidad(models.Model):
