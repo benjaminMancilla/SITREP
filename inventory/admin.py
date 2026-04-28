@@ -20,8 +20,9 @@ from .services import MotorReglasSITREP
 
 @admin.register(Area)
 class AreaAdmin(admin.ModelAdmin):
-    list_display = ["nombre"]
-    search_fields = ["nombre"]
+    list_display = ["nombre", "nombre_tecnico", "token_color"]
+    search_fields = ["nombre", "nombre_tecnico"]
+    list_filter = ["token_color"]
 
 
 @admin.register(Usuario)
