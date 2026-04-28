@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Count, Max, Q
+from django.db.models.functions import Coalesce, Greatest
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -281,7 +282,13 @@ def dashboard_tierra(request, slug):
             filter=Q(periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS),
             distinct=True,
         ),
-        ultimo_registro=Max("periodos__fichas__fecha_revision"),
+        ultimo_registro=Greatest(
+            Max("periodos__fichas__fecha_revision"),
+            Coalesce(
+                Max("periodos__fichas__modificado_en"),
+                Max("periodos__fichas__fecha_revision"),
+            ),
+        ),
         fallos_activos=Count(
             "periodos__fichas",
             filter=Q(
@@ -359,6 +366,8 @@ def nave_detalle(request, slug, nave_id):
     periodicidades = Periodicidad.objects.all().order_by("nombre")
     periodos_abiertos_detalle = _construir_periodos_detalle(nave, periodos_abiertos)
     historial_detalle = _construir_periodos_detalle(nave, historial)
+    fallos_activos_nave = sum(item["fallos_count"] for item in periodos_abiertos_detalle)
+    total_recursos_nave = sum(item["total_recursos"] for item in periodos_abiertos_detalle)
 
     es_admin = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
 
@@ -370,6 +379,8 @@ def nave_detalle(request, slug, nave_id):
             "periodos_abiertos_detalle": periodos_abiertos_detalle,
             "historial_detalle": historial_detalle,
             "periodicidades": periodicidades,
+            "fallos_activos_nave": fallos_activos_nave,
+            "total_recursos_nave": total_recursos_nave,
             "slug": slug,
             "es_admin": es_admin,
             "fecha_desde_str": filtros_historial["fecha_desde_str"],
