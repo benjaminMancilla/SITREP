@@ -151,12 +151,22 @@ def _construir_periodos_detalle(nave, periodos):
             if ficha.estado_operativo is False:
                 fallos_count += 1
 
+            payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
+            checklist_items = MotorFichas.construir_checklist_items(
+                recurso=matriz.recurso,
+                cantidad=matriz.cantidad,
+                payload_checklist=payload_actual,
+                incluir_requisito_cantidad=MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual,
+            )
+
             registros.append(
                 {
                     "tipo": "ficha",
                     "recurso": matriz.recurso,
+                    "matriz": matriz,
                     "ficha": ficha,
                     "estado_operativo": ficha.estado_operativo,
+                    "checklist_items": checklist_items,
                 }
             )
 

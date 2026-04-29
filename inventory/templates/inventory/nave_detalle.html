@@ -151,6 +151,42 @@
                                             {% endif %}
                                             · {{ registro.ficha.fecha_revision|date:"d/m/Y H:i" }}
                                         </div>
+                                        {% if registro.checklist_items %}
+                                            <div class="mt-3 space-y-2">
+                                                <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">Checklist</div>
+                                                <div class="space-y-1.5">
+                                                    {% for checklist in registro.checklist_items %}
+                                                    <div class="overflow-hidden rounded-md border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
+                                                        <div class="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
+                                                            <div class="min-w-0 flex-1">
+                                                                <p class="text-[12px] font-medium text-ink">{{ checklist.label }}</p>
+                                                                <p class="mt-0.5 text-[11px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
+                                                                    {% if checklist.observacion %}
+                                                                        {{ checklist.observacion }}
+                                                                    {% else %}
+                                                                        Sin observación.
+                                                                    {% endif %}
+                                                                </p>
+                                                            </div>
+                                                            {% if checklist.checked == True %}
+                                                                <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2 py-0.5 text-[11px] font-semibold text-ok">
+                                                                    <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Cumplió
+                                                                </span>
+                                                            {% elif checklist.checked == False %}
+                                                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falló
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral">
+                                                                    <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Sin registrar
+                                                                </span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
                                         {% if registro.ficha.observacion_general %}
                                             <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
                                                 {{ registro.ficha.observacion_general }}
@@ -329,6 +365,42 @@
                                             {% endif %}
                                             · {{ registro.ficha.fecha_revision|date:"d/m/Y H:i" }}
                                         </div>
+                                        {% if registro.checklist_items %}
+                                            <div class="mt-3 space-y-2">
+                                                <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">Checklist</div>
+                                                <div class="space-y-1.5">
+                                                    {% for checklist in registro.checklist_items %}
+                                                    <div class="overflow-hidden rounded-md border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
+                                                        <div class="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
+                                                            <div class="min-w-0 flex-1">
+                                                                <p class="text-[12px] font-medium text-ink">{{ checklist.label }}</p>
+                                                                <p class="mt-0.5 text-[11px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
+                                                                    {% if checklist.observacion %}
+                                                                        {{ checklist.observacion }}
+                                                                    {% else %}
+                                                                        Sin observación.
+                                                                    {% endif %}
+                                                                </p>
+                                                            </div>
+                                                            {% if checklist.checked == True %}
+                                                                <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2 py-0.5 text-[11px] font-semibold text-ok">
+                                                                    <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Cumplió
+                                                                </span>
+                                                            {% elif checklist.checked == False %}
+                                                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falló
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral">
+                                                                    <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Sin registrar
+                                                                </span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
                                         {% if registro.ficha.observacion_general %}
                                             <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if item.periodo.estado == 'observado' %}border-info-border bg-info-bg text-info{% elif registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
                                                 {{ registro.ficha.observacion_general }}
