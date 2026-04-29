@@ -813,6 +813,11 @@ class MotorFichas:
                     "Ya existe una ficha para este recurso en este período. Use modificar_ficha()."
                 ) from exc
 
+            if estado_operativo is not None:
+                matriz.ultimo_estado_operativo = estado_operativo
+                matriz.ultimo_estado_operativo_en = timezone.now()
+                matriz.save(update_fields=["ultimo_estado_operativo", "ultimo_estado_operativo_en"])
+
             MotorPeriodos.sincronizar_estado_periodo_abierto(periodo)
             return ficha
 
@@ -891,5 +896,11 @@ class MotorFichas:
                     "modificado_en",
                 ]
             )
+
+            if estado_operativo is not None:
+                matriz.ultimo_estado_operativo = estado_operativo
+                matriz.ultimo_estado_operativo_en = timezone.now()
+                matriz.save(update_fields=["ultimo_estado_operativo", "ultimo_estado_operativo_en"])
+
             MotorPeriodos.sincronizar_estado_periodo_abierto(ficha.periodo)
             return ficha

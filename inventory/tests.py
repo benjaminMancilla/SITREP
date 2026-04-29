@@ -1308,6 +1308,128 @@ class TestIntegracionMotorReglas(TestCase):
         )
         self.assertEqual(estado, "completa")
 
+    def test_crear_ficha_operativa_actualiza_ultimo_estado(self):
+        """Crear ficha con estado_operativo=True setea ultimo_estado_operativo=True en matriz."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Estado Persistente OK",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Estado OK", "INT-030", 20)
+        periodo = self._get_periodo(nave)
+        matriz = self._get_matriz(nave, recurso)
+        self.assertIsNone(matriz.ultimo_estado_operativo)
+
+        MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist=self._payload_con_cantidad(
+                True, vigencia={"cumple": True, "observacion": ""}
+            ),
+        )
+
+        matriz.refresh_from_db()
+        self.assertTrue(matriz.ultimo_estado_operativo)
+        self.assertIsNotNone(matriz.ultimo_estado_operativo_en)
+
+    def test_modificar_ficha_a_fallada_actualiza_ultimo_estado(self):
+        """Modificar ficha a estado_operativo=False actualiza la matriz correctamente."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Estado Persistente Fallo",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Estado Fallo", "INT-031", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist=self._payload_con_cantidad(
+                True, vigencia={"cumple": True, "observacion": ""}
+            ),
+        )
+        MotorFichas.modificar_ficha(
+            ficha=ficha,
+            usuario_modificador=self.usuario,
+            estado_operativo=False,
+            observacion_general="sin vigencia",
+            payload_checklist=self._payload_con_cantidad(
+                True, vigencia={"cumple": False, "observacion": "sin vigencia"}
+            ),
+        )
+
+        matriz = self._get_matriz(nave, recurso)
+        self.assertFalse(matriz.ultimo_estado_operativo)
+
+    def test_guardado_parcial_no_altera_ultimo_estado(self):
+        """Un guardado parcial (estado_operativo=None) no debe modificar ultimo_estado_operativo."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Sin Alterar",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Sin Alterar", "INT-032", 20)
+        periodo = self._get_periodo(nave)
+
+        MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        matriz = self._get_matriz(nave, recurso)
+        self.assertIsNone(matriz.ultimo_estado_operativo)
+        self.assertIsNone(matriz.ultimo_estado_operativo_en)
+
+    def test_fallo_a_fallo_actualiza_timestamp(self):
+        """fallo → fallo debe actualizar ultimo_estado_operativo_en aunque el valor no cambie."""
+        import time
+
+        recurso = self._crear_recurso(
+            nombre="Recurso Fallo Timestamp",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Fallo Timestamp", "INT-033", 20)
+        periodo = self._get_periodo(nave)
+        payload_fallo = self._payload_con_cantidad(
+            True, vigencia={"cumple": False, "observacion": "roto"}
+        )
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=False,
+            observacion_general="roto",
+            payload_checklist=payload_fallo,
+        )
+        matriz = self._get_matriz(nave, recurso)
+        ts_1 = matriz.ultimo_estado_operativo_en
+
+        time.sleep(0.01)
+
+        MotorFichas.modificar_ficha(
+            ficha=ficha,
+            usuario_modificador=self.usuario,
+            estado_operativo=False,
+            observacion_general="sigue roto",
+            payload_checklist=payload_fallo,
+        )
+        matriz.refresh_from_db()
+        self.assertFalse(matriz.ultimo_estado_operativo)
+        self.assertGreater(matriz.ultimo_estado_operativo_en, ts_1)
+
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(
             nombre="Recurso Cantidad Fallida",
