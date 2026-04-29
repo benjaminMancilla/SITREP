@@ -78,46 +78,7 @@
 
                 <div class="border-t border-surface-border px-5 py-5 sm:px-6">
                     {% if item.tiene_ficha %}
-                        <section class="space-y-3">
-                            <div class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">Checklist</div>
-                            {% if item.checklist_items %}
-                                <div class="space-y-2">
-                                    {% for checklist in item.checklist_items %}
-                                    <div class="overflow-hidden rounded-lg border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% else %}border-fail-border bg-fail-bg{% endif %}">
-                                        <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-[14px] font-medium text-ink">{{ checklist.label }}</p>
-                                                <p class="mt-1 text-[12px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
-                                                    {% if checklist.observacion %}
-                                                        {{ checklist.observacion }}
-                                                    {% else %}
-                                                        Sin observación.
-                                                    {% endif %}
-                                                </p>
-                                            </div>
-                                            {% if checklist.checked == True %}
-                                                <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2.5 py-0.5 text-xs font-medium text-ok">
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
-                                                    Cumplió
-                                                </span>
-                                            {% else %}
-                                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2.5 py-0.5 text-xs font-medium text-fail">
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
-                                                    Falló
-                                                </span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
-                                    Este recurso no tiene requerimientos específicos.
-                                </div>
-                            {% endif %}
-                        </section>
-
-                        <div class="mt-5 grid gap-4 lg:grid-cols-2">
+                        <div class="grid gap-4 lg:grid-cols-2">
                             <section class="rounded-xl border border-surface-border bg-[#fafcff] px-4 py-4">
                                 <div class="mb-2 text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">Observación general</div>
                                 {% if item.observacion_general %}
@@ -159,6 +120,71 @@
                                 </div>
                             </section>
                         </div>
+
+                        <section class="mt-5 space-y-3">
+                            {% if item.checklist_items %}
+                                <div x-data="{ checklistAbierto: false }" class="space-y-3">
+                                    <button
+                                        type="button"
+                                        @click="checklistAbierto = !checklistAbierto"
+                                        class="flex w-full items-center justify-between rounded-xl border border-surface-border bg-[#fafcff] px-4 py-3 text-left transition hover:bg-white"
+                                    >
+                                        <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted" x-text="checklistAbierto ? 'Ocultar requerimientos' : 'Ver requerimientos'"></span>
+                                        <span class="inline-flex items-center gap-2 text-sm text-ink-secondary">
+                                            <span class="font-medium text-ink">{{ item.checklist_items|length }}</span>
+                                            <svg
+                                                viewBox="0 0 14 14"
+                                                class="h-4 w-4 transition-transform"
+                                                :class="checklistAbierto ? 'rotate-180' : ''"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </span>
+                                    </button>
+                                    <div x-show="checklistAbierto" x-transition x-cloak class="space-y-2">
+                                        {% for checklist in item.checklist_items %}
+                                        <div class="overflow-hidden rounded-lg border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
+                                            <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-[14px] font-medium text-ink">{{ checklist.label }}</p>
+                                                    <p class="mt-1 text-[12px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
+                                                        {% if checklist.observacion %}
+                                                            {{ checklist.observacion }}
+                                                        {% else %}
+                                                            Sin observación.
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                                {% if checklist.checked == True %}
+                                                    <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2.5 py-0.5 text-xs font-medium text-ok">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
+                                                        Cumplió
+                                                    </span>
+                                                {% elif checklist.checked == False %}
+                                                    <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2.5 py-0.5 text-xs font-medium text-fail">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                                        Falló
+                                                    </span>
+                                                {% else %}
+                                                    <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2.5 py-0.5 text-xs font-medium text-neutral">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>
+                                                        Sin registrar
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
+                                    Este recurso no tiene requerimientos específicos.
+                                </div>
+                            {% endif %}
+                        </section>
                     {% else %}
                         <div class="rounded-xl border border-surface-border bg-surface px-4 py-4 text-sm text-ink-secondary">
                             No existe ficha registrada para este recurso en este período.

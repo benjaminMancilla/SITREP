@@ -151,10 +151,34 @@
                                             {% endif %}
                                             · {{ registro.ficha.fecha_revision|date:"d/m/Y H:i" }}
                                         </div>
+                                        {% if registro.ficha.observacion_general %}
+                                            <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
+                                                {{ registro.ficha.observacion_general }}
+                                            </div>
+                                        {% endif %}
                                         {% if registro.checklist_items %}
-                                            <div class="mt-3 space-y-2">
-                                                <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">Checklist</div>
-                                                <div class="space-y-1.5">
+                                            <div x-data="{ checklistAbierto: false }" class="mt-3 space-y-2">
+                                                <button
+                                                    type="button"
+                                                    @click="checklistAbierto = !checklistAbierto"
+                                                    class="flex w-full items-center justify-between rounded-md border border-surface-border bg-[#fafcff] px-3 py-2 text-left transition hover:bg-white"
+                                                >
+                                                    <span class="text-[11px] font-semibold text-ink" x-text="checklistAbierto ? 'Ocultar requerimientos' : 'Ver requerimientos'"></span>
+                                                    <span class="inline-flex items-center gap-2 text-[11px] text-ink-muted">
+                                                        <span>{{ registro.checklist_items|length }}</span>
+                                                        <svg
+                                                            viewBox="0 0 14 14"
+                                                            class="h-3.5 w-3.5 transition-transform"
+                                                            :class="checklistAbierto ? 'rotate-180' : ''"
+                                                            fill="none"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            aria-hidden="true"
+                                                        >
+                                                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
+                                                    </span>
+                                                </button>
+                                                <div x-show="checklistAbierto" x-transition x-cloak class="space-y-1.5">
                                                     {% for checklist in registro.checklist_items %}
                                                     <div class="overflow-hidden rounded-md border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
                                                         <div class="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
@@ -185,11 +209,6 @@
                                                     </div>
                                                     {% endfor %}
                                                 </div>
-                                            </div>
-                                        {% endif %}
-                                        {% if registro.ficha.observacion_general %}
-                                            <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
-                                                {{ registro.ficha.observacion_general }}
                                             </div>
                                         {% endif %}
                                     </div>
@@ -365,10 +384,34 @@
                                             {% endif %}
                                             · {{ registro.ficha.fecha_revision|date:"d/m/Y H:i" }}
                                         </div>
+                                        {% if registro.ficha.observacion_general %}
+                                            <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if item.periodo.estado == 'observado' %}border-info-border bg-info-bg text-info{% elif registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
+                                                {{ registro.ficha.observacion_general }}
+                                            </div>
+                                        {% endif %}
                                         {% if registro.checklist_items %}
-                                            <div class="mt-3 space-y-2">
-                                                <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">Checklist</div>
-                                                <div class="space-y-1.5">
+                                            <div x-data="{ checklistAbierto: false }" class="mt-3 space-y-2">
+                                                <button
+                                                    type="button"
+                                                    @click="checklistAbierto = !checklistAbierto"
+                                                    class="flex w-full items-center justify-between rounded-md border border-surface-border bg-[#fafcff] px-3 py-2 text-left transition hover:bg-white"
+                                                >
+                                                    <span class="text-[11px] font-semibold text-ink" x-text="checklistAbierto ? 'Ocultar requerimientos' : 'Ver requerimientos'"></span>
+                                                    <span class="inline-flex items-center gap-2 text-[11px] text-ink-muted">
+                                                        <span>{{ registro.checklist_items|length }}</span>
+                                                        <svg
+                                                            viewBox="0 0 14 14"
+                                                            class="h-3.5 w-3.5 transition-transform"
+                                                            :class="checklistAbierto ? 'rotate-180' : ''"
+                                                            fill="none"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            aria-hidden="true"
+                                                        >
+                                                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
+                                                    </span>
+                                                </button>
+                                                <div x-show="checklistAbierto" x-transition x-cloak class="space-y-1.5">
                                                     {% for checklist in registro.checklist_items %}
                                                     <div class="overflow-hidden rounded-md border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
                                                         <div class="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
@@ -399,11 +442,6 @@
                                                     </div>
                                                     {% endfor %}
                                                 </div>
-                                            </div>
-                                        {% endif %}
-                                        {% if registro.ficha.observacion_general %}
-                                            <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if item.periodo.estado == 'observado' %}border-info-border bg-info-bg text-info{% elif registro.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
-                                                {{ registro.ficha.observacion_general }}
                                             </div>
                                         {% endif %}
                                     </div>
