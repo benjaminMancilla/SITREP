@@ -19,6 +19,8 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
+CHECKLIST_CANTIDAD_KEY = "__cantidad__"
+
 
 class TenantQueryService:
     ESTADOS_ABIERTOS = {"pendiente", "en_proceso"}
@@ -342,7 +344,11 @@ class MotorPeriodos:
         if not isinstance(payload_checklist, dict):
             return False
 
-        for requerimiento in requerimientos:
+        requerimientos_esperados = list(requerimientos)
+        if CHECKLIST_CANTIDAD_KEY in payload_checklist:
+            requerimientos_esperados.append(CHECKLIST_CANTIDAD_KEY)
+
+        for requerimiento in requerimientos_esperados:
             item = payload_checklist.get(requerimiento)
             if not isinstance(item, dict) or "cumple" not in item:
                 return False
@@ -494,6 +500,8 @@ class MotorPeriodos:
 
 
 class MotorFichas:
+    CANTIDAD_REQUISITO_KEY = CHECKLIST_CANTIDAD_KEY
+
     @classmethod
     def normalizar_payload_checklist(cls, payload_checklist):
         if not isinstance(payload_checklist, dict):
@@ -516,57 +524,135 @@ class MotorFichas:
         return payload_normalizado
 
     @classmethod
-    def validar_payload_checklist(cls, recurso, payload_checklist):
+    def construir_definicion_checklist(
+        cls,
+        recurso,
+        cantidad,
+        incluir_requisito_cantidad=None,
+    ):
+        if incluir_requisito_cantidad is None:
+            incluir_requisito_cantidad = cantidad > 1
+
+        definicion = [
+            {
+                "key": requerimiento,
+                "label": requerimiento,
+                "synthetic": False,
+            }
+            for requerimiento in (recurso.requerimientos or [])
+        ]
+        if incluir_requisito_cantidad:
+            definicion.append(
+                {
+                    "key": cls.CANTIDAD_REQUISITO_KEY,
+                    "label": f"Cantidad: {cantidad}",
+                    "synthetic": True,
+                }
+            )
+        return definicion
+
+    @classmethod
+    def construir_checklist_items(
+        cls,
+        recurso,
+        cantidad,
+        payload_checklist=None,
+        incluir_requisito_cantidad=None,
+    ):
+        payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
+        definicion = cls.construir_definicion_checklist(
+            recurso,
+            cantidad,
+            incluir_requisito_cantidad=incluir_requisito_cantidad,
+        )
+
+        checklist_items = []
+        for index, item_def in enumerate(definicion):
+            payload_item = payload_checklist.get(item_def["key"], {})
+            checked = None
+            observacion = ""
+            if isinstance(payload_item, dict) and "cumple" in payload_item:
+                checked = payload_item.get("cumple")
+                observacion = payload_item.get("observacion", "")
+
+            checklist_items.append(
+                {
+                    "index": index,
+                    "key": item_def["key"],
+                    "label": item_def["label"],
+                    "synthetic": item_def["synthetic"],
+                    "checked": checked,
+                    "observacion": observacion,
+                }
+            )
+
+        return checklist_items
+
+    @classmethod
+    def obtener_matriz_visible_periodo(cls, periodo, recurso):
+        return MatrizNaveRecurso.objects.filter(
+            nave=periodo.nave,
+            recurso=recurso,
+            es_visible=True,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        ).first()
+
+    @classmethod
+    def validar_payload_checklist(cls, recurso, payload_checklist, cantidad=0):
         """
         Evalúa si el payload incluye todos los requerimientos del recurso.
         Retorna (esta_completo, faltantes).
         """
-        requerimientos = recurso.requerimientos or []
-        if not requerimientos:
+        definicion = cls.construir_definicion_checklist(recurso, cantidad)
+        if not definicion:
             return True, []
 
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
 
-        faltantes = [req for req in requerimientos if req not in payload_checklist]
+        faltantes = [
+            item["label"]
+            for item in definicion
+            if item["key"] not in payload_checklist
+        ]
         if faltantes:
             return False, faltantes
         return True, []
 
     @classmethod
-    def validar_payload_checklist_completo(cls, recurso, payload_checklist):
-        requerimientos = recurso.requerimientos or []
-        if not requerimientos:
+    def validar_payload_checklist_completo(cls, recurso, payload_checklist, cantidad=0):
+        definicion = cls.construir_definicion_checklist(recurso, cantidad)
+        if not definicion:
             return True, []
 
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
         faltantes = []
-        for requerimiento in requerimientos:
-            item = payload_checklist.get(requerimiento)
+        for item_def in definicion:
+            item = payload_checklist.get(item_def["key"])
             if not isinstance(item, dict) or "cumple" not in item:
-                faltantes.append(requerimiento)
+                faltantes.append(item_def["label"])
 
         if faltantes:
             return False, faltantes
         return True, []
 
     @classmethod
-    def validar_observaciones_requerimientos(cls, recurso, payload_checklist):
+    def validar_observaciones_requerimientos(cls, recurso, payload_checklist, cantidad=0):
         """
         Verifica que los requerimientos fallados tengan observación.
         Retorna (es_valido, lista_de_requerimientos_sin_observacion).
         """
-        requerimientos = recurso.requerimientos or []
-        if not requerimientos:
+        definicion = cls.construir_definicion_checklist(recurso, cantidad)
+        if not definicion:
             return True, []
 
         payload_original = payload_checklist if isinstance(payload_checklist, dict) else {}
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
         sin_observacion = []
-        for requerimiento in requerimientos:
-            item = payload_checklist.get(requerimiento)
+        for item_def in definicion:
+            item = payload_checklist.get(item_def["key"])
             if not isinstance(item, dict):
                 continue
-            item_original = payload_original.get(requerimiento)
+            item_original = payload_original.get(item_def["key"])
 
             # Compatibilidad con payloads legacy: si la clave "observacion" no venía
             # en el request original, no bloqueamos el guardado por ese motivo.
@@ -576,14 +662,14 @@ class MotorFichas:
                 and item.get("cumple") is False
                 and not (item.get("observacion", "").strip())
             ):
-                sin_observacion.append(requerimiento)
+                sin_observacion.append(item_def["label"])
 
         if sin_observacion:
             return False, sin_observacion
         return True, []
 
     @classmethod
-    def validar_estado_operativo(cls, recurso, estado_operativo, payload_checklist):
+    def validar_estado_operativo(cls, recurso, estado_operativo, payload_checklist, cantidad=0):
         """
         Impide marcar un recurso como operativo si algún requerimiento no está cumplido.
         """
@@ -594,14 +680,14 @@ class MotorFichas:
         if estado_operativo is False:
             return True
 
-        requerimientos = recurso.requerimientos or []
-        if not requerimientos:
+        definicion = cls.construir_definicion_checklist(recurso, cantidad)
+        if not definicion:
             return True
 
-        return all(bool(payload_checklist.get(req, {}).get("cumple")) for req in requerimientos)
+        return all(bool(payload_checklist.get(item["key"], {}).get("cumple")) for item in definicion)
 
     @classmethod
-    def derivar_estado_operativo_desde_checklist(cls, recurso, payload_checklist):
+    def derivar_estado_operativo_desde_checklist(cls, recurso, payload_checklist, cantidad=0):
         """
         Deriva el estado operativo desde el checklist:
         - True si no hay requerimientos o si todos están cumplidos
@@ -609,21 +695,28 @@ class MotorFichas:
         - None si aún faltan requerimientos por registrar
         """
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-        requerimientos = recurso.requerimientos or []
-        if not requerimientos:
+        definicion = cls.construir_definicion_checklist(recurso, cantidad)
+        if not definicion:
             return True
 
         checklist_completo, _faltantes = cls.validar_payload_checklist_completo(
             recurso,
             payload_checklist,
+            cantidad=cantidad,
         )
         if not checklist_completo:
             return None
 
-        if any(payload_checklist.get(req, {}).get("cumple") is False for req in requerimientos):
+        if any(
+            payload_checklist.get(item["key"], {}).get("cumple") is False
+            for item in definicion
+        ):
             return False
 
-        if all(payload_checklist.get(req, {}).get("cumple") is True for req in requerimientos):
+        if all(
+            payload_checklist.get(item["key"], {}).get("cumple") is True
+            for item in definicion
+        ):
             return True
 
         return None
@@ -653,34 +746,43 @@ class MotorFichas:
             if periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
                 raise ValueError("No se puede registrar en un período cerrado.")
 
-            recurso_asignado = MatrizNaveRecurso.objects.filter(
-                nave=periodo.nave,
-                recurso=recurso,
-                es_visible=True,
-            ).exists()
-            if not recurso_asignado:
+            matriz = cls.obtener_matriz_visible_periodo(periodo, recurso)
+            if matriz is None:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
             payload_checklist_original = payload_checklist
             payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-            es_valido, faltantes = cls.validar_payload_checklist(recurso, payload_checklist)
+            es_valido, faltantes = cls.validar_payload_checklist(
+                recurso,
+                payload_checklist,
+                cantidad=matriz.cantidad,
+            )
+            if matriz.cantidad > 1 and cls.CANTIDAD_REQUISITO_KEY not in payload_checklist:
+                raise ValueError(f"Faltan requerimientos en el checklist: ['Cantidad: {matriz.cantidad}']")
             if estado_operativo is not None and not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
             checklist_completo, faltantes = cls.validar_payload_checklist_completo(
                 recurso,
                 payload_checklist,
+                cantidad=matriz.cantidad,
             )
             if estado_operativo is not None and not checklist_completo:
                 raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
             obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
                 recurso,
                 payload_checklist_original,
+                cantidad=matriz.cantidad,
             )
             if not obs_valido:
                 raise ValueError(
                     f"Los siguientes requerimientos fallados requieren observación: {sin_obs}"
                 )
-            if not cls.validar_estado_operativo(recurso, estado_operativo, payload_checklist):
+            if not cls.validar_estado_operativo(
+                recurso,
+                estado_operativo,
+                payload_checklist,
+                cantidad=matriz.cantidad,
+            ):
                 raise ValueError(
                     "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
                 )
@@ -721,23 +823,32 @@ class MotorFichas:
             if ficha.periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
                 raise ValueError("No se puede registrar en un período cerrado.")
 
+            matriz = cls.obtener_matriz_visible_periodo(ficha.periodo, ficha.recurso)
+            if matriz is None:
+                raise ValueError("El recurso no está asignado a esta nave.")
+
             payload_checklist_original = payload_checklist
             payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
             es_valido, faltantes = cls.validar_payload_checklist(
                 ficha.recurso,
                 payload_checklist,
+                cantidad=matriz.cantidad,
             )
+            if matriz.cantidad > 1 and cls.CANTIDAD_REQUISITO_KEY not in payload_checklist:
+                raise ValueError(f"Faltan requerimientos en el checklist: ['Cantidad: {matriz.cantidad}']")
             if estado_operativo is not None and not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
             checklist_completo, faltantes = cls.validar_payload_checklist_completo(
                 ficha.recurso,
                 payload_checklist,
+                cantidad=matriz.cantidad,
             )
             if estado_operativo is not None and not checklist_completo:
                 raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
             obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
                 ficha.recurso,
                 payload_checklist_original,
+                cantidad=matriz.cantidad,
             )
             if not obs_valido:
                 raise ValueError(
@@ -747,6 +858,7 @@ class MotorFichas:
                 ficha.recurso,
                 estado_operativo,
                 payload_checklist,
+                cantidad=matriz.cantidad,
             ):
                 raise ValueError(
                     "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."

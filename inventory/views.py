@@ -175,7 +175,15 @@ def _construir_periodos_detalle(nave, periodos):
     return periodos_detalle
 
 
-def _construir_recursos_lista_periodo(nave, periodo, slug=None):
+def _parse_estado_checklist_form(raw_estado):
+    if raw_estado == "on":
+        return True
+    if raw_estado == "off":
+        return False
+    return None
+
+
+def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False):
     matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
         "recurso__nombre"
     )
@@ -193,23 +201,15 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None):
         payload_actual = MotorFichas.normalizar_payload_checklist(
             ficha.payload_checklist if ficha else {}
         )
-        checklist_items = []
-        for index, requerimiento in enumerate(matriz.recurso.requerimientos or []):
-            payload_requerimiento = payload_actual.get(requerimiento, {})
-            checked = None
-            observacion = ""
-            if isinstance(payload_requerimiento, dict) and "cumple" in payload_requerimiento:
-                checked = payload_requerimiento.get("cumple")
-                observacion = payload_requerimiento.get("observacion", "")
-
-            checklist_items.append(
-                {
-                    "index": index,
-                    "nombre": requerimiento,
-                    "checked": checked,
-                    "observacion": observacion,
-                }
-            )
+        incluir_requisito_cantidad = matriz.cantidad > 1 and (
+            not for_history or MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual
+        )
+        checklist_items = MotorFichas.construir_checklist_items(
+            recurso=matriz.recurso,
+            cantidad=matriz.cantidad,
+            payload_checklist=payload_actual,
+            incluir_requisito_cantidad=incluir_requisito_cantidad,
+        )
 
         item = {
             "matriz": matriz,
@@ -675,7 +675,7 @@ def kiosco_periodo_historial(request, slug, periodo_id):
         )
         return redirect(f"/{slug}/kiosco/")
 
-    recursos_lista = _construir_recursos_lista_periodo(nave, periodo)
+    recursos_lista = _construir_recursos_lista_periodo(nave, periodo, for_history=True)
 
     return render(
         request,
@@ -748,7 +748,6 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         return redirect(f"/{slug}/kiosco/periodos/{periodo.id}/")
 
     recurso = matriz.recurso
-    requerimientos = recurso.requerimientos or []
     ficha = TenantQueryService.get_ficha_de_periodo_y_recurso(periodo, recurso)
     tiene_ficha = ficha is not None
 
@@ -762,10 +761,19 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         estado_operativo_form = request.POST.get("estado_operativo") == "on"
         observacion_general_form = (request.POST.get("observacion_general") or "").strip()
         payload_checklist_form = {}
-        for index, requerimiento in enumerate(requerimientos):
-            payload_checklist_form[requerimiento] = {
-                "cumple": request.POST.get(f"req_{index}") == "on",
-                "observacion": (request.POST.get(f"obs_{index}") or "").strip(),
+        checklist_definicion = MotorFichas.construir_checklist_items(
+            recurso=recurso,
+            cantidad=matriz.cantidad,
+            payload_checklist=payload_checklist_form,
+            incluir_requisito_cantidad=matriz.cantidad > 1,
+        )
+        for item in checklist_definicion:
+            estado_item = _parse_estado_checklist_form(request.POST.get(f"req_{item['index']}"))
+            if estado_item is None:
+                continue
+            payload_checklist_form[item["key"]] = {
+                "cumple": estado_item,
+                "observacion": (request.POST.get(f"obs_{item['index']}") or "").strip(),
             }
         if estado_operativo_form is True:
             hay_fallo = any(
@@ -813,15 +821,12 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
     else:
         error = None
 
-    checklist_items = [
-        {
-            "index": index,
-            "nombre": requerimiento,
-            "checked": payload_checklist_form.get(requerimiento, {}).get("cumple", False),
-            "observacion": payload_checklist_form.get(requerimiento, {}).get("observacion", ""),
-        }
-        for index, requerimiento in enumerate(requerimientos)
-    ]
+    checklist_items = MotorFichas.construir_checklist_items(
+        recurso=recurso,
+        cantidad=matriz.cantidad,
+        payload_checklist=payload_checklist_form,
+        incluir_requisito_cantidad=matriz.cantidad > 1,
+    )
 
     return render(
         request,
@@ -1492,6 +1497,12 @@ def api_recursos_periodo(request, slug, periodo_id):
                 "categoria": matriz.recurso.proposito.categoria,
                 "cantidad": matriz.cantidad,
                 "requerimientos": matriz.recurso.requerimientos or [],
+                "checklist_items": MotorFichas.construir_checklist_items(
+                    recurso=matriz.recurso,
+                    cantidad=matriz.cantidad,
+                    payload_checklist=ficha.payload_checklist if ficha else {},
+                    incluir_requisito_cantidad=matriz.cantidad > 1,
+                ),
                 "tiene_ficha": ficha is not None,
                 "estado_operativo": ficha.estado_operativo if ficha else None,
                 "observacion_general": ficha.observacion_general if ficha else "",
@@ -1567,6 +1578,12 @@ def api_detalle_recurso(request, slug, periodo_id, recurso_id):
             "categoria": matriz.recurso.proposito.categoria,
             "cantidad_requerida": matriz.cantidad,
             "requerimientos": matriz.recurso.requerimientos or [],
+            "checklist_items": MotorFichas.construir_checklist_items(
+                recurso=matriz.recurso,
+                cantidad=matriz.cantidad,
+                payload_checklist=payload_checklist,
+                incluir_requisito_cantidad=matriz.cantidad > 1,
+            ),
         },
         "ficha": {
             "existe": ficha is not None,
@@ -1692,6 +1709,15 @@ def api_guardar_fichas_periodo(request, slug, periodo_id):
         recurso.id: recurso
         for recurso in Recurso.objects.filter(id__in=recurso_ids)
     }
+    matrices_por_recurso_id = {
+        matriz.recurso_id: matriz
+        for matriz in MatrizNaveRecurso.objects.filter(
+            nave=periodo.nave,
+            es_visible=True,
+            recurso_id__in=recurso_ids,
+            recurso__periodicidad_id=periodo.periodicidad_id,
+        )
+    }
     fichas_existentes = {
         ficha.recurso_id: ficha
         for ficha in FichaRegistro.objects.filter(
@@ -1717,12 +1743,16 @@ def api_guardar_fichas_periodo(request, slug, periodo_id):
             recurso = recursos_por_id.get(recurso_id)
             if recurso is None:
                 raise ValueError("Recurso no encontrado.")
+            matriz = matrices_por_recurso_id.get(recurso_id)
+            if matriz is None:
+                raise ValueError("El recurso no está asignado a esta nave.")
 
             estado_operativo = data["estado_operativo"]
             if estado_operativo is None:
                 estado_operativo = MotorFichas.derivar_estado_operativo_desde_checklist(
                     recurso,
                     data["payload_checklist"],
+                    cantidad=matriz.cantidad,
                 )
 
             ficha_existente = fichas_existentes.get(recurso_id)
