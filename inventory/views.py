@@ -375,10 +375,11 @@ def dashboard_tierra(request, slug):
         periodo__nave__naviera=request.naviera,
         fecha_revision__date=timezone.localdate(),
     ).count()
-    fallos_activos_total = FichaRegistro.objects.filter(
-        periodo__nave__naviera=request.naviera,
-        periodo__estado__in=TenantQueryService.ESTADOS_ABIERTOS,
-        estado_operativo=False,
+    fallos_activos_total = MatrizNaveRecurso.objects.filter(
+        nave__naviera=request.naviera,
+        nave__is_active=True,
+        es_visible=True,
+        ultimo_estado_operativo=False,
     ).count()
     naves_capitan = Nave.objects.none()
     if request.user.rol == "capitan":
@@ -407,10 +408,10 @@ def dashboard_tierra(request, slug):
             ),
         ),
         fallos_activos=Count(
-            "periodos__fichas",
+            "matriz_recursos",
             filter=Q(
-                periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS,
-                periodos__fichas__estado_operativo=False,
+                matriz_recursos__es_visible=True,
+                matriz_recursos__ultimo_estado_operativo=False,
             ),
             distinct=True,
         ),
@@ -483,7 +484,11 @@ def nave_detalle(request, slug, nave_id):
     periodicidades = Periodicidad.objects.all().order_by("nombre")
     periodos_abiertos_detalle = _construir_periodos_detalle(nave, periodos_abiertos)
     historial_detalle = _construir_periodos_detalle(nave, historial)
-    fallos_activos_nave = sum(item["fallos_count"] for item in periodos_abiertos_detalle)
+    fallos_activos_nave = MatrizNaveRecurso.objects.filter(
+        nave=nave,
+        es_visible=True,
+        ultimo_estado_operativo=False,
+    ).count()
     total_recursos_nave = sum(item["total_recursos"] for item in periodos_abiertos_detalle)
 
     es_admin = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
@@ -1033,10 +1038,10 @@ def listar_naves(request, slug):
             distinct=True,
         ),
         fallos_activos=Count(
-            "periodos__fichas",
+            "matriz_recursos",
             filter=Q(
-                periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS,
-                periodos__fichas__estado_operativo=False,
+                matriz_recursos__es_visible=True,
+                matriz_recursos__ultimo_estado_operativo=False,
             ),
             distinct=True,
         ),
