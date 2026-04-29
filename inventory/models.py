@@ -432,6 +432,22 @@ class MatrizNaveRecurso(models.Model):
     
     # Bandera de Auditoría
     modificado_manualmente = models.BooleanField(default=False)
+    ultimo_estado_operativo = models.BooleanField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=(
+            "Último estado operativo confirmado para este recurso en esta nave. "
+            "None = nunca declarado. True = operativo. False = fallado. "
+            "Solo se actualiza cuando estado_operativo is not None (no en guardados parciales)."
+        ),
+    )
+    ultimo_estado_operativo_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Timestamp de la última vez que ultimo_estado_operativo fue actualizado.",
+    )
 
     class Meta:
         # Constraint de integridad crítico
