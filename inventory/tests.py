@@ -903,6 +903,14 @@ class TestIntegracionMotorReglas(TestCase):
     def _get_periodo(self, nave):
         return PeriodoRevision.objects.get(nave=nave, periodicidad=self.periodicidad)
 
+    def _payload_con_cantidad(self, cantidad, **items):
+        payload = dict(items)
+        payload[MotorFichas.CANTIDAD_REQUISITO_KEY] = {
+            "cumple": cantidad,
+            "observacion": "",
+        }
+        return payload
+
     def test_nave_pequena_obtiene_cantidad_correcta_segun_eslora(self):
         """Nave con eslora=8 (<=10) debe tener cantidad=0 y es_visible=False"""
         recurso = self._crear_recurso(
@@ -1048,10 +1056,11 @@ class TestIntegracionMotorReglas(TestCase):
             usuario=self.usuario,
             estado_operativo=True,
             observacion_general="",
-            payload_checklist={
-                "vigencia": {"cumple": True, "observacion": ""},
-                "presion": {"cumple": True, "observacion": ""},
-            },
+            payload_checklist=self._payload_con_cantidad(
+                True,
+                vigencia={"cumple": True, "observacion": ""},
+                presion={"cumple": True, "observacion": ""},
+            ),
         )
 
         periodo.refresh_from_db()
@@ -1083,10 +1092,11 @@ class TestIntegracionMotorReglas(TestCase):
             usuario=self.usuario,
             estado_operativo=False,
             observacion_general="",
-            payload_checklist={
-                "vigencia": {"cumple": True, "observacion": ""},
-                "presion": {"cumple": False, "observacion": "motivo"},
-            },
+            payload_checklist=self._payload_con_cantidad(
+                True,
+                vigencia={"cumple": True, "observacion": ""},
+                presion={"cumple": False, "observacion": "motivo"},
+            ),
         )
 
         periodo.refresh_from_db()
@@ -1115,7 +1125,10 @@ class TestIntegracionMotorReglas(TestCase):
             usuario=self.usuario,
             estado_operativo=None,
             observacion_general="",
-            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+            payload_checklist=self._payload_con_cantidad(
+                True,
+                vigencia={"cumple": True, "observacion": ""},
+            ),
         )
 
         self.assertIsNone(ficha.estado_operativo)
@@ -1141,10 +1154,11 @@ class TestIntegracionMotorReglas(TestCase):
                 usuario=self.usuario,
                 estado_operativo=False,
                 observacion_general="",
-                payload_checklist={
-                    "vigencia": {"cumple": True, "observacion": ""},
-                    "presion": {"cumple": False, "observacion": ""},
-                },
+                payload_checklist=self._payload_con_cantidad(
+                    True,
+                    vigencia={"cumple": True, "observacion": ""},
+                    presion={"cumple": False, "observacion": ""},
+                ),
             )
 
     def test_estado_operativo_se_fuerza_false_si_hay_fallo_en_requerimiento(self):
@@ -1161,27 +1175,29 @@ class TestIntegracionMotorReglas(TestCase):
         es_valido = MotorFichas.validar_estado_operativo(
             recurso=recurso,
             estado_operativo=True,
-            payload_checklist={
-                "vigencia": {"cumple": True, "observacion": ""},
-                "presion": {"cumple": False, "observacion": "baja presión"},
-            },
+            payload_checklist=self._payload_con_cantidad(
+                True,
+                vigencia={"cumple": True, "observacion": ""},
+                presion={"cumple": False, "observacion": "baja presión"},
+            ),
+            cantidad=2,
         )
 
         self.assertFalse(es_valido)
 
-    def test_recurso_sin_requerimientos_puede_guardarse_con_payload_vacio(self):
+    def test_recurso_sin_requerimientos_y_sin_cantidad_sintetica_puede_guardarse_con_payload_vacio(self):
         """
-        Un recurso con requerimientos=[] permite crear ficha con payload_checklist={}
-        y cualquier valor de estado_operativo
+        Un recurso con requerimientos=[] y cantidad<=1 permite payload_checklist={}
+        y cualquier valor de estado_operativo.
         """
         recurso_ok = self._crear_recurso(
             nombre="Recurso Sin Checklist OK",
-            regla_aplicacion=self.REGLA_POR_ESLORA,
+            regla_aplicacion=None,
             requerimientos=[],
         )
         recurso_falla = self._crear_recurso(
             nombre="Recurso Sin Checklist FALLA",
-            regla_aplicacion=self.REGLA_POR_ESLORA,
+            regla_aplicacion=None,
             requerimientos=[],
         )
         nave = self._crear_nave("Nave Sin Checklist", "INT-015", 20)
@@ -1208,6 +1224,101 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertTrue(ficha_ok.estado_operativo)
         self.assertEqual(ficha_falla.payload_checklist, {})
         self.assertFalse(ficha_falla.estado_operativo)
+
+    def test_recurso_sin_requerimientos_y_cantidad_mayor_a_uno_exige_requisito_cantidad(self):
+        recurso = self._crear_recurso(
+            nombre="Recurso Solo Cantidad",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=[],
+        )
+        nave = self._crear_nave("Nave Solo Cantidad", "INT-018", 20)
+        periodo = self._get_periodo(nave)
+
+        with self.assertRaises(ValueError):
+            MotorFichas.crear_ficha(
+                periodo=periodo,
+                recurso=recurso,
+                usuario=self.usuario,
+                estado_operativo=True,
+                observacion_general="",
+                payload_checklist={},
+            )
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist=self._payload_con_cantidad(True),
+        )
+
+        self.assertTrue(ficha.estado_operativo)
+
+    def test_requisito_cantidad_fallado_exige_observacion(self):
+        recurso = self._crear_recurso(
+            nombre="Recurso Cantidad Fallida",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=[],
+        )
+        nave = self._crear_nave("Nave Cantidad Fallida", "INT-019", 20)
+        periodo = self._get_periodo(nave)
+
+        with self.assertRaises(ValueError):
+            MotorFichas.crear_ficha(
+                periodo=periodo,
+                recurso=recurso,
+                usuario=self.usuario,
+                estado_operativo=False,
+                observacion_general="",
+                payload_checklist={
+                    MotorFichas.CANTIDAD_REQUISITO_KEY: {
+                        "cumple": False,
+                        "observacion": "",
+                    }
+                },
+            )
+
+    def test_construir_checklist_items_agrega_cantidad_al_final(self):
+        recurso = self._crear_recurso(
+            nombre="Recurso Checklist Cantidad",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "presion"],
+        )
+
+        checklist = MotorFichas.construir_checklist_items(
+            recurso=recurso,
+            cantidad=4,
+            payload_checklist={},
+        )
+
+        self.assertEqual(
+            [item["key"] for item in checklist],
+            ["vigencia", "presion", MotorFichas.CANTIDAD_REQUISITO_KEY],
+        )
+        self.assertEqual(checklist[-1]["label"], "Cantidad: 4")
+
+    def test_ficha_legacy_sin_requisito_cantidad_sigue_completa(self):
+        recurso = self._crear_recurso(
+            nombre="Recurso Legacy Cantidad",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "presion"],
+        )
+        nave = self._crear_nave("Nave Legacy Cantidad", "INT-020", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = FichaRegistro.objects.create(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            payload_checklist={
+                "vigencia": {"cumple": True, "observacion": ""},
+                "presion": {"cumple": True, "observacion": ""},
+            },
+        )
+
+        self.assertTrue(MotorPeriodos._es_ficha_completa(ficha))
 
     def test_regla_con_atributo_inexistente_usa_fallback(self):
         """regla_aplicacion con atributo='campo_inexistente' retorna fallback"""
