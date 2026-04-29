@@ -1255,6 +1255,59 @@ class TestIntegracionMotorReglas(TestCase):
 
         self.assertTrue(ficha.estado_operativo)
 
+    def test_guardado_parcial_sin_cantidad_es_permitido(self):
+        """
+        Un guardado parcial (estado_operativo=None) no debe exigir __cantidad__
+        aunque cantidad > 1. La validación completa solo ocurre al confirmar.
+        """
+        recurso = self._crear_recurso(
+            nombre="Recurso Guardado Parcial",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Parcial Cantidad", "INT-021", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        self.assertIsNone(ficha.estado_operativo)
+
+    def test_calcular_estado_ficha_usa_cantidad(self):
+        """
+        calcular_estado_ficha debe retornar 'en_progreso' si falta __cantidad__
+        cuando cantidad > 1, y 'completa' cuando está presente y cumplida.
+        """
+        recurso = self._crear_recurso(
+            nombre="Recurso Estado Ficha",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+
+        estado = MotorFichas.calcular_estado_ficha(
+            recurso=recurso,
+            estado_operativo=True,
+            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+            cantidad=2,
+        )
+        self.assertEqual(estado, "en_progreso")
+
+        estado = MotorFichas.calcular_estado_ficha(
+            recurso=recurso,
+            estado_operativo=True,
+            payload_checklist=self._payload_con_cantidad(
+                True, vigencia={"cumple": True, "observacion": ""}
+            ),
+            cantidad=2,
+        )
+        self.assertEqual(estado, "completa")
+
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(
             nombre="Recurso Cantidad Fallida",

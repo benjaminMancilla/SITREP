@@ -722,15 +722,21 @@ class MotorFichas:
         return None
 
     @classmethod
-    def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist):
-        ficha_temporal = FichaRegistro(
-            recurso=recurso,
-            estado_operativo=estado_operativo,
-            payload_checklist=payload_checklist,
-        )
-        if MotorPeriodos._es_ficha_completa(ficha_temporal):
+    def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist, cantidad=0):
+        if estado_operativo is None:
+            return "en_progreso"
+
+        definicion = cls.construir_definicion_checklist(recurso, cantidad)
+        if not definicion:
             return "completa"
-        return "en_progreso"
+
+        payload = cls.normalizar_payload_checklist(payload_checklist)
+        all_complete = all(
+            isinstance(payload.get(item["key"]), dict)
+            and "cumple" in payload.get(item["key"], {})
+            for item in definicion
+        )
+        return "completa" if all_complete else "en_progreso"
 
     @classmethod
     def crear_ficha(
@@ -757,8 +763,8 @@ class MotorFichas:
                 payload_checklist,
                 cantidad=matriz.cantidad,
             )
-            if matriz.cantidad > 1 and cls.CANTIDAD_REQUISITO_KEY not in payload_checklist:
-                raise ValueError(f"Faltan requerimientos en el checklist: ['Cantidad: {matriz.cantidad}']")
+            # construir_definicion_checklist ya incluye __cantidad__ cuando cantidad > 1.
+            # La validación de presencia aplica solo cuando estado_operativo is not None.
             if estado_operativo is not None and not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
             checklist_completo, faltantes = cls.validar_payload_checklist_completo(
@@ -834,8 +840,8 @@ class MotorFichas:
                 payload_checklist,
                 cantidad=matriz.cantidad,
             )
-            if matriz.cantidad > 1 and cls.CANTIDAD_REQUISITO_KEY not in payload_checklist:
-                raise ValueError(f"Faltan requerimientos en el checklist: ['Cantidad: {matriz.cantidad}']")
+            # construir_definicion_checklist ya incluye __cantidad__ cuando cantidad > 1.
+            # La validación de presencia aplica solo cuando estado_operativo is not None.
             if estado_operativo is not None and not es_valido:
                 raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
             checklist_completo, faltantes = cls.validar_payload_checklist_completo(
@@ -868,6 +874,7 @@ class MotorFichas:
                 recurso=ficha.recurso,
                 estado_operativo=estado_operativo,
                 payload_checklist=payload_checklist,
+                cantidad=matriz.cantidad,
             )
             ficha.estado_operativo = estado_operativo
             ficha.observacion_general = observacion_general
