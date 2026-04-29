@@ -88,7 +88,8 @@
                                 checklistInicial: [
                                     {% for checklist in item.checklist_items %}
                                     {
-                                        nombre: '{{ checklist.nombre|escapejs }}',
+                                        key: '{{ checklist.key|escapejs }}',
+                                        label: '{{ checklist.label|escapejs }}',
                                         estado: {{ checklist.checked|yesno:'true,false,null' }},
                                         estadoInicial: {{ checklist.checked|yesno:'true,false,null' }},
                                         obs: '{{ checklist.observacion|default:''|escapejs }}',
@@ -114,9 +115,11 @@
                                     <span class="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
                                         {% if item.recurso.proposito %}
                                             <span>{{ item.recurso.proposito.tipo }}</span>
-                                            <span class="text-ink-muted">·</span>
+                                            {% if item.recurso.proposito.categoria %}
+                                                <span class="text-ink-muted">·</span>
+                                                <span>{{ item.recurso.proposito.categoria }}</span>
+                                            {% endif %}
                                         {% endif %}
-                                        <span>Cantidad: {{ item.matriz.cantidad }}</span>
                                     </span>
                                     {% if item.tiene_ficha and item.ficha.usuario %}
                                         <div class="mt-1 font-mono text-[11px] text-ink-muted">
@@ -182,7 +185,7 @@
                                                 class="overflow-hidden rounded-lg border transition-colors"
                                             >
                                                 <div class="flex items-center gap-3 px-4 py-3">
-                                                    <span class="flex-1 text-[14px] font-medium text-ink">{{ checklist.nombre }}</span>
+                                                    <span class="flex-1 text-[14px] font-medium text-ink">{{ checklist.label }}</span>
 
                                                     <div class="flex items-center gap-1">
                                                         <button
@@ -229,7 +232,7 @@
                                                 <input
                                                     type="hidden"
                                                     name="req_{{ checklist.index }}"
-                                                    :value="checklist[{{ forloop.counter0 }}].estado === null ? '' : (checklist[{{ forloop.counter0 }}].estado ? 'on' : '')"
+                                                    :value="checklist[{{ forloop.counter0 }}].estado === null ? 'pending' : (checklist[{{ forloop.counter0 }}].estado ? 'on' : 'off')"
                                                 >
                                                 <input type="hidden" name="obs_{{ checklist.index }}" :value="checklist[{{ forloop.counter0 }}].obs">
                                             </div>
@@ -391,7 +394,8 @@
             observacionGeneralInicial: config.observacionGeneralInicial,
             checklist: config.checklistInicial.map(function(item) {
                 return {
-                    nombre: item.nombre,
+                    key: item.key,
+                    label: item.label,
                     estado: item.estado,
                     estadoInicial: item.estadoInicial,
                     obs: item.obs,
@@ -405,7 +409,7 @@
                     if (item.estado === null) {
                         return;
                     }
-                    payload[item.nombre] = {
+                    payload[item.key] = {
                         cumple: item.estado,
                         observacion: item.obs,
                     };

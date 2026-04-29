@@ -17,24 +17,40 @@
         checklist: [
             {% for item in checklist_items %}
             {
-                cumple: {% if tiene_ficha %}{{ item.checked|yesno:'true,false' }}{% else %}null{% endif %},
+                key: '{{ item.key|escapejs }}',
+                label: '{{ item.label|escapejs }}',
+                estado: {{ item.checked|yesno:'true,false,null' }},
                 obs: '{{ item.observacion|default:''|escapejs }}'
             }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ],
         get hayFallo() {
-            return this.checklist.some((item) => item.cumple === false);
+            return this.checklist.some((item) => item.estado === false);
         },
         get hayChecklist() {
             return this.checklist.length > 0;
         },
         get todosCumplidos() {
-            return this.checklist.length > 0 && this.checklist.every((item) => item.cumple === true);
+            return this.checklist.length > 0 && this.checklist.every((item) => item.estado === true);
         },
         syncEstadoOperativo() {
             if (this.hayFallo || (this.hayChecklist && !this.todosCumplidos)) {
                 this.estadoOperativo = false;
             }
+        },
+        limpiarEstado(index) {
+            this.checklist[index].estado = null;
+            this.checklist[index].obs = '';
+            this.syncEstadoOperativo();
+        },
+        marcarCumple(index) {
+            this.checklist[index].estado = true;
+            this.checklist[index].obs = '';
+            this.syncEstadoOperativo();
+        },
+        marcarFalla(index) {
+            this.checklist[index].estado = false;
+            this.syncEstadoOperativo();
         }
     }"
     x-init="syncEstadoOperativo()"
@@ -90,10 +106,7 @@
                             <span class="text-ink-muted">·</span>
                             <span>{{ recurso.proposito.categoria }}</span>
                         {% endif %}
-                        <span class="text-ink-muted">·</span>
                     {% endif %}
-                    <span>Cantidad requerida: {{ matriz.cantidad }}</span>
-                    <span class="text-ink-muted">·</span>
                     <span>{{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}</span>
                 </div>
             </div>
@@ -119,32 +132,46 @@
                             {% for item in checklist_items %}
                             <div
                                 :class="{
-                                    'border-ok-border bg-ok-bg': checklist[{{ forloop.counter0 }}].cumple === true,
-                                    'border-fail-border bg-fail-bg': checklist[{{ forloop.counter0 }}].cumple === false,
-                                    'border-surface-border bg-[#fafcff]': checklist[{{ forloop.counter0 }}].cumple === null
+                                    'border-ok-border bg-ok-bg': checklist[{{ forloop.counter0 }}].estado === true,
+                                    'border-fail-border bg-fail-bg': checklist[{{ forloop.counter0 }}].estado === false,
+                                    'border-surface-border bg-[#fafcff]': checklist[{{ forloop.counter0 }}].estado === null
                                 }"
                                 class="overflow-hidden rounded-lg border transition-colors"
                             >
-                                <label class="flex cursor-pointer items-center gap-3.5 px-4 py-3.5">
-                                    <input
-                                        type="checkbox"
-                                        id="req_{{ item.index }}"
-                                        name="req_{{ item.index }}"
-                                        x-model="checklist[{{ forloop.counter0 }}].cumple"
-                                        @change="if (checklist[{{ forloop.counter0 }}].cumple) checklist[{{ forloop.counter0 }}].obs = ''; syncEstadoOperativo()"
-                                        class="h-[22px] w-[22px] rounded-[5px] border-2 border-surface-border text-brand"
-                                    >
-                                    <span class="flex-1 text-[15px] font-medium text-ink">{{ item.nombre }}</span>
-                                    <span
-                                        x-show="checklist[{{ forloop.counter0 }}].cumple !== null"
-                                        x-cloak
-                                        :class="checklist[{{ forloop.counter0 }}].cumple ? 'text-ok' : 'text-fail'"
-                                        class="text-[11px] font-semibold"
-                                        x-text="checklist[{{ forloop.counter0 }}].cumple ? 'Cumplió' : 'Falló'"
-                                    ></span>
-                                </label>
+                                <div class="flex items-center gap-3 px-4 py-3">
+                                    <span class="flex-1 text-[15px] font-medium text-ink">{{ item.label }}</span>
+                                    <div class="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            @click="limpiarEstado({{ forloop.counter0 }})"
+                                            class="flex h-7 w-7 items-center justify-center rounded-md transition"
+                                            :class="checklist[{{ forloop.counter0 }}].estado === null ? 'border border-neutral-border bg-neutral-bg' : 'hover:bg-surface'"
+                                            title="Sin registrar"
+                                        >
+                                            <span class="h-2 w-2 rounded-full bg-ink-muted"></span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="marcarCumple({{ forloop.counter0 }})"
+                                            class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
+                                            :class="checklist[{{ forloop.counter0 }}].estado === true ? 'bg-ok text-white' : 'text-ok hover:bg-ok-bg'"
+                                            title="Cumple"
+                                        >
+                                            ✓
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="marcarFalla({{ forloop.counter0 }})"
+                                            class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
+                                            :class="checklist[{{ forloop.counter0 }}].estado === false ? 'bg-fail text-white' : 'text-fail hover:bg-fail-bg'"
+                                            title="Falla"
+                                        >
+                                            ✗
+                                        </button>
+                                    </div>
+                                </div>
 
-                                <div x-show="checklist[{{ forloop.counter0 }}].cumple === false" x-cloak x-transition class="px-4 pb-3">
+                                <div x-show="checklist[{{ forloop.counter0 }}].estado === false" x-cloak x-transition class="px-4 pb-3">
                                     <textarea
                                         x-model="checklist[{{ forloop.counter0 }}].obs"
                                         rows="2"
@@ -155,6 +182,12 @@
                                     <p x-show="!checklist[{{ forloop.counter0 }}].obs.trim()" x-cloak class="mt-1 text-[11px] text-fail">Obligatoria al fallar</p>
                                 </div>
 
+                                <input
+                                    type="hidden"
+                                    id="req_{{ item.index }}"
+                                    name="req_{{ item.index }}"
+                                    :value="checklist[{{ forloop.counter0 }}].estado === null ? 'pending' : (checklist[{{ forloop.counter0 }}].estado ? 'on' : 'off')"
+                                >
                                 <input type="hidden" name="obs_{{ item.index }}" :value="checklist[{{ forloop.counter0 }}].obs">
                             </div>
                             {% endfor %}

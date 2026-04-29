@@ -51,9 +51,7 @@
                                     <span class="text-ink-muted">·</span>
                                     <span>{{ item.recurso.proposito.categoria }}</span>
                                 {% endif %}
-                                <span class="text-ink-muted">·</span>
                             {% endif %}
-                            <span>Cantidad: {{ item.matriz.cantidad }}</span>
                         </div>
                     </div>
 
@@ -85,10 +83,10 @@
                             {% if item.checklist_items %}
                                 <div class="space-y-2">
                                     {% for checklist in item.checklist_items %}
-                                    <div class="overflow-hidden rounded-lg border {% if checklist.checked %}border-ok-border bg-ok-bg{% else %}border-fail-border bg-fail-bg{% endif %}">
+                                    <div class="overflow-hidden rounded-lg border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% else %}border-fail-border bg-fail-bg{% endif %}">
                                         <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
                                             <div class="min-w-0 flex-1">
-                                                <p class="text-[14px] font-medium text-ink">{{ checklist.nombre }}</p>
+                                                <p class="text-[14px] font-medium text-ink">{{ checklist.label }}</p>
                                                 <p class="mt-1 text-[12px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
                                                     {% if checklist.observacion %}
                                                         {{ checklist.observacion }}
@@ -97,7 +95,7 @@
                                                     {% endif %}
                                                 </p>
                                             </div>
-                                            {% if checklist.checked %}
+                                            {% if checklist.checked == True %}
                                                 <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2.5 py-0.5 text-xs font-medium text-ok">
                                                     <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
                                                     Cumplió
