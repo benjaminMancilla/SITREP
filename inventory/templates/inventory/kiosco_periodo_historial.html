@@ -31,158 +31,178 @@
 
     <main class="mx-auto max-w-3xl px-4 py-5 pb-16 sm:px-6">
         <div class="space-y-3">
-            {% if recursos_lista %}
-                {% regroup recursos_lista by recurso.area as areas_agrupadas %}
-                {% for grupo in areas_agrupadas %}
-                <div class="flex items-center gap-3 py-1">
-                    <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
-                        {% if grupo.grouper %}{{ grupo.grouper.nombre }}{% else %}Sin área{% endif %}
-                    </span>
-                    <span class="h-px flex-1 bg-surface-border"></span>
-                </div>
+            {% if areas_grupos %}
+                {% for grupo in areas_grupos %}
+                <section class="space-y-2">
+                    <div x-data="{ abierto: true }" class="space-y-2">
+                        <button
+                            type="button"
+                            @click="abierto = !abierto"
+                            class="flex w-full items-center gap-3 rounded-lg border border-surface-border bg-white px-4 py-3 text-left transition hover:bg-[#fafcff]"
+                        >
+                            <span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-bold {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}">
+                                <span class="h-2 w-2 rounded-full bg-current opacity-70"></span>
+                                {{ grupo.nombre_display }}
+                            </span>
+                            <span class="flex-1 text-[11px] text-ink-muted">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
+                            <svg
+                                viewBox="0 0 18 18"
+                                class="h-4 w-4 text-ink-muted transition-transform"
+                                :class="abierto ? 'rotate-180' : ''"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
+                            >
+                                <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
 
-                {% for item in grupo.list %}
-                <article
-                    class="overflow-hidden rounded-[10px] border-[1.5px] bg-white shadow-sm {% if item.tiene_ficha %}{% if item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}{% else %}border-surface-border{% endif %}"
-                >
-                    <div class="flex items-start justify-between gap-4 px-5 py-[14px]">
-                        <div class="min-w-0 flex items-start gap-3">
-                            <span
-                                class="mt-1 h-8 w-1 shrink-0 rounded-sm {% if item.tiene_ficha %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"
-                            ></span>
-                            <div class="min-w-0">
-                                <h2 class="text-[15px] font-bold text-navy">{{ item.recurso.nombre }}</h2>
-                                {% if item.tiene_ficha %}
-                                <p class="mt-0.5 text-[11px] text-ink-muted">
-                                    {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
-                                        {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
-                                    {% else %}
-                                        {{ item.ficha.usuario.rut }}
-                                    {% endif %}
-                                    · {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
-                                    {% if item.ficha.modificado_por %}
-                                        · editado {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
-                                    {% endif %}
-                                </p>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="shrink-0">
-                            {% if item.tiene_ficha %}
-                                {% if item.estado_operativo == True %}
-                                    {% include 'components/badge_estado.html' with estado='operativo' %}
-                                {% elif item.estado_operativo == False %}
-                                    <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
-                                        Con falla
-                                    </span>
-                                {% else %}
-                                    {% include 'components/badge_estado.html' with estado='en_proceso' %}
-                                {% endif %}
-                            {% else %}
-                                <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-neutral-bg px-2.5 py-0.5 text-xs font-medium text-neutral">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>
-                                    Sin registro
-                                </span>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    {% if item.tiene_ficha %}
-                    <div class="space-y-3 border-t border-surface-border px-5 py-4">
-                        <div x-data="{ obsExpandida: false }">
-                            <div class="mb-1.5 text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
-                                Observación general
-                            </div>
-                            {% if item.observacion_general %}
-                                <div class="relative">
-                                    <p
-                                        class="text-sm leading-6 text-ink"
-                                        :style="obsExpandida ? '' : 'max-height: 3rem; overflow: hidden;'"
-                                    >{{ item.observacion_general }}</p>
-                                    <button
-                                        type="button"
-                                        @click="obsExpandida = !obsExpandida"
-                                        class="mt-0.5 text-[11px] text-brand hover:underline"
-                                        x-text="obsExpandida ? 'Ver menos' : 'Ver más'"
-                                    ></button>
-                                </div>
-                            {% else %}
-                                <p class="text-sm text-ink-muted">Sin observación general.</p>
-                            {% endif %}
-                        </div>
-
-                        {% if item.checklist_items %}
-                            <div x-data="{ checklistAbierto: false }" class="space-y-3">
-                                <button
-                                    type="button"
-                                    @click="checklistAbierto = !checklistAbierto"
-                                    class="flex w-full items-center justify-between rounded-xl border border-surface-border bg-[#fafcff] px-4 py-3 text-left transition hover:bg-white"
-                                >
-                                    <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted" x-text="checklistAbierto ? 'Ocultar requerimientos' : 'Ver requerimientos'"></span>
-                                    <span class="inline-flex items-center gap-2 text-sm text-ink-secondary">
-                                        <span class="font-medium text-ink">{{ item.checklist_items|length }}</span>
-                                        <svg
-                                            viewBox="0 0 14 14"
-                                            class="h-4 w-4 transition-transform"
-                                            :class="checklistAbierto ? 'rotate-180' : ''"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            aria-hidden="true"
-                                        >
-                                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </span>
-                                </button>
-                                <div x-show="checklistAbierto" x-transition x-cloak class="space-y-2">
-                                    {% for checklist in item.checklist_items %}
-                                    <div class="overflow-hidden rounded-lg border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
-                                        <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-[14px] font-medium text-ink">{{ checklist.label }}</p>
-                                                <p class="mt-1 text-[12px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
-                                                    {% if checklist.observacion %}
-                                                        {{ checklist.observacion }}
-                                                    {% else %}
-                                                        Sin observación.
-                                                    {% endif %}
-                                                </p>
-                                            </div>
-                                            {% if checklist.checked == True %}
-                                                <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2.5 py-0.5 text-xs font-medium text-ok">
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
-                                                    Cumplió
-                                                </span>
-                                            {% elif checklist.checked == False %}
-                                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2.5 py-0.5 text-xs font-medium text-fail">
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
-                                                    Falló
-                                                </span>
-                                            {% else %}
-                                                <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2.5 py-0.5 text-xs font-medium text-neutral">
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>
-                                                    Sin registrar
-                                                </span>
+                        <div x-show="abierto" x-transition x-cloak class="space-y-3 pl-2">
+                            {% for item in grupo.recursos %}
+                            <article
+                                class="overflow-hidden rounded-[10px] border-[1.5px] bg-white shadow-sm {% if item.tiene_ficha %}{% if item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}{% else %}border-surface-border{% endif %}"
+                            >
+                                <div class="flex items-start justify-between gap-4 px-5 py-[14px]">
+                                    <div class="min-w-0 flex items-start gap-3">
+                                        <span
+                                            class="mt-1 h-8 w-1 shrink-0 rounded-sm {% if item.tiene_ficha %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"
+                                        ></span>
+                                        <div class="min-w-0">
+                                            <h2 class="text-[15px] font-bold text-navy">{{ item.recurso.nombre }}</h2>
+                                            {% if item.tiene_ficha %}
+                                            <p class="mt-0.5 text-[11px] text-ink-muted">
+                                                {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
+                                                    {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
+                                                {% else %}
+                                                    {{ item.ficha.usuario.rut }}
+                                                {% endif %}
+                                                · {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
+                                                {% if item.ficha.modificado_por %}
+                                                    · editado {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
+                                                {% endif %}
+                                            </p>
                                             {% endif %}
                                         </div>
                                     </div>
-                                    {% endfor %}
+
+                                    <div class="shrink-0">
+                                        {% if item.tiene_ficha %}
+                                            {% if item.estado_operativo == True %}
+                                                {% include 'components/badge_estado.html' with estado='operativo' %}
+                                            {% elif item.estado_operativo == False %}
+                                                <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                                    Con falla
+                                                </span>
+                                            {% else %}
+                                                {% include 'components/badge_estado.html' with estado='en_proceso' %}
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-neutral-bg px-2.5 py-0.5 text-xs font-medium text-neutral">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>
+                                                Sin registro
+                                            </span>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            </div>
-                        {% else %}
-                            <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
-                                Este recurso no tiene requerimientos específicos.
-                            </div>
-                        {% endif %}
+
+                                {% if item.tiene_ficha %}
+                                <div class="space-y-3 border-t border-surface-border px-5 py-4">
+                                    <div x-data="{ obsExpandida: false }">
+                                        <div class="mb-1.5 text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
+                                            Observación general
+                                        </div>
+                                        {% if item.observacion_general %}
+                                            <div class="relative">
+                                                <p
+                                                    class="text-sm leading-6 text-ink"
+                                                    :style="obsExpandida ? '' : 'max-height: 3rem; overflow: hidden;'"
+                                                >{{ item.observacion_general }}</p>
+                                                <button
+                                                    type="button"
+                                                    @click="obsExpandida = !obsExpandida"
+                                                    class="mt-0.5 text-[11px] text-brand hover:underline"
+                                                    x-text="obsExpandida ? 'Ver menos' : 'Ver más'"
+                                                ></button>
+                                            </div>
+                                        {% else %}
+                                            <p class="text-sm text-ink-muted">Sin observación general.</p>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if item.checklist_items %}
+                                        <div x-data="{ checklistAbierto: false }" class="space-y-3">
+                                            <button
+                                                type="button"
+                                                @click="checklistAbierto = !checklistAbierto"
+                                                class="flex w-full items-center justify-between rounded-xl border border-surface-border bg-[#fafcff] px-4 py-3 text-left transition hover:bg-white"
+                                            >
+                                                <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted" x-text="checklistAbierto ? 'Ocultar requerimientos' : 'Ver requerimientos'"></span>
+                                                <span class="inline-flex items-center gap-2 text-sm text-ink-secondary">
+                                                    <span class="font-medium text-ink">{{ item.checklist_items|length }}</span>
+                                                    <svg
+                                                        viewBox="0 0 14 14"
+                                                        class="h-4 w-4 transition-transform"
+                                                        :class="checklistAbierto ? 'rotate-180' : ''"
+                                                        fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        aria-hidden="true"
+                                                    >
+                                                        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    </svg>
+                                                </span>
+                                            </button>
+                                            <div x-show="checklistAbierto" x-transition x-cloak class="space-y-2">
+                                                {% for checklist in item.checklist_items %}
+                                                <div class="overflow-hidden rounded-lg border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
+                                                    <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+                                                        <div class="min-w-0 flex-1">
+                                                            <p class="text-[14px] font-medium text-ink">{{ checklist.label }}</p>
+                                                            <p class="mt-1 text-[12px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
+                                                                {% if checklist.observacion %}
+                                                                    {{ checklist.observacion }}
+                                                                {% else %}
+                                                                    Sin observación.
+                                                                {% endif %}
+                                                            </p>
+                                                        </div>
+                                                        {% if checklist.checked == True %}
+                                                            <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2.5 py-0.5 text-xs font-medium text-ok">
+                                                                <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
+                                                                Cumplió
+                                                            </span>
+                                                        {% elif checklist.checked == False %}
+                                                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2.5 py-0.5 text-xs font-medium text-fail">
+                                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                                                Falló
+                                                            </span>
+                                                        {% else %}
+                                                            <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2.5 py-0.5 text-xs font-medium text-neutral">
+                                                                <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>
+                                                                Sin registrar
+                                                            </span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
+                                            Este recurso no tiene requerimientos específicos.
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <div class="border-t border-surface-border px-5 py-4 text-sm text-ink-secondary">
+                                    No existe ficha registrada para este recurso en este período.
+                                </div>
+                                {% endif %}
+                            </article>
+                            {% endfor %}
+                        </div>
                     </div>
-                    {% else %}
-                    <div class="border-t border-surface-border px-5 py-4 text-sm text-ink-secondary">
-                        No existe ficha registrada para este recurso en este período.
-                    </div>
-                    {% endif %}
-                </article>
-                {% endfor %}
+                </section>
                 {% endfor %}
             {% else %}
             <div class="rounded-2xl border border-surface-border bg-white px-6 py-8 text-center text-sm text-ink-muted shadow-sm">

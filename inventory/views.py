@@ -330,6 +330,7 @@ def _construir_periodos_detalle(nave, periodos):
                 "periodo": periodo,
                 "fichas": fichas,
                 "registros": registros,
+                "registros_por_area": _agrupar_registros_por_area(registros),
                 "total_recursos": total_recursos,
                 "fichas_count": fichas_count,
                 "fallos_count": fallos_count,
@@ -421,13 +422,9 @@ def _agrupar_recursos_por_area(recursos_lista):
         area_id = area.id if area is not None else None
 
         if area_id not in grupos_por_area:
-            nombre_display = "Sin área"
-            if area is not None:
-                nombre_display = (area.nombre_tecnico or area.nombre or "").strip() or area.nombre
-
             grupos_por_area[area_id] = {
                 "area": area,
-                "nombre_display": nombre_display,
+                "nombre_display": _nombre_display_area(area),
                 "recursos": [],
                 "total": 0,
                 "con_ficha": 0,
@@ -442,11 +439,42 @@ def _agrupar_recursos_por_area(recursos_lista):
         if item["estado_operativo"] is False:
             grupo["tiene_fallo"] = True
 
-    grupos_con_area = [
-        grupo
-        for grupo in grupos_por_area.values()
-        if grupo["area"] is not None
-    ]
+    return _ordenar_grupos_por_area(grupos_por_area)
+
+
+def _agrupar_registros_por_area(registros):
+    grupos_por_area = {}
+
+    for registro in registros:
+        area = registro["recurso"].area
+        area_id = area.id if area is not None else None
+
+        if area_id not in grupos_por_area:
+            grupos_por_area[area_id] = {
+                "area": area,
+                "nombre_display": _nombre_display_area(area),
+                "registros": [],
+                "total": 0,
+                "con_ficha": 0,
+            }
+
+        grupo = grupos_por_area[area_id]
+        grupo["registros"].append(registro)
+        grupo["total"] += 1
+        if registro["tipo"] == "ficha":
+            grupo["con_ficha"] += 1
+
+    return _ordenar_grupos_por_area(grupos_por_area)
+
+
+def _nombre_display_area(area):
+    if area is None:
+        return "Sin área"
+    return (area.nombre_tecnico or area.nombre or "").strip() or area.nombre
+
+
+def _ordenar_grupos_por_area(grupos_por_area):
+    grupos_con_area = [grupo for grupo in grupos_por_area.values() if grupo["area"] is not None]
     grupos_con_area.sort(key=lambda grupo: grupo["nombre_display"].casefold())
 
     grupo_sin_area = grupos_por_area.get(None)
@@ -851,6 +879,7 @@ def kiosco_periodo_historial(request, slug, periodo_id):
         return redirect(f"/{slug}/kiosco/")
 
     recursos_lista = _construir_recursos_lista_periodo(nave, periodo, for_history=True)
+    areas_grupos = _agrupar_recursos_por_area(recursos_lista)
 
     return render(
         request,
@@ -858,6 +887,7 @@ def kiosco_periodo_historial(request, slug, periodo_id):
         {
             "nave": nave,
             "periodo": periodo,
+            "areas_grupos": areas_grupos,
             "recursos_lista": recursos_lista,
             "slug": slug,
         },

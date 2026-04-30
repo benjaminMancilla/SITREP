@@ -135,16 +135,34 @@
 
                 <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border">
                     {% if item.registros %}
-                        {% regroup item.registros by recurso.area as registros_por_area %}
-                        {% for grupo in registros_por_area %}
-                            <div class="flex items-center gap-2 border-b border-[#f8fafc] px-5 py-2">
-                                <span class="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-                                    {% if grupo.grouper %}{{ grupo.grouper.nombre }}{% else %}Sin área{% endif %}
-                                </span>
-                                <span class="h-px flex-1 bg-surface-border opacity-60"></span>
-                            </div>
+                        {% for grupo in item.registros_por_area %}
+                            <div x-data="{ abierto: true }" class="space-y-1">
+                                <div class="px-3 pt-3">
+                                    <button
+                                        type="button"
+                                        @click="abierto = !abierto"
+                                        class="flex w-full items-center gap-3 rounded-md border border-surface-border bg-[#fcfdff] px-3 py-2.5 text-left transition hover:bg-white"
+                                    >
+                                        <span class="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[10px] font-bold {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-current opacity-70"></span>
+                                            {{ grupo.nombre_display }}
+                                        </span>
+                                        <span class="flex-1 text-[11px] text-ink-muted">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
+                                        <svg
+                                            viewBox="0 0 18 18"
+                                            class="h-3.5 w-3.5 text-ink-muted transition-transform"
+                                            :class="abierto ? 'rotate-180' : ''"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
 
-                            {% for registro in grupo.list %}
+                                <div x-show="abierto" x-transition x-cloak>
+                            {% for registro in grupo.registros %}
                                 {% if registro.tipo == "ficha" %}
                                 <div class="border-b border-[#f8fafc] px-5 py-3 last:border-b-0">
                                     <div class="flex items-start gap-3">
@@ -245,6 +263,8 @@
                                 </div>
                                 {% endif %}
                             {% endfor %}
+                                </div>
+                            </div>
                         {% endfor %}
                     {% else %}
                         <div class="px-5 py-4 text-[13px] text-ink-muted">Sin registros en este período.</div>
@@ -379,16 +399,34 @@
 
                 <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border">
                     {% if item.registros %}
-                        {% regroup item.registros by recurso.area as registros_por_area %}
-                        {% for grupo in registros_por_area %}
-                            <div class="flex items-center gap-2 border-b border-[#f8fafc] px-5 py-2">
-                                <span class="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">
-                                    {% if grupo.grouper %}{{ grupo.grouper.nombre }}{% else %}Sin área{% endif %}
-                                </span>
-                                <span class="h-px flex-1 bg-surface-border opacity-60"></span>
-                            </div>
+                        {% for grupo in item.registros_por_area %}
+                            <div x-data="{ abierto: true }" class="space-y-1">
+                                <div class="px-3 pt-3">
+                                    <button
+                                        type="button"
+                                        @click="abierto = !abierto"
+                                        class="flex w-full items-center gap-3 rounded-md border border-surface-border bg-[#fcfdff] px-3 py-2.5 text-left transition hover:bg-white"
+                                    >
+                                        <span class="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[10px] font-bold {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-current opacity-70"></span>
+                                            {{ grupo.nombre_display }}
+                                        </span>
+                                        <span class="flex-1 text-[11px] text-ink-muted">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
+                                        <svg
+                                            viewBox="0 0 18 18"
+                                            class="h-3.5 w-3.5 text-ink-muted transition-transform"
+                                            :class="abierto ? 'rotate-180' : ''"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
 
-                            {% for registro in grupo.list %}
+                                <div x-show="abierto" x-transition x-cloak>
+                            {% for registro in grupo.registros %}
                                 {% if registro.tipo == "ficha" %}
                                 <div class="border-b border-[#f8fafc] px-5 py-3 last:border-b-0">
                                     <div class="flex items-start gap-3">
@@ -488,6 +526,8 @@
                                 </div>
                                 {% endif %}
                             {% endfor %}
+                                </div>
+                            </div>
                         {% endfor %}
                     {% else %}
                         <div class="px-5 py-4 text-[13px] text-ink-muted">No hay registros en este período.</div>
