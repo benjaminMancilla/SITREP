@@ -1430,6 +1430,32 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertFalse(matriz.ultimo_estado_operativo)
         self.assertGreater(matriz.ultimo_estado_operativo_en, ts_1)
 
+    def test_recurso_nuevo_no_aparece_en_historial_anterior(self):
+        """
+        Un recurso creado después del cierre de un período
+        no debe aparecer en el historial de ese período.
+        """
+        from datetime import timedelta
+        from inventory.views import _construir_recursos_lista_periodo
+
+        nave = self._crear_nave("Nave Historial Fantasma", "INT-040", 15)
+        periodo = self._get_periodo(nave)
+
+        periodo.fecha_termino = timezone.now().date() - timedelta(days=5)
+        periodo.estado = "conforme"
+        periodo.save()
+
+        self._crear_recurso(
+            nombre="Recurso Fantasma",
+            regla_aplicacion=None,
+            requerimientos=[],
+        )
+        MotorReglasSITREP.sincronizar_matriz_nave(nave)
+
+        recursos = _construir_recursos_lista_periodo(nave, periodo, for_history=True)
+        nombres = [r["recurso"].nombre for r in recursos]
+        self.assertNotIn("Recurso Fantasma", nombres)
+
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(
             nombre="Recurso Cantidad Fallida",
