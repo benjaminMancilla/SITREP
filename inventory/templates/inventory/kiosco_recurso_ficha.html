@@ -100,13 +100,6 @@
         <section class="overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-sm">
             <div class="border-b border-surface-border px-5 py-4 sm:px-6">
                 <div class="flex flex-wrap items-center gap-2 text-sm text-ink-secondary">
-                    {% if recurso.proposito %}
-                        <span>{{ recurso.proposito.tipo }}</span>
-                        {% if recurso.proposito.categoria %}
-                            <span class="text-ink-muted">·</span>
-                            <span>{{ recurso.proposito.categoria }}</span>
-                        {% endif %}
-                    {% endif %}
                     <span>{{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}</span>
                 </div>
             </div>

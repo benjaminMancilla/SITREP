@@ -24,7 +24,12 @@
             <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>
             {{ estado|capfirst }}
         </span>
-    {% elif estado_normalizado == "omitido" or estado_normalizado == "pendiente" %}
+    {% elif estado_normalizado == "omitido" %}
+        <span class="inline-flex items-center gap-1 rounded-full border border-warn bg-warn px-2.5 py-0.5 text-xs font-semibold text-white">
+            <span class="h-1.5 w-1.5 rounded-full bg-white opacity-80"></span>
+            Vencido
+        </span>
+    {% elif estado_normalizado == "pendiente" %}
         <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-neutral-bg px-2.5 py-0.5 text-xs font-medium text-neutral">
             <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>
             {{ estado|capfirst }}
