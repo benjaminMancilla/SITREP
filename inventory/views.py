@@ -104,7 +104,7 @@ def _calcular_urgencia(dias_restantes, duracion_total, cobertura):
 
 
 def _construir_datos_tabla_urgencia(naviera):
-    estados_cerrados = {"conforme", "observado", "fallido", "omitido", "caduco"}
+    estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}
     estados_relevantes = TenantQueryService.ESTADOS_ABIERTOS | estados_cerrados
     hoy = date.today()
 
@@ -863,7 +863,7 @@ def kiosco_periodo_historial(request, slug, periodo_id):
         )
         return redirect(f"/{slug}/kiosco/login/")
 
-    ESTADOS_CERRADOS = {"conforme", "observado", "fallido", "omitido", "caduco"}
+    ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
     try:
         periodo = PeriodoRevision.objects.select_related("periodicidad").get(
             id=periodo_id,

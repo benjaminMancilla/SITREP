@@ -609,7 +609,7 @@ class TestMotorPeriodosEstados(TestCase):
             periodicidad=otra_periodicidad,
             fecha_inicio=timezone.localdate(),
             fecha_termino=timezone.localdate(),
-            estado="conforme",
+            estado="operativo",
         )
 
         periodos_ids = set(
@@ -684,7 +684,7 @@ class TestMotorPeriodosEstados(TestCase):
             payload_checklist={},
         )
 
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "conforme")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "operativo")
 
     def test_periodo_completo_con_observacion_termina_observado(self):
         self._crear_ficha(
@@ -1034,7 +1034,7 @@ class TestIntegracionMotorReglas(TestCase):
         3. Verificar que PeriodoRevision existe en estado 'pendiente'
         4. Crear ficha con todos los requerimientos cumplidos y estado_operativo=True
         5. Verificar que período pasa a 'en_proceso'
-        6. Verificar que _determinar_estado_cierre retorna 'conforme'
+        6. Verificar que _determinar_estado_cierre retorna 'operativo'
         """
         recurso = self._crear_recurso(
             nombre="Extintor Operativo",
@@ -1067,7 +1067,7 @@ class TestIntegracionMotorReglas(TestCase):
 
         self.assertTrue(ficha.estado_operativo)
         self.assertEqual(periodo.estado, "en_proceso")
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "conforme")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "operativo")
 
     def test_flujo_completo_ficha_con_fallo(self):
         """
@@ -1442,7 +1442,7 @@ class TestIntegracionMotorReglas(TestCase):
         periodo = self._get_periodo(nave)
 
         periodo.fecha_termino = timezone.now().date() - timedelta(days=5)
-        periodo.estado = "conforme"
+        periodo.estado = "operativo"
         periodo.save()
 
         self._crear_recurso(

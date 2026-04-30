@@ -118,10 +118,10 @@ class TenantQueryService:
     ):
         """
         Retorna queryset de PeriodoRevision cerrados de una nave con filtros opcionales.
-        Estados cerrados: conforme, observado, fallido, omitido, caduco.
+        Estados cerrados: operativo, observado, fallido, omitido, caduco.
         Ordenados por fecha_inicio descendente.
         """
-        ESTADOS_CERRADOS = {"conforme", "observado", "fallido", "omitido", "caduco"}
+        ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
         qs = PeriodoRevision.objects.filter(
             nave=nave,
             estado__in=ESTADOS_CERRADOS,
@@ -403,7 +403,7 @@ class MotorPeriodos:
                 return "fallido"
             if any((ficha.observacion_general or "").strip() for ficha in fichas_completas):
                 return "observado"
-            return "conforme"
+            return "operativo"
 
         return "caduco"
 

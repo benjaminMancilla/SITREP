@@ -1,5 +1,5 @@
 {% with estado_normalizado=estado|default:''|lower %}
-    {% if estado_normalizado == "conforme" or estado_normalizado == "operativo" %}
+    {% if estado_normalizado == "operativo" or estado_normalizado == "operativo" %}
         <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-ok-bg px-2.5 py-0.5 text-xs font-medium text-ok">
             <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
             {{ estado|capfirst }}

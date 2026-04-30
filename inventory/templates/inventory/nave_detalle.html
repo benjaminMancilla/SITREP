@@ -316,7 +316,7 @@
                         class="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
                     >
                         <option value="">Todos</option>
-                        <option value="conforme" {% if estado_filtro == "conforme" %}selected{% endif %}>Conforme</option>
+                        <option value="operativo" {% if estado_filtro == "operativo" %}selected{% endif %}>Conforme</option>
                         <option value="observado" {% if estado_filtro == "observado" %}selected{% endif %}>Observado</option>
                         <option value="fallido" {% if estado_filtro == "fallido" %}selected{% endif %}>Fallido</option>
                         <option value="omitido" {% if estado_filtro == "omitido" %}selected{% endif %}>Omitido</option>
@@ -377,7 +377,7 @@
                     <div class="flex shrink-0 items-center gap-3">
                         <div class="h-1.5 w-[84px] overflow-hidden rounded-full bg-surface-border">
                             <div
-                                class="h-full rounded-full {% if item.periodo.estado == 'conforme' %}bg-ok{% elif item.periodo.estado == 'observado' %}bg-info{% elif item.periodo.estado == 'fallido' %}bg-fail{% elif item.periodo.estado == 'caduco' %}bg-warn{% else %}bg-neutral{% endif %}"
+                                class="h-full rounded-full {% if item.periodo.estado == 'operativo' %}bg-ok{% elif item.periodo.estado == 'observado' %}bg-info{% elif item.periodo.estado == 'fallido' %}bg-fail{% elif item.periodo.estado == 'caduco' %}bg-warn{% else %}bg-neutral{% endif %}"
                                 style="width: {{ item.avance_pct }}%"
                             ></div>
                         </div>
@@ -522,7 +522,7 @@
                                 {% else %}
                                 <div class="flex items-center gap-3 border-b border-[#f8fafc] px-5 py-3 text-[12px] text-ink-muted last:border-b-0">
                                     <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if item.periodo.estado == 'omitido' or item.periodo.estado == 'fallido' %}bg-fail{% else %}bg-surface-border{% endif %}"></span>
-                                    <span>{{ registro.recurso.nombre }} · <em>Sin registrar{% if item.periodo.estado != 'conforme' and item.periodo.estado != 'observado' %} (período cerrado){% endif %}</em></span>
+                                    <span>{{ registro.recurso.nombre }} · <em>Sin registrar{% if item.periodo.estado != 'operativo' and item.periodo.estado != 'observado' %} (período cerrado){% endif %}</em></span>
                                 </div>
                                 {% endif %}
                             {% endfor %}
