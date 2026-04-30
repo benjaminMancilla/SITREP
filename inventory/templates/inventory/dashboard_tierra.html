@@ -4,6 +4,24 @@
 {% block page_title %}SITREP | Dashboard{% endblock %}
 {% block topbar_title %}Dashboard{% endblock %}
 
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+    .urgency-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        border-radius: 0 0 0 0;
+    }
+    .cell-en-curso {
+        position: relative;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
 {% block page_content %}
 <div class="space-y-6">
     <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -199,14 +217,161 @@
         </div>
     </section>
 
+    <section x-data="urgencyTable()" x-init="init()">
+        <div class="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <h2 class="text-sm font-bold text-navy">Urgencia por Periodicidad</h2>
+                <p class="mt-0.5 text-[11px] text-ink-muted">Cobertura de fichas en períodos activos · actualizado ahora</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 lg:gap-4">
+                <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                    <span class="inline-block h-2 w-2 rounded-sm bg-ok"></span>Baja &lt;35%
+                </span>
+                <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                    <span class="inline-block h-2 w-2 rounded-sm bg-warn"></span>Media 35–65%
+                </span>
+                <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                    <span class="inline-block h-2 w-2 rounded-sm bg-fail"></span>Alta &gt;65%
+                </span>
+                <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                    <span class="inline-block h-px w-4 bg-ink-muted opacity-40"></span>Sin período
+                </span>
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm" style="border-collapse: separate; border-spacing: 0;">
+                    <thead class="bg-neutral-bg">
+                        <tr>
+                            <th class="sticky left-0 z-10 bg-neutral-bg px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted border-b border-r border-surface-border">
+                                Nave
+                            </th>
+                            <template x-for="col in columns" :key="col.key">
+                                <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted border-b border-surface-border min-w-[120px]"
+                                    x-text="col.label"></th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-surface-border">
+                        <template x-for="(nave, ni) in naves" :key="nave.id">
+                            <tr class="bg-white transition"
+                                :class="ni % 2 === 1 ? 'bg-[#fafcff]' : 'bg-white'"
+                                @mouseenter="$el.style.backgroundColor = '#f0f7ff'"
+                                @mouseleave="$el.style.backgroundColor = ''">
+                                <td class="sticky left-0 z-10 px-4 py-0 border-r border-surface-border"
+                                    :class="ni % 2 === 1 ? 'bg-[#fafcff]' : 'bg-white'"
+                                    style="transition: background-color 0.1s;">
+                                    <div class="py-3">
+                                        <p class="font-semibold text-navy text-[13px] leading-tight" x-text="nave.nombre"></p>
+                                        <p class="font-mono text-[10px] text-ink-muted mt-0.5" x-text="nave.matricula"></p>
+                                    </div>
+                                </td>
+
+                                <template x-for="col in columns" :key="col.key">
+                                    <td class="px-0 py-0 text-center align-middle">
+                                        <template x-if="getCell(nave, col.key)">
+                                            <div x-data="{ cell: getCell(nave, col.key), tip: false }">
+                                                <template x-if="cell.estado === 'en_curso'">
+                                                    <div class="cell-en-curso relative flex flex-col items-center justify-center h-14 px-3 cursor-default group"
+                                                         :class="urgencyBg(cell.urgencia)"
+                                                         @mouseenter="tip = true"
+                                                         @mouseleave="tip = false">
+                                                        <template x-if="cell.fallos > 0">
+                                                            <span class="absolute top-1.5 right-1.5 flex items-center gap-1 rounded-[4px] bg-fail-bg border border-fail-border px-1.5 py-1">
+                                                                <svg width="11" height="11" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
+                                                                    <path d="M4 1L7 7H1L4 1Z" fill="#b91c1c" stroke="#b91c1c" stroke-width="0.5" stroke-linejoin="round"/>
+                                                                    <rect x="3.5" y="3.5" width="1" height="1.5" rx="0.5" fill="white"/>
+                                                                    <rect x="3.5" y="5.5" width="1" height="0.8" rx="0.4" fill="white"/>
+                                                                </svg>
+                                                                <span class="font-mono text-[11px] font-semibold text-fail leading-none" x-text="cell.fallos"></span>
+                                                            </span>
+                                                        </template>
+                                                        <span class="font-mono font-medium text-[15px] leading-none"
+                                                              :class="urgencyColor(cell.urgencia)"
+                                                              x-text="Math.round(cell.urgencia * 100) + '%'"></span>
+                                                        <span class="mt-1 text-[10px] text-ink-muted font-sans leading-none"
+                                                              x-text="cell.dias_restantes + ' d. rest.'"></span>
+                                                        <div class="urgency-bar"
+                                                             :class="urgencyBarColor(cell.urgencia)"
+                                                             :style="'width: ' + (cell.urgencia * 100) + '%'"></div>
+                                                        <div class="urgency-bar opacity-20 bg-ink-muted" style="width: 100%"></div>
+
+                                                        <div x-show="tip" x-cloak
+                                                             class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-52 rounded-md border border-surface-border bg-white shadow-lg p-3 text-left pointer-events-none"
+                                                             style="font-family: 'IBM Plex Sans', sans-serif;">
+                                                            <p class="text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5" x-text="col.label + ' · EN CURSO'"></p>
+                                                            <div class="space-y-1">
+                                                                <div class="flex justify-between text-xs">
+                                                                    <span class="text-ink-secondary">Cobertura fichas</span>
+                                                                    <span class="font-mono font-medium text-ink" x-text="Math.round(cell.cobertura * 100) + '%'"></span>
+                                                                </div>
+                                                                <div class="flex justify-between text-xs">
+                                                                    <span class="text-ink-secondary">Días restantes</span>
+                                                                    <span class="font-mono font-medium text-ink" x-text="cell.dias_restantes + ' / ' + cell.duracion_total"></span>
+                                                                </div>
+                                                                <div class="flex justify-between text-xs border-t border-surface-border pt-1 mt-1">
+                                                                    <span class="text-ink-secondary">Urgencia</span>
+                                                                    <span class="font-mono font-semibold" :class="urgencyColor(cell.urgencia)" x-text="Math.round(cell.urgencia * 100) + '%'"></span>
+                                                                </div>
+                                                                <template x-if="cell.fallos > 0">
+                                                                    <div class="flex justify-between text-xs border-t border-surface-border pt-1 mt-1">
+                                                                        <span class="text-fail font-semibold" x-text="cell.fallos + ' fallo' + (cell.fallos > 1 ? 's' : '') + ' detectado' + (cell.fallos > 1 ? 's' : '')"></span>
+                                                                    </div>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <template x-if="cell.estado !== 'en_curso'">
+                                                    <div class="flex flex-col items-center justify-center h-14 px-3 gap-1">
+                                                        <span class="flex items-center gap-1 text-ok">
+                                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                                                <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" stroke-width="1.8"
+                                                                      stroke-linecap="round" stroke-linejoin="round"/>
+                                                            </svg>
+                                                            <span class="font-mono text-xs font-semibold">100%</span>
+                                                        </span>
+                                                        <span x-text="cell.fecha_cierre"
+                                                              class="text-[10px] text-ink-muted font-mono"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="!getCell(nave, col.key)">
+                                            <div class="flex items-center justify-center h-14">
+                                                <span class="text-ink-muted opacity-30 text-sm select-none">—</span>
+                                            </div>
+                                        </template>
+                                    </td>
+                                </template>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="border-t border-surface-border px-4 py-2.5 flex items-center justify-between bg-neutral-bg">
+                <p class="text-[11px] text-ink-muted">
+                    <span x-text="naves.length"></span> naves · <span x-text="columns.length"></span> periodicidades activas
+                </p>
+                <p class="text-[11px] text-ink-muted font-mono">urgencia = (1 − cob.) × (d.rest. / duración)</p>
+            </div>
+        </div>
+    </section>
+
+    {{ tabla_urgencia_json|json_script:"urgency-data" }}
+
     <section>
         <div class="mb-3">
             <h2 class="text-sm font-bold text-navy">Actividad Reciente</h2>
             <p class="mt-0.5 text-[11px] text-ink-muted">Últimas fichas registradas en la flota</p>
         </div>
 
-        <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
-            {% if ultimas_fichas %}
+        <div x-data="{ expandido: false }" class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
+            {% if actividad_reciente %}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="bg-neutral-bg text-ink-muted">
@@ -219,8 +384,8 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-surface-border">
-                            {% for ficha in ultimas_fichas %}
-                                <tr class="bg-white transition even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
+                            {% for ficha in actividad_reciente %}
+                                <tr x-show="{{ forloop.counter }} <= 3 || expandido" x-cloak class="bg-white transition even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
                                     <td class="px-4 py-3.5 font-semibold text-navy">{{ ficha.periodo.nave.nombre }}</td>
                                     <td class="px-4 py-3.5 text-ink-secondary">{{ ficha.recurso.nombre }}</td>
                                     <td class="px-4 py-3.5">
@@ -241,6 +406,14 @@
                         </tbody>
                     </table>
                 </div>
+                {% if actividad_reciente|length > 3 %}
+                    <div class="border-t border-surface-border px-4 py-3">
+                        <button @click="expandido = !expandido"
+                                class="text-xs font-medium text-ink-muted transition hover:text-ink-secondary">
+                            <span x-text="expandido ? 'Ver menos' : 'Ver más actividad'"></span>
+                        </button>
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="px-5 py-8 text-center text-sm text-ink-muted">
                     No hay actividad reciente.
@@ -261,4 +434,77 @@
         </div>
     </section>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function urgencyTable() {
+    const data = JSON.parse(document.getElementById('urgency-data').textContent);
+
+    return {
+        copied: false,
+
+        columns: data.columns,
+        naves: data.naves,
+
+        init() {},
+
+        getCell(nave, key) {
+            return nave.periodos[key] || null;
+        },
+
+        urgencyBg(u) {
+            if (u >= 0.65) return 'bg-fail-bg';
+            if (u >= 0.35) return 'bg-warn-bg';
+            return 'bg-ok-bg';
+        },
+        urgencyColor(u) {
+            if (u >= 0.65) return 'text-fail';
+            if (u >= 0.35) return 'text-warn';
+            return 'text-ok';
+        },
+        urgencyBarColor(u) {
+            if (u >= 0.65) return 'bg-fail';
+            if (u >= 0.35) return 'bg-warn';
+            return 'bg-ok';
+        },
+
+        badgeClass(estado) {
+            const map = {
+                conforme:  'border-ok-border bg-ok-bg text-ok',
+                observado: 'border-info-border bg-info-bg text-info',
+                fallido:   'border-fail-border bg-fail-bg text-fail',
+                caduco:    'border-warn-border bg-warn-bg text-warn',
+            };
+            return map[estado] || 'border-neutral-border bg-neutral-bg text-neutral';
+        },
+        badgeDotClass(estado) {
+            const map = {
+                conforme:  'bg-ok',
+                observado: 'bg-info',
+                fallido:   'bg-fail',
+                caduco:    'bg-warn',
+            };
+            return map[estado] || 'bg-neutral';
+        },
+        badgeLabel(estado) {
+            const map = {
+                conforme:  'Conforme',
+                observado: 'Observado',
+                fallido:   'Fallido',
+                caduco:    'Caduco',
+            };
+            return map[estado] || estado;
+        },
+
+        copySnippet() {
+            const text = document.getElementById('django-snippet').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                this.copied = true;
+                setTimeout(() => this.copied = false, 2000);
+            });
+        }
+    };
+}
+</script>
 {% endblock %}

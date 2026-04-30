@@ -12,6 +12,7 @@ from django.db.models import Count, Max, Q
 from django.db.models.functions import Coalesce, Greatest
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils.text import slugify
 from django.utils import timezone
 
 from .decorators import requiere_rol, tenant_member_required
@@ -92,6 +93,154 @@ def _contar_fichas_completas_por_periodo(periodo_ids):
         if MotorPeriodos._es_ficha_completa(ficha):
             conteos[ficha.periodo_id] += 1
     return conteos
+
+
+def _calcular_urgencia(dias_restantes, duracion_total, cobertura):
+    if duracion_total == 0:
+        return 0.0
+    tiempo_norm = max(0, dias_restantes) / duracion_total
+    return round((1.0 - cobertura) * tiempo_norm, 4)
+
+
+def _construir_datos_tabla_urgencia(naviera):
+    estados_cerrados = {"conforme", "observado", "fallido", "omitido", "caduco"}
+    estados_relevantes = TenantQueryService.ESTADOS_ABIERTOS | estados_cerrados
+    hoy = date.today()
+
+    naves = list(Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre"))
+    if not naves:
+        return {"columns": [], "naves": []}
+
+    nave_ids = [nave.id for nave in naves]
+
+    periodos_ordenados = list(
+        PeriodoRevision.objects.filter(
+            nave_id__in=nave_ids,
+            estado__in=estados_relevantes,
+        )
+        .select_related("periodicidad")
+        .order_by("nave_id", "periodicidad_id", "-fecha_inicio", "-id")
+    )
+
+    periodos_por_clave = {}
+    for periodo in periodos_ordenados:
+        clave = (periodo.nave_id, periodo.periodicidad_id)
+        if clave not in periodos_por_clave:
+            periodos_por_clave[clave] = periodo
+
+    periodos = list(periodos_por_clave.values())
+    periodo_ids = [periodo.id for periodo in periodos] or [-1]
+
+    fichas_completas = {
+        item["periodo_id"]: item["total"]
+        for item in FichaRegistro.objects.filter(
+            periodo_id__in=periodo_ids,
+            estado_ficha="completa",
+        )
+        .values("periodo_id")
+        .annotate(total=Count("id"))
+    }
+
+    totales = {
+        (item["nave_id"], item["recurso__periodicidad_id"]): item["total"]
+        for item in MatrizNaveRecurso.objects.filter(
+            nave_id__in=nave_ids,
+            es_visible=True,
+        )
+        .values("nave_id", "recurso__periodicidad_id")
+        .annotate(total=Count("id"))
+    }
+
+    fallos = {
+        (item["nave_id"], item["recurso__periodicidad_id"]): item["total"]
+        for item in MatrizNaveRecurso.objects.filter(
+            nave_id__in=nave_ids,
+            es_visible=True,
+            ultimo_estado_operativo=False,
+        )
+        .values("nave_id", "recurso__periodicidad_id")
+        .annotate(total=Count("id"))
+    }
+
+    periodicidades_activas = {}
+    for periodo in periodos:
+        if periodo.estado in TenantQueryService.ESTADOS_ABIERTOS:
+            periodicidades_activas[periodo.periodicidad_id] = periodo.periodicidad
+
+    periodicidades_ordenadas = sorted(
+        periodicidades_activas.values(),
+        key=lambda periodicidad: (
+            periodicidad.duracion_dias,
+            periodicidad.nombre.lower(),
+            periodicidad.id,
+        ),
+    )
+
+    keys_por_periodicidad = {}
+    used_keys = set()
+    columns = []
+    for periodicidad in periodicidades_ordenadas:
+        key_source = getattr(periodicidad, "nombre_tecnico", None) or periodicidad.nombre
+        base_key = slugify(key_source).replace("-", "_") or f"periodicidad_{periodicidad.id}"
+        key = base_key
+        if key in used_keys:
+            key = f"{base_key}_{periodicidad.id}"
+        used_keys.add(key)
+        keys_por_periodicidad[periodicidad.id] = key
+        columns.append(
+            {
+                "key": key,
+                "label": periodicidad.nombre,
+            }
+        )
+
+    periodicidad_ids_activas = {periodicidad.id for periodicidad in periodicidades_ordenadas}
+    naves_data = []
+    for nave in naves:
+        periodos_nave = {column["key"]: None for column in columns}
+
+        for periodicidad_id in periodicidad_ids_activas:
+            periodo = periodos_por_clave.get((nave.id, periodicidad_id))
+            if periodo is None:
+                continue
+
+            total_recursos = totales.get((nave.id, periodicidad_id), 0)
+            cobertura = (
+                1.0
+                if total_recursos == 0
+                else min(1.0, round(fichas_completas.get(periodo.id, 0) / total_recursos, 4))
+            )
+            es_periodo_abierto = periodo.estado in TenantQueryService.ESTADOS_ABIERTOS
+            dias_restantes = max(0, (periodo.fecha_termino - hoy).days) if es_periodo_abierto else 0
+            duracion_total = periodo.periodicidad.duracion_dias or 0
+            key = keys_por_periodicidad[periodicidad_id]
+
+            periodos_nave[key] = {
+                "estado": "en_curso" if es_periodo_abierto else periodo.estado,
+                "urgencia": (
+                    _calcular_urgencia(dias_restantes, duracion_total, cobertura)
+                    if es_periodo_abierto
+                    else None
+                ),
+                "cobertura": cobertura,
+                "dias_restantes": dias_restantes,
+                "duracion_total": duracion_total,
+                "fallos": fallos.get((nave.id, periodicidad_id), 0),
+                "fecha_cierre": (
+                    None if es_periodo_abierto else periodo.fecha_termino.strftime("%d/%m/%Y")
+                ),
+            }
+
+        naves_data.append(
+            {
+                "id": nave.id,
+                "nombre": nave.nombre,
+                "matricula": nave.matricula,
+                "periodos": periodos_nave,
+            }
+        )
+
+    return {"columns": columns, "naves": naves_data}
 
 
 def _obtener_filtros_historial_desde_request(request):
@@ -433,7 +582,7 @@ def dashboard_tierra(request, slug):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    ultimas_fichas = (
+    actividad_reciente = list(
         FichaRegistro.objects.filter(
             periodo__nave__naviera=request.naviera,
         )
@@ -445,6 +594,7 @@ def dashboard_tierra(request, slug):
         )
         .order_by("-fecha_revision")[:10]
     )
+    tabla_urgencia = _construir_datos_tabla_urgencia(request.naviera)
 
     return render(
         request,
@@ -452,7 +602,8 @@ def dashboard_tierra(request, slug):
         {
             "page_obj": page_obj,
             "query_busqueda": query_busqueda,
-            "ultimas_fichas": ultimas_fichas,
+            "actividad_reciente": actividad_reciente,
+            "tabla_urgencia_json": tabla_urgencia,
             "total_usuarios": total_usuarios,
             "total_dispositivos": total_dispositivos,
             "fichas_hoy_total": fichas_hoy_total,
