@@ -197,6 +197,8 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=Fals
     matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
         "recurso__nombre"
     )
+    if for_history:
+        matrices = matrices.filter(recurso__created_at__date__lte=periodo.fecha_termino)
     fichas_por_recurso_id = {
         ficha.recurso_id: ficha
         for ficha in FichaRegistro.objects.filter(
