@@ -47,9 +47,18 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(Recurso)
 class RecursoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "naviera", "proposito", "periodicidad", "tiene_regla", "num_requerimientos")
+    list_display = (
+        "nombre",
+        "naviera",
+        "proposito",
+        "periodicidad",
+        "created_at",
+        "tiene_regla",
+        "num_requerimientos",
+    )
     list_filter = ("naviera", "proposito", "periodicidad")
     search_fields = ("nombre",)
+    readonly_fields = ("created_at",)
 
     def tiene_regla(self, obj):
         return bool(obj.regla_aplicacion)

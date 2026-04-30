@@ -402,6 +402,13 @@ class Recurso(models.Model):
     )
     
     nombre = models.CharField(max_length=255)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text=(
+            "Fecha de creación del recurso. Usada para excluir recursos del historial "
+            "de períodos anteriores a su creación."
+        ),
+    )
     
     # EL CONTRATO DINÁMICO
     requerimientos = models.JSONField(default=list, help_text='Ej: ["ser naranjo", "tener cintas"]')
