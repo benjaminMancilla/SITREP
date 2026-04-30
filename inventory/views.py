@@ -98,7 +98,8 @@ def _contar_fichas_completas_por_periodo(periodo_ids):
 def _calcular_urgencia(dias_restantes, duracion_total, cobertura):
     if duracion_total == 0:
         return 0.0
-    tiempo_norm = max(0, dias_restantes) / duracion_total
+    dias_restantes = min(max(0, dias_restantes), duracion_total)
+    tiempo_norm = (duracion_total - dias_restantes) / duracion_total
     return round((1.0 - cobertura) * tiempo_norm, 4)
 
 
@@ -131,15 +132,14 @@ def _construir_datos_tabla_urgencia(naviera):
     periodos = list(periodos_por_clave.values())
     periodo_ids = [periodo.id for periodo in periodos] or [-1]
 
-    fichas_completas = {
-        item["periodo_id"]: item["total"]
-        for item in FichaRegistro.objects.filter(
-            periodo_id__in=periodo_ids,
-            estado_ficha="completa",
-        )
-        .values("periodo_id")
-        .annotate(total=Count("id"))
-    }
+    fichas_completas = {periodo_id: 0 for periodo_id in periodo_ids}
+    for ficha in (
+        FichaRegistro.objects.filter(periodo_id__in=periodo_ids)
+        .select_related("recurso")
+        .only("periodo_id", "estado_operativo", "payload_checklist", "recurso__requerimientos")
+    ):
+        if MotorPeriodos._es_ficha_completa(ficha):
+            fichas_completas[ficha.periodo_id] += 1
 
     totales = {
         (item["nave_id"], item["recurso__periodicidad_id"]): item["total"]
