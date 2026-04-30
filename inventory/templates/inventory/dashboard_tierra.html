@@ -289,12 +289,12 @@
                                                         </template>
                                                         <span class="font-mono font-medium text-[15px] leading-none"
                                                               :class="urgencyColor(cell.urgencia)"
-                                                              x-text="Math.round(cell.urgencia * 100) + '%'"></span>
+                                                              x-text="Math.round(cell.cobertura * 100) + '%'"></span>
                                                         <span class="mt-1 text-[10px] text-ink-muted font-sans leading-none"
                                                               x-text="cell.dias_restantes + ' d. rest.'"></span>
                                                         <div class="urgency-bar"
                                                              :class="urgencyBarColor(cell.urgencia)"
-                                                             :style="'width: ' + (cell.urgencia * 100) + '%'"></div>
+                                                             :style="'width: ' + (cell.cobertura * 100) + '%'"></div>
                                                         <div class="urgency-bar opacity-20 bg-ink-muted" style="width: 100%"></div>
 
                                                         <div x-show="tip" x-cloak
