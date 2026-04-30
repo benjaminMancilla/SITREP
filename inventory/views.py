@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 from django.contrib.auth import authenticate, login, logout
 from django.core.paginator import Paginator
 from django.db import IntegrityError
-from django.db.models import Count, Max, Q
+from django.db.models import Count, F, Max, Q
 from django.db.models.functions import Coalesce, Greatest
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
@@ -274,9 +274,15 @@ def _construir_periodos_detalle(nave, periodos):
     periodos_detalle = []
     # TODO: optimizar con annotate() y prefetch_related en Fase 4
     for periodo in periodos:
-        fichas = list(TenantQueryService.get_fichas_de_periodo(periodo).order_by("recurso__nombre"))
+        fichas = list(
+            TenantQueryService.get_fichas_de_periodo(periodo).order_by(
+                F("recurso__area__nombre").asc(nulls_last=True),
+                "recurso__nombre",
+            )
+        )
         matrices = list(
             TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+                F("recurso__area__nombre").asc(nulls_last=True),
                 "recurso__nombre"
             )
         )
@@ -344,6 +350,7 @@ def _parse_estado_checklist_form(raw_estado):
 
 def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False):
     matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+        F("recurso__area__nombre").asc(nulls_last=True),
         "recurso__nombre"
     )
     if for_history:
