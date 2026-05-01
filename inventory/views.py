@@ -819,6 +819,35 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         error_recurso_id = None
 
     recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
+    datos_anterior = _obtener_datos_periodo_anterior(nave, periodo)
+    for item in recursos_lista:
+        ficha_anterior = datos_anterior.get(item["recurso"].id)
+        for checklist_item in item["checklist_items"]:
+            if ficha_anterior:
+                payload_item = ficha_anterior["payload_checklist"].get(checklist_item["key"], {})
+                if isinstance(payload_item, dict) and "cumple" in payload_item:
+                    checklist_item["periodo_anterior"] = {
+                        "estado": payload_item.get("cumple"),
+                        "obs": payload_item.get("observacion", ""),
+                    }
+                else:
+                    checklist_item["periodo_anterior"] = {"estado": None, "obs": ""}
+            else:
+                checklist_item["periodo_anterior"] = {"estado": None, "obs": ""}
+
+        item["periodo_anterior_json"] = json.dumps(
+            {
+                "obsGeneral": (
+                    ficha_anterior["observacion_general"] if ficha_anterior else ""
+                ),
+                "checklist": {
+                    checklist_item["key"]: checklist_item["periodo_anterior"]
+                    for checklist_item in item["checklist_items"]
+                },
+            },
+            ensure_ascii=False,
+        ).replace("</", "<\\/")
+
     areas_grupos = _agrupar_recursos_por_area(recursos_lista)
     fichas_completadas_count = sum(1 for item in recursos_lista if item["tiene_ficha"])
 
