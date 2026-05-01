@@ -894,6 +894,45 @@ def kiosco_periodo_historial(request, slug, periodo_id):
     )
 
 
+def _obtener_datos_periodo_anterior(nave, periodo):
+    """
+    Busca el período cerrado más reciente para nave+periodicidad
+    y retorna un dict {recurso_id: {estado_operativo, observacion_general, payload_checklist}}.
+    Solo incluye fichas con estado_operativo confirmado (not None).
+    Si no hay período anterior, retorna {}.
+    """
+    estados_cerrados = getattr(
+        TenantQueryService,
+        "ESTADOS_CERRADOS",
+        {"operativo", "observado", "fallido", "omitido", "caduco"},
+    )
+    periodo_anterior = (
+        PeriodoRevision.objects.filter(
+            nave=nave,
+            periodicidad=periodo.periodicidad,
+            estado__in=estados_cerrados,
+            fecha_termino__lt=periodo.fecha_inicio,
+        )
+        .order_by("-fecha_termino")
+        .first()
+    )
+    if not periodo_anterior:
+        return {}
+
+    fichas = FichaRegistro.objects.filter(
+        periodo=periodo_anterior,
+        estado_operativo__isnull=False,
+    )
+    return {
+        ficha.recurso_id: {
+            "estado_operativo": ficha.estado_operativo,
+            "observacion_general": ficha.observacion_general or "",
+            "payload_checklist": ficha.payload_checklist or {},
+        }
+        for ficha in fichas
+    }
+
+
 @tenant_member_required
 @requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
 def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
@@ -1032,6 +1071,33 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         payload_checklist=payload_checklist_form,
         incluir_requisito_cantidad=matriz.cantidad > 1,
     )
+    datos_anterior = _obtener_datos_periodo_anterior(nave, periodo)
+    ficha_anterior = datos_anterior.get(recurso.id)
+
+    for item in checklist_items:
+        if ficha_anterior:
+            payload_item = ficha_anterior["payload_checklist"].get(item["key"], {})
+            if isinstance(payload_item, dict) and "cumple" in payload_item:
+                item["periodo_anterior"] = {
+                    "estado": payload_item.get("cumple"),
+                    "obs": payload_item.get("observacion", ""),
+                }
+            else:
+                item["periodo_anterior"] = {"estado": None, "obs": ""}
+        else:
+            item["periodo_anterior"] = {"estado": None, "obs": ""}
+
+    obs_general_anterior = ficha_anterior["observacion_general"] if ficha_anterior else ""
+    periodo_anterior_json = json.dumps(
+        {
+            "obsGeneral": obs_general_anterior,
+            "checklist": {
+                item["key"]: item["periodo_anterior"]
+                for item in checklist_items
+            },
+        },
+        ensure_ascii=False,
+    ).replace("</", "<\\/")
 
     return render(
         request,
@@ -1048,6 +1114,7 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
             "estado_operativo_form": estado_operativo_form,
             "observacion_general_form": observacion_general_form,
             "checklist_items": checklist_items,
+            "periodo_anterior_json": periodo_anterior_json,
         },
     )
 

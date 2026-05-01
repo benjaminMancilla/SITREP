@@ -5,25 +5,77 @@
 {% block extra_head %}
 <style>
     [x-cloak] { display: none !important; }
+
+    .req-pendiente {
+        border: 1.5px dashed #f59e0b !important;
+        background: #fffbeb !important;
+        animation: pendiente-pulse 2.8s ease-in-out infinite;
+    }
+
+    @keyframes pendiente-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        50% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14); }
+    }
+
+    textarea.obs-prev::placeholder {
+        font-style: italic;
+        color: #b0bec9;
+    }
+
+    .badge-retomado {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #92400e;
+        background: #fef3c7;
+        border: 1px solid #fde68a;
+        border-radius: 4px;
+        padding: 1px 5px;
+        line-height: 1.6;
+    }
+
+    .modal-backdrop {
+        backdrop-filter: blur(2px);
+        background: rgba(15, 45, 82, 0.45);
+    }
 </style>
 {% endblock %}
 
 {% block layout %}
+<script id="datos-periodo-anterior" type="application/json">{{ periodo_anterior_json|safe }}</script>
+
 <div
     class="min-h-screen bg-surface"
     x-data="{
         guardando: false,
+        modalCarga: false,
         estadoOperativo: {{ estado_operativo_form|yesno:'true,false' }},
+        periodoAnterior: JSON.parse(document.getElementById('datos-periodo-anterior').textContent),
         checklist: [
             {% for item in checklist_items %}
             {
                 key: '{{ item.key|escapejs }}',
                 label: '{{ item.label|escapejs }}',
                 estado: {{ item.checked|yesno:'true,false,null' }},
-                obs: '{{ item.observacion|default:''|escapejs }}'
+                obs: '{{ item.observacion|default:''|escapejs }}',
+                pendienteConfirmar: false
             }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ],
+        estadoAnterior(key) {
+            const item = this.periodoAnterior.checklist?.[key];
+            if (!item || item.estado === null || item.estado === undefined) {
+                return null;
+            }
+            return item.estado;
+        },
+        obsAnterior(key) {
+            return this.periodoAnterior.checklist?.[key]?.obs || '';
+        },
+        hayFallosAnteriores() {
+            return Object.values(this.periodoAnterior.checklist || {}).some((p) => p && p.estado === false);
+        },
         get hayFallo() {
             return this.checklist.some((item) => item.estado === false);
         },
@@ -41,16 +93,50 @@
         limpiarEstado(index) {
             this.checklist[index].estado = null;
             this.checklist[index].obs = '';
+            this.checklist[index].pendienteConfirmar = false;
             this.syncEstadoOperativo();
         },
         marcarCumple(index) {
             this.checklist[index].estado = true;
             this.checklist[index].obs = '';
+            this.checklist[index].pendienteConfirmar = false;
             this.syncEstadoOperativo();
         },
         marcarFalla(index) {
             this.checklist[index].estado = false;
+            this.checklist[index].pendienteConfirmar = false;
             this.syncEstadoOperativo();
+        },
+        cargarObsAnterior(index) {
+            this.checklist[index].obs = this.obsAnterior(this.checklist[index].key);
+            this.checklist[index].estado = null;
+            this.checklist[index].pendienteConfirmar = true;
+            this.syncEstadoOperativo();
+        },
+        confirmarFalla(index) {
+            this.checklist[index].estado = false;
+            this.checklist[index].pendienteConfirmar = false;
+            this.syncEstadoOperativo();
+        },
+        confirmarResuelto(index) {
+            this.checklist[index].estado = true;
+            this.checklist[index].obs = '';
+            this.checklist[index].pendienteConfirmar = false;
+            this.syncEstadoOperativo();
+        },
+        abrirModalCarga() {
+            this.modalCarga = true;
+        },
+        cerrarModalCarga() {
+            this.modalCarga = false;
+        },
+        confirmarCargaRegistroAnterior() {
+            this.checklist.forEach((item, index) => {
+                if (this.estadoAnterior(item.key) === false && item.estado === null && !item.pendienteConfirmar) {
+                    this.cargarObsAnterior(index);
+                }
+            });
+            this.cerrarModalCarga();
         }
     }"
     x-init="syncEstadoOperativo()"
@@ -68,7 +154,24 @@
             </a>
 
             <div class="min-w-0 text-center">
-                <div class="truncate text-base font-bold text-navy">{{ recurso.nombre }}</div>
+                <div class="flex items-center justify-center gap-2">
+                    <div class="truncate text-base font-bold text-navy">{{ recurso.nombre }}</div>
+                    <button
+                        type="button"
+                        x-show="hayFallosAnteriores()"
+                        x-cloak
+                        @click="abrirModalCarga()"
+                        class="flex shrink-0 items-center gap-1.5 rounded-md border border-warn-border bg-warn-bg px-2.5 py-1.5 text-[11px] font-semibold text-warn transition hover:bg-amber-100"
+                    >
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3.5 3.5A6 6 0 0 1 8 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                            <path d="M2 2l1.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        </svg>
+                        Cargar registro anterior
+                    </button>
+                </div>
                 <div class="truncate text-[12px] text-ink-muted">
                     {{ periodo.periodicidad.nombre }} · {{ nave.nombre }} · {{ nave.matricula }}
                 </div>
@@ -125,63 +228,127 @@
                             {% for item in checklist_items %}
                             <div
                                 :class="{
-                                    'border-ok-border bg-ok-bg': checklist[{{ forloop.counter0 }}].estado === true,
-                                    'border-fail-border bg-fail-bg': checklist[{{ forloop.counter0 }}].estado === false,
-                                    'border-surface-border bg-[#fafcff]': checklist[{{ forloop.counter0 }}].estado === null
+                                    'req-pendiente': checklist[{{ item.index }}].pendienteConfirmar,
+                                    'border-ok-border bg-ok-bg': !checklist[{{ item.index }}].pendienteConfirmar && checklist[{{ item.index }}].estado === true,
+                                    'border-fail-border bg-fail-bg': !checklist[{{ item.index }}].pendienteConfirmar && checklist[{{ item.index }}].estado === false,
+                                    'border-surface-border bg-[#fafcff]': !checklist[{{ item.index }}].pendienteConfirmar && checklist[{{ item.index }}].estado === null
                                 }"
                                 class="overflow-hidden rounded-lg border transition-colors"
                             >
                                 <div class="flex items-center gap-3 px-4 py-3">
-                                    <span class="flex-1 text-[15px] font-medium text-ink">{{ item.label }}</span>
-                                    <div class="flex items-center gap-1">
-                                        <button
-                                            type="button"
-                                            @click="limpiarEstado({{ forloop.counter0 }})"
-                                            class="flex h-7 w-7 items-center justify-center rounded-md transition"
-                                            :class="checklist[{{ forloop.counter0 }}].estado === null ? 'border border-neutral-border bg-neutral-bg' : 'hover:bg-surface'"
-                                            title="Sin registrar"
-                                        >
-                                            <span class="h-2 w-2 rounded-full bg-ink-muted"></span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            @click="marcarCumple({{ forloop.counter0 }})"
-                                            class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
-                                            :class="checklist[{{ forloop.counter0 }}].estado === true ? 'bg-ok text-white' : 'text-ok hover:bg-ok-bg'"
-                                            title="Cumple"
-                                        >
-                                            ✓
-                                        </button>
-                                        <button
-                                            type="button"
-                                            @click="marcarFalla({{ forloop.counter0 }})"
-                                            class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
-                                            :class="checklist[{{ forloop.counter0 }}].estado === false ? 'bg-fail text-white' : 'text-fail hover:bg-fail-bg'"
-                                            title="Falla"
-                                        >
-                                            ✗
-                                        </button>
+                                    <div class="flex min-w-0 flex-1 items-center gap-2">
+                                        <span class="flex-1 text-[15px] font-medium text-ink">{{ item.label }}</span>
+                                        <span x-show="checklist[{{ item.index }}].pendienteConfirmar" x-cloak class="badge-retomado shrink-0">retomado</span>
                                     </div>
+
+                                    <template x-if="checklist[{{ item.index }}].pendienteConfirmar">
+                                        <div class="flex shrink-0 items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                @click="confirmarFalla({{ item.index }})"
+                                                class="flex items-center gap-1 whitespace-nowrap rounded-md border border-fail-border bg-fail-bg px-2.5 py-1.5 text-[11px] font-bold text-fail transition hover:bg-red-100"
+                                            >
+                                                <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+                                                    <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                                </svg>
+                                                Sigue fallando
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="confirmarResuelto({{ item.index }})"
+                                                class="flex items-center gap-1 whitespace-nowrap rounded-md border border-ok-border bg-ok-bg px-2.5 py-1.5 text-[11px] font-bold text-ok transition hover:bg-green-100"
+                                            >
+                                                <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+                                                    <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                                Se resolvió
+                                            </button>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="!checklist[{{ item.index }}].pendienteConfirmar">
+                                        <div class="flex shrink-0 items-center gap-2">
+                                            <div class="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    @click="limpiarEstado({{ item.index }})"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-md transition"
+                                                    :class="[
+                                                        checklist[{{ item.index }}].estado === null ? 'border border-neutral-border bg-neutral-bg' : 'hover:bg-surface',
+                                                        estadoAnterior(checklist[{{ item.index }}].key) === null ? '' : ''
+                                                    ]"
+                                                    title="Sin registrar"
+                                                >
+                                                    <span class="h-2 w-2 rounded-full bg-ink-muted"></span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    @click="marcarCumple({{ item.index }})"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
+                                                    :class="[
+                                                        checklist[{{ item.index }}].estado === true ? 'bg-ok text-white' : 'text-ok hover:bg-ok-bg',
+                                                        estadoAnterior(checklist[{{ item.index }}].key) === true
+                                                            ? (checklist[{{ item.index }}].estado === true ? 'ring-2 ring-[rgba(22,163,74,0.6)]' : 'ring-2 ring-[rgba(22,163,74,0.3)]')
+                                                            : ''
+                                                    ]"
+                                                    title="Cumple"
+                                                >
+                                                    ✓
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    @click="marcarFalla({{ item.index }})"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition"
+                                                    :class="[
+                                                        checklist[{{ item.index }}].estado === false ? 'bg-fail text-white' : 'text-fail hover:bg-fail-bg',
+                                                        estadoAnterior(checklist[{{ item.index }}].key) === false
+                                                            ? (checklist[{{ item.index }}].estado === false ? 'ring-2 ring-[rgba(220,38,38,0.6)]' : 'ring-2 ring-[rgba(220,38,38,0.3)]')
+                                                            : ''
+                                                    ]"
+                                                    title="Falla"
+                                                >
+                                                    ✗
+                                                </button>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                x-show="estadoAnterior(checklist[{{ item.index }}].key) === false && checklist[{{ item.index }}].estado === null"
+                                                x-cloak
+                                                @click="cargarObsAnterior({{ item.index }})"
+                                                class="flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-warn transition hover:bg-amber-100 border border-warn-border bg-warn-bg"
+                                                title="Cargar la observación del período anterior"
+                                            >
+                                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                                    <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
+                                                    <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                                    <path d="M3.5 3.5A6 6 0 0 1 8 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                                                    <path d="M2 2l1.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                                                </svg>
+                                                Cargar obs.
+                                            </button>
+                                        </div>
+                                    </template>
                                 </div>
 
-                                <div x-show="checklist[{{ forloop.counter0 }}].estado === false" x-cloak x-transition class="px-4 pb-3">
+                                <div x-show="checklist[{{ item.index }}].estado === false" x-cloak x-transition class="px-4 pb-3">
                                     <textarea
-                                        x-model="checklist[{{ forloop.counter0 }}].obs"
+                                        x-model="checklist[{{ item.index }}].obs"
                                         rows="2"
-                                        placeholder="Observación obligatoria si falla…"
-                                        class="w-full resize-none rounded-md border border-fail-border bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-fail focus:ring-2 focus:ring-fail/10"
-                                        :class="!checklist[{{ forloop.counter0 }}].obs.trim() ? 'ring-1 ring-fail/30' : ''"
+                                        :placeholder="obsAnterior(checklist[{{ item.index }}].key) || 'Observación obligatoria si falla…'"
+                                        class="obs-prev w-full resize-none rounded-md border border-fail-border bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-fail focus:ring-2 focus:ring-fail/10"
+                                        :class="!checklist[{{ item.index }}].obs.trim() ? 'ring-1 ring-fail/30' : ''"
                                     ></textarea>
-                                    <p x-show="!checklist[{{ forloop.counter0 }}].obs.trim()" x-cloak class="mt-1 text-[11px] text-fail">Obligatoria al fallar</p>
+                                    <p x-show="!checklist[{{ item.index }}].obs.trim()" x-cloak class="mt-1 text-[11px] text-fail">Obligatoria al fallar</p>
                                 </div>
 
                                 <input
                                     type="hidden"
                                     id="req_{{ item.index }}"
                                     name="req_{{ item.index }}"
-                                    :value="checklist[{{ forloop.counter0 }}].estado === null ? 'pending' : (checklist[{{ forloop.counter0 }}].estado ? 'on' : 'off')"
+                                    :value="checklist[{{ item.index }}].estado === null ? 'pending' : (checklist[{{ item.index }}].estado ? 'on' : 'off')"
                                 >
-                                <input type="hidden" name="obs_{{ item.index }}" :value="checklist[{{ forloop.counter0 }}].obs">
+                                <input type="hidden" name="obs_{{ item.index }}" :value="checklist[{{ item.index }}].obs">
                             </div>
                             {% endfor %}
                         </section>
@@ -246,8 +413,8 @@
                             id="observacion_general"
                             name="observacion_general"
                             rows="3"
-                            placeholder="Observación general…"
-                            class="w-full rounded-xl border border-surface-border px-4 py-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand"
+                            :placeholder="periodoAnterior.obsGeneral || 'Observación general…'"
+                            class="obs-prev w-full rounded-xl border border-surface-border px-4 py-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand"
                         >{{ observacion_general_form }}</textarea>
                     </div>
 
@@ -284,5 +451,96 @@
             </div>
         </section>
     </main>
+
+    <div
+        x-show="modalCarga"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+    >
+        <div class="modal-backdrop absolute inset-0" @click="cerrarModalCarga()"></div>
+
+        <div
+            class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+        >
+            <div class="flex items-start gap-4 px-6 pt-6 pb-5">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#fde68a] bg-[#fffbeb] text-warn">
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M3.5 3.5A6 6 0 0 1 8 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        <path d="M2 2l1.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h2 class="text-[16px] font-bold text-navy">Cargar registro anterior</h2>
+                    <p class="mt-0.5 text-[12px] text-ink-muted">{{ recurso.nombre }}</p>
+                </div>
+                <button
+                    type="button"
+                    @click="cerrarModalCarga()"
+                    class="flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
+                >
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="border-t border-surface-border"></div>
+
+            <div class="space-y-4 px-6 py-5">
+                <p class="text-[14px] leading-relaxed text-ink">
+                    Se cargarán los fallos registrados en el período anterior para que los revises uno a uno.
+                </p>
+
+                <div class="space-y-2 rounded-xl border border-surface-border bg-surface px-4 py-3 text-[13px] text-ink-secondary">
+                    <div class="flex items-start gap-2">
+                        <svg class="mt-0.5 shrink-0" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="#16a34a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Las observaciones anteriores se copian como referencia editable
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <svg class="mt-0.5 shrink-0" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 2l8 8M10 2l-8 8" stroke="#b45309" stroke-width="1.7" stroke-linecap="round"/>
+                        </svg>
+                        Cada fallo queda <strong class="text-ink">pendiente de tu confirmación</strong> y deberás declarar si sigue fallando o se resolvió
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 border-t border-surface-border px-6 py-4">
+                <button
+                    type="button"
+                    @click="cerrarModalCarga()"
+                    class="rounded-xl border border-surface-border bg-white px-5 py-2.5 text-[13px] font-semibold text-ink-secondary transition hover:bg-neutral-bg"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="button"
+                    @click="confirmarCargaRegistroAnterior()"
+                    class="flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[13px] font-bold text-white transition hover:bg-navy-light"
+                >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
+                        <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M3.5 3.5A6 6 0 0 1 8 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        <path d="M2 2l1.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                    Sí, cargar registro anterior
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
