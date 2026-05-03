@@ -24,7 +24,7 @@
 
 {% block page_content %}
 <div class="space-y-6">
-    <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <article class="rounded-lg border border-surface-border bg-white p-5 shadow-sm">
             <p class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Naves activas</p>
             <p class="mt-2 text-[28px] font-bold leading-none text-navy">{{ page_obj.paginator.count }}</p>
@@ -51,6 +51,22 @@
                 {{ fallos_activos_total|default:"—" }}
             </p>
             <p class="mt-1.5 text-[11px] text-ink-muted">{{ fichas_hoy_total }} fichas hoy</p>
+        </article>
+
+        <article class="rounded-xl border-2 px-5 py-4 shadow-sm {% if periodos_vencidos_total > 0 %}border-warn bg-warn-bg{% else %}border-surface-border bg-surface{% endif %}">
+            <div class="text-[11px] font-bold uppercase tracking-[0.08em] {% if periodos_vencidos_total > 0 %}text-warn{% else %}text-ink-muted{% endif %}">
+                Períodos vencidos
+            </div>
+            <div class="mt-1 flex items-baseline gap-2">
+                <span class="text-3xl font-black {% if periodos_vencidos_total > 0 %}text-warn{% else %}text-navy{% endif %}">{{ periodos_vencidos_total }}</span>
+            </div>
+            {% if naves_con_vencidos > 0 %}
+            <div class="mt-1 text-[12px] text-warn opacity-80">
+                {{ naves_con_vencidos }} nave{{ naves_con_vencidos|pluralize }} afectada{{ naves_con_vencidos|pluralize }}
+            </div>
+            {% else %}
+            <div class="mt-1 text-[12px] font-medium text-ok">Sin vencidos</div>
+            {% endif %}
         </article>
     </section>
 

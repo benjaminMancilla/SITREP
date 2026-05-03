@@ -567,6 +567,26 @@ def dashboard_tierra(request, slug):
         es_visible=True,
         ultimo_estado_operativo=False,
     ).count()
+    todos_periodos = (
+        PeriodoRevision.objects.filter(
+            nave__naviera=request.naviera,
+            nave__is_active=True,
+        )
+        .order_by("nave_id", "periodicidad_id", "-fecha_termino", "-id")
+        .values("id", "nave_id", "periodicidad_id", "estado")
+    )
+    ultimos_periodos = {}
+    for periodo in todos_periodos:
+        clave = (periodo["nave_id"], periodo["periodicidad_id"])
+        if clave not in ultimos_periodos:
+            ultimos_periodos[clave] = periodo
+
+    periodos_vencidos = [
+        periodo for periodo in ultimos_periodos.values() if periodo["estado"] == "omitido"
+    ]
+    periodos_vencidos_total = len(periodos_vencidos)
+    naves_con_vencidos = len({periodo["nave_id"] for periodo in periodos_vencidos})
+
     naves_capitan = Nave.objects.none()
     if request.user.rol == "capitan":
         naves_capitan = (
@@ -643,6 +663,8 @@ def dashboard_tierra(request, slug):
             "total_dispositivos": total_dispositivos,
             "fichas_hoy_total": fichas_hoy_total,
             "fallos_activos_total": fallos_activos_total,
+            "periodos_vencidos_total": periodos_vencidos_total,
+            "naves_con_vencidos": naves_con_vencidos,
             "naves_capitan": naves_capitan,
             "slug": slug,
             "naviera": request.naviera,
