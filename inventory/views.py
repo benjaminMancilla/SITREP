@@ -582,7 +582,8 @@ def dashboard_tierra(request, slug):
             ultimos_periodos[clave] = periodo
 
     periodos_vencidos = [
-        periodo for periodo in ultimos_periodos.values() if periodo["estado"] == "omitido"
+        p for p in ultimos_periodos.values() 
+        if p["estado"] in ("omitido", "caduco")
     ]
     periodos_vencidos_total = len(periodos_vencidos)
     naves_con_vencidos = len({periodo["nave_id"] for periodo in periodos_vencidos})
