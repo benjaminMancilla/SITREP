@@ -567,23 +567,27 @@ def dashboard_tierra(request, slug):
         es_visible=True,
         ultimo_estado_operativo=False,
     ).count()
-    todos_periodos = (
+    estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}
+    estados_vencidos = {"omitido", "caduco"}
+    todos_periodos_cerrados = (
         PeriodoRevision.objects.filter(
             nave__naviera=request.naviera,
             nave__is_active=True,
+            estado__in=estados_cerrados,
         )
-        .order_by("nave_id", "periodicidad_id", "-fecha_termino", "-id")
-        .values("id", "nave_id", "periodicidad_id", "estado")
+        .order_by("nave_id", "periodicidad_id", "-fecha_inicio", "-id")
+        .values("nave_id", "periodicidad_id", "estado")
     )
-    ultimos_periodos = {}
-    for periodo in todos_periodos:
+    ultimos_periodos_cerrados = {}
+    for periodo in todos_periodos_cerrados:
         clave = (periodo["nave_id"], periodo["periodicidad_id"])
-        if clave not in ultimos_periodos:
-            ultimos_periodos[clave] = periodo
+        if clave not in ultimos_periodos_cerrados:
+            ultimos_periodos_cerrados[clave] = periodo
 
     periodos_vencidos = [
-        p for p in ultimos_periodos.values() 
-        if p["estado"] in ("omitido", "caduco")
+        periodo
+        for periodo in ultimos_periodos_cerrados.values()
+        if periodo["estado"] in estados_vencidos
     ]
     periodos_vencidos_total = len(periodos_vencidos)
     naves_con_vencidos = len({periodo["nave_id"] for periodo in periodos_vencidos})
