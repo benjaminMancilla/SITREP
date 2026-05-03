@@ -761,6 +761,7 @@ def dashboard_kiosco(request, slug):
     fichas_completadas_count = _contar_fichas_completas_por_periodo([periodo.id for periodo in historial])
 
     periodos_resumen = []
+    hoy = timezone.localdate()
     # TODO: optimizar con annotate() en Fase 4
     for periodo in periodos_abiertos:
         total_recursos = MatrizNaveRecurso.objects.filter(
@@ -775,6 +776,7 @@ def dashboard_kiosco(request, slug):
                 "total_recursos": total_recursos,
                 "fichas_completadas": fichas_completadas,
                 "completado": fichas_completadas >= total_recursos,
+                "dias_restantes": max(0, (periodo.fecha_termino - hoy).days),
             }
         )
     for periodo in historial:
