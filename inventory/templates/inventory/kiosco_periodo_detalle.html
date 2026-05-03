@@ -162,7 +162,7 @@
                                     type="button"
                                     x-show="tieneRegistroAnterior()"
                                     x-cloak
-                                    @click.stop="abrirModalCarga()"
+                                    @click.stop="expandirYAbrirModalCarga()"
                                     class="group flex shrink-0 items-center rounded-md border border-warn-border bg-warn-bg px-2.5 py-1.5 text-[11px] font-semibold text-warn transition hover:bg-amber-100"
                                 >
                                     <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -677,6 +677,13 @@
 
             abrirModalCarga() {
                 this.modalCarga = true;
+            },
+
+            expandirYAbrirModalCarga() {
+                this.abierto = true;
+                this.$nextTick(() => {
+                    this.abrirModalCarga();
+                });
             },
 
             cerrarModalCarga() {
