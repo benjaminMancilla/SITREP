@@ -43,7 +43,7 @@
             <p class="mt-1.5 text-[11px] text-ink-muted">Kioscos registrados</p>
         </article>
 
-        <article class="rounded-lg border p-5 shadow-sm {% if fallos_activos_total > 0 %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-white{% endif %}">
+        <article class="rounded-lg border p-5 shadow-sm {% if fallos_activos_total > 0 %}border-surface-border bg-fail-bg{% else %}border-surface-border bg-white{% endif %}">
             <p class="text-[11px] font-semibold uppercase tracking-[0.07em] {% if fallos_activos_total > 0 %}text-fail{% else %}text-ink-muted{% endif %}">
                 Fallos activos
             </p>
@@ -53,7 +53,7 @@
             <p class="mt-1.5 text-[11px] text-ink-muted">{{ fichas_hoy_total }} fichas hoy</p>
         </article>
 
-        <article class="rounded-xl border-2 px-5 py-4 shadow-sm {% if periodos_vencidos_total > 0 %}border-warn bg-warn-bg{% else %}border-surface-border bg-surface{% endif %}">
+        <article class="rounded-lg border p-5 shadow-sm {% if periodos_vencidos_total > 0 %}border-surface-border bg-warn-bg{% else %}border-surface-border bg-white{% endif %}">
             <div class="text-[11px] font-bold uppercase tracking-[0.08em] {% if periodos_vencidos_total > 0 %}text-warn{% else %}text-ink-muted{% endif %}">
                 Períodos vencidos
             </div>
