@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from .decorators import requiere_rol, tenant_member_required
 from .models import (
+    Area,
     Dispositivo,
     FichaRegistro,
     MatrizNaveRecurso,
@@ -676,6 +677,142 @@ def dashboard_tierra(request, slug):
             "usuarios_url": f"/{slug}/usuarios/",
             "naves_url": f"/{slug}/naves/",
             "dispositivos_url": f"/{slug}/kiosco/hardware/",
+        },
+    )
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+def fallos_activos(request, slug):
+    naviera = request.naviera
+    filtros_base = MatrizNaveRecurso.objects.filter(
+        nave__naviera=naviera,
+        nave__is_active=True,
+        es_visible=True,
+    )
+    fallos_base = filtros_base.filter(ultimo_estado_operativo=False)
+    qs = (
+        fallos_base.select_related(
+            "nave",
+            "recurso__area",
+            "recurso__periodicidad",
+        )
+        .order_by(F("ultimo_estado_operativo_en").desc(nulls_last=True), "nave__nombre", "recurso__nombre")
+    )
+
+    nave_id = request.GET.get("nave", "").strip()
+    area_id = request.GET.get("area", "").strip()
+    periodicidad_id = request.GET.get("periodicidad", "").strip()
+    fecha_desde_str = request.GET.get("fecha_desde", "").strip()
+    fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
+    agrupar_por = request.GET.get("agrupar", "").strip()
+    if agrupar_por not in {"", "nave", "area", "periodo"}:
+        agrupar_por = ""
+
+    if nave_id:
+        try:
+            qs = qs.filter(nave_id=int(nave_id))
+        except ValueError:
+            nave_id = ""
+
+    if area_id:
+        try:
+            qs = qs.filter(recurso__area_id=int(area_id))
+        except ValueError:
+            area_id = ""
+
+    if periodicidad_id:
+        try:
+            qs = qs.filter(recurso__periodicidad_id=int(periodicidad_id))
+        except ValueError:
+            periodicidad_id = ""
+
+    if fecha_desde_str:
+        try:
+            fecha_desde = date.fromisoformat(fecha_desde_str)
+            qs = qs.filter(ultimo_estado_operativo_en__date__gte=fecha_desde)
+        except ValueError:
+            fecha_desde_str = ""
+
+    if fecha_hasta_str:
+        try:
+            fecha_hasta = date.fromisoformat(fecha_hasta_str)
+            qs = qs.filter(ultimo_estado_operativo_en__date__lte=fecha_hasta)
+        except ValueError:
+            fecha_hasta_str = ""
+
+    fallos = list(qs)
+    grupos = []
+    if agrupar_por == "nave":
+        agrupado = {}
+        for fallo in fallos:
+            grupo = agrupado.setdefault(
+                fallo.nave_id,
+                {"label": fallo.nave.nombre, "sort_key": fallo.nave.nombre.lower(), "items": []},
+            )
+            grupo["items"].append(fallo)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    elif agrupar_por == "area":
+        agrupado = {}
+        for fallo in fallos:
+            if fallo.recurso.area_id:
+                key = fallo.recurso.area_id
+                label = fallo.recurso.area.nombre
+                sort_key = (0, label.lower())
+            else:
+                key = None
+                label = "Sin área"
+                sort_key = (1, "")
+            grupo = agrupado.setdefault(key, {"label": label, "sort_key": sort_key, "items": []})
+            grupo["items"].append(fallo)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    elif agrupar_por == "periodo":
+        agrupado = {}
+        for fallo in fallos:
+            periodicidad = fallo.recurso.periodicidad
+            if periodicidad:
+                key = periodicidad.id
+                label = periodicidad.nombre
+                sort_key = (periodicidad.duracion_dias, periodicidad.nombre.lower())
+            else:
+                key = None
+                label = "Sin periodicidad"
+                sort_key = (99999, "")
+            grupo = agrupado.setdefault(key, {"label": label, "sort_key": sort_key, "items": []})
+            grupo["items"].append(fallo)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    else:
+        grupos = [{"label": None, "items": fallos}]
+
+    naves = Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre")
+    areas = Area.objects.filter(
+        id__in=filtros_base.exclude(recurso__area_id__isnull=True).values_list("recurso__area_id", flat=True)
+    ).order_by("nombre")
+    periodicidades = Periodicidad.objects.filter(
+        id__in=filtros_base.values_list("recurso__periodicidad_id", flat=True)
+    ).order_by("duracion_dias", "nombre")
+
+    total_fallos = fallos_base.count()
+    naves_afectadas = fallos_base.values("nave").distinct().count()
+
+    return render(
+        request,
+        "inventory/fallos_activos.html",
+        {
+            "slug": slug,
+            "grupos": grupos,
+            "agrupar_por": agrupar_por,
+            "total_fallos": total_fallos,
+            "naves_afectadas": naves_afectadas,
+            "naves": naves,
+            "areas": areas,
+            "periodicidades": periodicidades,
+            "nave_id": nave_id,
+            "area_id": area_id,
+            "periodicidad_id": periodicidad_id,
+            "fecha_desde_str": fecha_desde_str,
+            "fecha_hasta_str": fecha_hasta_str,
+            "fallos_filtrados_total": len(fallos),
         },
     )
 

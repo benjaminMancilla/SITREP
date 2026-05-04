@@ -60,6 +60,21 @@
                 </a>
 
                 <a
+                    href="{% url 'inventory:fallos_activos' slug=tenant_slug %}"
+                    class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+                    :class="navActive === 'fallos'
+                        ? 'border-[#3b82f6] bg-[rgba(29,78,216,0.22)] text-[#93c5fd] font-semibold'
+                        : 'border-transparent'"
+                >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M8 2L14 13H2L8 2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"/>
+                        <line x1="8" y1="6" x2="8" y2="9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        <circle cx="8" cy="11.5" r="0.8" fill="currentColor"/>
+                    </svg>
+                    <span class="flex-1">Fallos</span>
+                </a>
+
+                <a
                     href="{% url 'inventory:listar_naves' slug=tenant_slug %}"
                     class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
                     :class="navActive === 'naves'

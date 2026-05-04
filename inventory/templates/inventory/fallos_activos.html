@@ -1,0 +1,186 @@
+{% extends 'layouts/tierra.html' %}
+
+{% block nav_active %}fallos{% endblock %}
+{% block page_title %}SITREP | Fallos activos{% endblock %}
+{% block topbar_title %}Fallos activos{% endblock %}
+
+{% block page_content %}
+<div class="space-y-6">
+    <div class="mb-6 flex flex-wrap items-center gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-navy">Fallos activos</h1>
+            <p class="mt-0.5 text-sm text-ink-muted">
+                <span class="font-semibold text-fail">{{ total_fallos }}</span>
+                recurso{{ total_fallos|pluralize }} con falla ·
+                <span class="font-semibold text-navy">{{ naves_afectadas }}</span>
+                nave{{ naves_afectadas|pluralize }} afectada{{ naves_afectadas|pluralize }}
+            </p>
+        </div>
+    </div>
+
+    <form method="get" class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label for="nave" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Nave</label>
+                <select
+                    id="nave"
+                    name="nave"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+                    <option value="">Todas las naves</option>
+                    {% for nave in naves %}
+                        <option value="{{ nave.id }}" {% if nave_id == nave.id|stringformat:'s' %}selected{% endif %}>{{ nave.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="area" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Área</label>
+                <select
+                    id="area"
+                    name="area"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+                    <option value="">Todas las áreas</option>
+                    {% for area in areas %}
+                        <option value="{{ area.id }}" {% if area_id == area.id|stringformat:'s' %}selected{% endif %}>{{ area.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="periodicidad" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Periodicidad</label>
+                <select
+                    id="periodicidad"
+                    name="periodicidad"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+                    <option value="">Todas las periodicidades</option>
+                    {% for periodicidad in periodicidades %}
+                        <option value="{{ periodicidad.id }}" {% if periodicidad_id == periodicidad.id|stringformat:'s' %}selected{% endif %}>{{ periodicidad.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="fecha_desde" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Desde</label>
+                <input
+                    id="fecha_desde"
+                    type="date"
+                    name="fecha_desde"
+                    value="{{ fecha_desde_str }}"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+            </div>
+
+            <div>
+                <label for="fecha_hasta" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Hasta</label>
+                <input
+                    id="fecha_hasta"
+                    type="date"
+                    name="fecha_hasta"
+                    value="{{ fecha_hasta_str }}"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+            </div>
+
+            <div>
+                <label for="agrupar" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Agrupar por</label>
+                <select
+                    id="agrupar"
+                    name="agrupar"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+                    <option value="" {% if not agrupar_por %}selected{% endif %}>Sin agrupación</option>
+                    <option value="nave" {% if agrupar_por == 'nave' %}selected{% endif %}>Nave</option>
+                    <option value="area" {% if agrupar_por == 'area' %}selected{% endif %}>Área</option>
+                    <option value="periodo" {% if agrupar_por == 'periodo' %}selected{% endif %}>Periodicidad</option>
+                </select>
+            </div>
+
+            <button
+                type="submit"
+                class="inline-flex min-h-10 items-center justify-center rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-light"
+            >
+                Filtrar
+            </button>
+            <a
+                href="{% url 'inventory:fallos_activos' slug=slug %}"
+                class="inline-flex min-h-10 items-center justify-center rounded-lg border border-surface-border bg-white px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface hover:text-navy"
+            >
+                Limpiar
+            </a>
+        </div>
+    </form>
+
+    {% if not total_fallos %}
+        <div class="rounded-xl border border-ok-border bg-ok-bg px-6 py-10 text-center">
+            <p class="text-sm font-semibold text-ok">Sin fallos activos</p>
+            <p class="mt-1 text-xs text-ink-muted">Todos los recursos de la flota están operativos.</p>
+        </div>
+    {% elif not fallos_filtrados_total %}
+        <div class="rounded-xl border border-surface-border bg-white px-6 py-10 text-center shadow-sm">
+            <p class="text-sm font-semibold text-navy">No hay fallos que coincidan con los filtros</p>
+            <p class="mt-1 text-xs text-ink-muted">Prueba ajustando nave, área, periodicidad o rango de fechas.</p>
+        </div>
+    {% else %}
+        <section class="space-y-4">
+            {% for grupo in grupos %}
+                <div class="space-y-2.5">
+                    {% if agrupar_por %}
+                        <div class="flex items-center gap-3 py-2">
+                            <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
+                                {{ grupo.label }}
+                            </span>
+                            <span class="h-px flex-1 bg-surface-border"></span>
+                            <span class="text-[11px] text-ink-muted">{{ grupo.items|length }} fallo{{ grupo.items|length|pluralize }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% for fallo in grupo.items %}
+                        <article class="flex items-center gap-4 rounded-lg border border-fail-border bg-white px-4 py-3 shadow-sm">
+                            <span class="h-8 w-1 shrink-0 rounded-sm bg-fail"></span>
+
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-[14px] font-semibold text-navy">{{ fallo.recurso.nombre }}</span>
+                                    {% if fallo.recurso.area %}
+                                        <span class="rounded-[3px] border border-surface-border bg-neutral-bg px-1.5 py-0.5 text-[10px] text-ink-muted">
+                                            {{ fallo.recurso.area.nombre }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-ink-muted">
+                                    <a
+                                        href="{% url 'inventory:nave_detalle' slug=slug nave_id=fallo.nave.id %}"
+                                        class="font-medium text-ink-secondary hover:text-navy hover:underline"
+                                    >
+                                        {{ fallo.nave.nombre }}
+                                    </a>
+                                    {% if fallo.recurso.periodicidad %}
+                                        <span>·</span>
+                                        <span>{{ fallo.recurso.periodicidad.nombre }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="shrink-0 text-right">
+                                {% if fallo.ultimo_estado_operativo_en %}
+                                    <p class="text-[12px] font-medium text-fail">
+                                        {{ fallo.ultimo_estado_operativo_en|timesince }} atrás
+                                    </p>
+                                    <p class="text-[11px] font-mono text-ink-muted">
+                                        {{ fallo.ultimo_estado_operativo_en|date:"d/m/Y H:i" }}
+                                    </p>
+                                {% else %}
+                                    <p class="text-[11px] text-ink-muted">Sin fecha</p>
+                                {% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
