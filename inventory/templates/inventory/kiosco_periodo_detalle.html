@@ -81,6 +81,49 @@
         </div>
     </header>
 
+    <div
+        x-show="_mostrarBannerRecuperacion"
+        x-cloak
+        class="sticky top-[60px] z-20 border-b border-warn-border bg-warn-bg px-6 py-3"
+    >
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
+            <div class="flex items-center gap-2 text-sm font-medium text-warn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
+                    <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Hay cambios sin guardar de una sesión anterior.
+            </div>
+            <div class="flex shrink-0 gap-2">
+                <!-- Recuperar el borrador solo rehidrata el estado del componente raíz; las fichas hijas no se rerenderizan hasta recargar, pero el badge y guardarTodo() sí usan este estado. -->
+                <button
+                    type="button"
+                    @click="
+                        cambiosPorRecurso = _borradorPendiente;
+                        totalCambios = Object.keys(cambiosPorRecurso).length;
+                        _borradorPendiente = null;
+                        _mostrarBannerRecuperacion = false;
+                        $dispatch('borrador-recuperado');
+                    "
+                    class="rounded-md border border-warn-border bg-white px-3 py-1.5 text-xs font-semibold text-warn transition hover:bg-amber-50"
+                >
+                    Recuperar cambios
+                </button>
+                <button
+                    type="button"
+                    @click="
+                        _limpiarBorrador();
+                        _borradorPendiente = null;
+                        _mostrarBannerRecuperacion = false;
+                    "
+                    class="rounded-md border border-surface-border bg-white px-3 py-1.5 text-xs font-semibold text-ink-muted transition hover:bg-surface"
+                >
+                    Descartar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <main class="mx-auto max-w-6xl px-4 py-5 pb-28 sm:px-6">
         <div class="space-y-3">
             {% for grupo in areas_grupos %}
@@ -498,6 +541,57 @@
             totalCambios: 0,
             guardandoTodo: false,
             cambiosPorRecurso: {},
+            _borradorPendiente: null,
+            _mostrarBannerRecuperacion: false,
+
+            init() {
+                const self = this;
+                window.addEventListener('beforeunload', function(e) {
+                    if (self.totalCambios > 0) {
+                        e.preventDefault();
+                        e.returnValue = '';
+                    }
+                });
+                this._cargarBorradorSiExiste();
+            },
+
+            _claveLocalStorage() {
+                return 'sitrep_borrador_{{ request.user.id }}_periodo_{{ periodo.id }}';
+            },
+
+            _guardarBorrador() {
+                if (Object.keys(this.cambiosPorRecurso).length === 0) {
+                    localStorage.removeItem(this._claveLocalStorage());
+                    return;
+                }
+                try {
+                    localStorage.setItem(
+                        this._claveLocalStorage(),
+                        JSON.stringify(this.cambiosPorRecurso)
+                    );
+                } catch (e) {
+                    // localStorage lleno o bloqueado — ignorar silenciosamente
+                }
+            },
+
+            _limpiarBorrador() {
+                localStorage.removeItem(this._claveLocalStorage());
+            },
+
+            _cargarBorradorSiExiste() {
+                try {
+                    const raw = localStorage.getItem(this._claveLocalStorage());
+                    if (!raw) return;
+                    const borrador = JSON.parse(raw);
+                    if (!borrador || typeof borrador !== 'object') return;
+                    const keys = Object.keys(borrador);
+                    if (keys.length === 0) return;
+                    this._borradorPendiente = borrador;
+                    this._mostrarBannerRecuperacion = true;
+                } catch (e) {
+                    localStorage.removeItem(this._claveLocalStorage());
+                }
+            },
 
             registrarCambio(recursoId, payload) {
                 if (payload === null) {
@@ -506,6 +600,7 @@
                     this.cambiosPorRecurso[recursoId] = payload;
                 }
                 this.totalCambios = Object.keys(this.cambiosPorRecurso).length;
+                this._guardarBorrador();
             },
 
             async guardarTodo() {
@@ -550,6 +645,7 @@
                         }).join(', '));
                     }
 
+                    this._limpiarBorrador();
                     window.location.reload();
                 } catch (error) {
                     alert('Error de conexión. Intenta nuevamente.');
