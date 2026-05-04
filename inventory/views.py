@@ -1,14 +1,15 @@
+import bisect
 import json
 import logging
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 
 from django.contrib.auth import authenticate, login, logout
 from django.core.paginator import Paginator
 from django.db import IntegrityError
-from django.db.models import Count, F, Max, Q
+from django.db.models import Count, F, IntegerField, Max, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce, Greatest
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import redirect, render
@@ -48,6 +49,17 @@ def _pin_valido_4_digitos(raw_pin):
 
 
 ROLES_API_KIOSCO = {"mar", "capitan", "tierra", "admin_naviera", "admin_sitrep"}
+CONFIABILIDAD_UMBRALES = [1, 7, 30, 90, 365]
+CONFIABILIDAD_VENTANAS = [30, 30, 90, 365, 730, 1825]
+
+
+def _ventana_confiabilidad(duracion_dias):
+    """
+    Retorna la ventana de confiabilidad en días para una periodicidad.
+    Usa bisect_left para encontrar el intervalo correcto en O(log n).
+    """
+    indice = bisect.bisect_left(CONFIABILIDAD_UMBRALES, duracion_dias)
+    return CONFIABILIDAD_VENTANAS[indice]
 
 
 def _json_error(mensaje, status):
@@ -282,14 +294,21 @@ def _formatear_tiempo_transcurrido_es(fecha, ahora=None):
     if not fecha:
         return ""
 
-    if ahora is None:
-        ahora = timezone.now()
-
-    if timezone.is_naive(fecha):
-        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
-
-    delta = ahora - fecha
-    total_segundos = max(0, int(delta.total_seconds()))
+    if isinstance(fecha, datetime):
+        if ahora is None:
+            ahora = timezone.now()
+        if timezone.is_naive(fecha):
+            fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
+        delta = ahora - fecha
+        total_segundos = max(0, int(delta.total_seconds()))
+    else:
+        if isinstance(ahora, datetime):
+            hoy = timezone.localdate(ahora)
+        elif isinstance(ahora, date):
+            hoy = ahora
+        else:
+            hoy = timezone.localdate()
+        total_segundos = max(0, (hoy - fecha).days) * 24 * 60 * 60
 
     unidades = (
         ("día", "días", 24 * 60 * 60),
@@ -914,6 +933,215 @@ def fallos_activos(request, slug):
             "fecha_desde_str": fecha_desde_str,
             "fecha_hasta_str": fecha_hasta_str,
             "fallos_filtrados_total": len(fallos),
+        },
+    )
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+def periodos_vencidos(request, slug):
+    naviera = request.naviera
+    hoy = timezone.localdate()
+    estados_vencidos = {"omitido", "caduco"}
+    estados_cerrados = estados_vencidos | {"operativo", "observado", "fallido"}
+
+    qs = (
+        PeriodoRevision.objects.filter(
+            nave__naviera=naviera,
+            nave__is_active=True,
+            estado__in=estados_vencidos,
+        )
+        .select_related("nave", "periodicidad")
+        .order_by(F("fecha_termino").desc(nulls_last=True), "nave__nombre")
+    )
+
+    nave_id = request.GET.get("nave", "").strip()
+    periodicidad_id = request.GET.get("periodicidad", "").strip()
+    fecha_desde_str = request.GET.get("fecha_desde", "").strip()
+    fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
+    agrupar_por = request.GET.get("agrupar", "").strip()
+    if agrupar_por not in {"", "nave", "periodo"}:
+        agrupar_por = ""
+
+    if nave_id:
+        try:
+            qs = qs.filter(nave_id=int(nave_id))
+        except ValueError:
+            nave_id = ""
+
+    if periodicidad_id:
+        try:
+            qs = qs.filter(periodicidad_id=int(periodicidad_id))
+        except ValueError:
+            periodicidad_id = ""
+
+    if fecha_desde_str:
+        try:
+            qs = qs.filter(fecha_termino__gte=date.fromisoformat(fecha_desde_str))
+        except ValueError:
+            fecha_desde_str = ""
+
+    if fecha_hasta_str:
+        try:
+            qs = qs.filter(fecha_termino__lte=date.fromisoformat(fecha_hasta_str))
+        except ValueError:
+            fecha_hasta_str = ""
+
+    fichas_completadas_sq = (
+        FichaRegistro.objects.filter(
+            periodo=OuterRef("pk"),
+            estado_ficha="completa",
+        )
+        .values("periodo")
+        .annotate(total=Count("id"))
+        .values("total")
+    )
+    total_recursos_sq = (
+        MatrizNaveRecurso.objects.filter(
+            nave=OuterRef("nave"),
+            recurso__periodicidad=OuterRef("periodicidad"),
+            es_visible=True,
+            recurso__created_at__date__lte=OuterRef("fecha_termino"),
+        )
+        .values("nave")
+        .annotate(total=Count("id"))
+        .values("total")
+    )
+    qs = qs.annotate(
+        fichas_completadas=Subquery(fichas_completadas_sq, output_field=IntegerField()),
+        total_recursos_momento=Subquery(total_recursos_sq, output_field=IntegerField()),
+    )
+
+    periodos = list(qs)
+    for periodo in periodos:
+        periodo.tiempo_desde_vencimiento_display = _formatear_tiempo_transcurrido_es(
+            periodo.fecha_termino,
+            ahora=hoy,
+        )
+
+    ultimos_cerrados = {}
+    for periodo in (
+        PeriodoRevision.objects.filter(
+            nave__naviera=naviera,
+            nave__is_active=True,
+            estado__in=estados_cerrados,
+        )
+        .select_related("nave", "periodicidad")
+        .order_by("nave_id", "periodicidad_id", "-fecha_termino", "-id")
+    ):
+        clave = (periodo.nave_id, periodo.periodicidad_id)
+        if clave not in ultimos_cerrados:
+            ultimos_cerrados[clave] = periodo
+
+    ultimos_vencidos = [
+        periodo
+        for periodo in ultimos_cerrados.values()
+        if periodo.estado in estados_vencidos
+    ]
+    kpi_ultimos_vencidos = len(ultimos_vencidos)
+    kpi_naves_afectadas = len({periodo.nave_id for periodo in ultimos_vencidos})
+
+    kpi_total_historico = PeriodoRevision.objects.filter(
+        nave__naviera=naviera,
+        nave__is_active=True,
+        estado__in=estados_vencidos,
+    ).count()
+
+    periodicidad_ids_con_historial = (
+        PeriodoRevision.objects.filter(
+            nave__naviera=naviera,
+            nave__is_active=True,
+        )
+        .values_list("periodicidad_id", flat=True)
+        .distinct()
+    )
+    confiabilidad_por_periodicidad = []
+    for periodicidad in Periodicidad.objects.filter(id__in=periodicidad_ids_con_historial).order_by(
+        "duracion_dias", "nombre"
+    ):
+        ventana = _ventana_confiabilidad(periodicidad.duracion_dias)
+        desde = hoy - timedelta(days=ventana)
+        total_cerrados = PeriodoRevision.objects.filter(
+            nave__naviera=naviera,
+            nave__is_active=True,
+            periodicidad=periodicidad,
+            estado__in=estados_cerrados,
+            fecha_termino__gte=desde,
+        ).count()
+        vencidos_ventana = PeriodoRevision.objects.filter(
+            nave__naviera=naviera,
+            nave__is_active=True,
+            periodicidad=periodicidad,
+            estado__in=estados_vencidos,
+            fecha_termino__gte=desde,
+        ).count()
+        if total_cerrados > 0:
+            confiabilidad_por_periodicidad.append(
+                {
+                    "periodicidad": periodicidad,
+                    "ventana_dias": ventana,
+                    "total": total_cerrados,
+                    "vencidos": vencidos_ventana,
+                    "pct_cumplimiento": round(
+                        100 * (total_cerrados - vencidos_ventana) / total_cerrados
+                    ),
+                }
+            )
+
+    if agrupar_por == "nave":
+        agrupado = {}
+        for periodo in periodos:
+            grupo = agrupado.setdefault(
+                periodo.nave_id,
+                {"label": periodo.nave.nombre, "sort_key": periodo.nave.nombre.lower(), "items": []},
+            )
+            grupo["items"].append(periodo)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    elif agrupar_por == "periodo":
+        agrupado = {}
+        for periodo in periodos:
+            grupo = agrupado.setdefault(
+                periodo.periodicidad_id,
+                {
+                    "label": periodo.periodicidad.nombre,
+                    "sort_key": (periodo.periodicidad.duracion_dias, periodo.periodicidad.nombre.lower()),
+                    "items": [],
+                },
+            )
+            grupo["items"].append(periodo)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    else:
+        grupos = [{"label": None, "items": periodos}]
+
+    for grupo in grupos:
+        grupo["items"].sort(key=lambda periodo: periodo.fecha_termino, reverse=True)
+
+    naves = Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre")
+    periodicidades = Periodicidad.objects.filter(
+        id__in=PeriodoRevision.objects.filter(
+            nave__naviera=naviera,
+            nave__is_active=True,
+        ).values("periodicidad_id")
+    ).order_by("duracion_dias", "nombre")
+
+    return render(
+        request,
+        "inventory/periodos_vencidos.html",
+        {
+            "slug": slug,
+            "grupos": grupos,
+            "agrupar_por": agrupar_por,
+            "kpi_ultimos_vencidos": kpi_ultimos_vencidos,
+            "kpi_naves_afectadas": kpi_naves_afectadas,
+            "kpi_total_historico": kpi_total_historico,
+            "confiabilidad_por_periodicidad": confiabilidad_por_periodicidad,
+            "vencidos_filtrados_total": len(periodos),
+            "naves": naves,
+            "periodicidades": periodicidades,
+            "nave_id": nave_id,
+            "periodicidad_id": periodicidad_id,
+            "fecha_desde_str": fecha_desde_str,
+            "fecha_hasta_str": fecha_hasta_str,
         },
     )
 

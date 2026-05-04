@@ -1,0 +1,207 @@
+{% extends 'layouts/tierra.html' %}
+
+{% block nav_active %}vencidos{% endblock %}
+{% block page_title %}SITREP | Períodos vencidos{% endblock %}
+{% block topbar_title %}Períodos vencidos{% endblock %}
+
+{% block page_content %}
+<div class="space-y-6">
+    <div class="mb-6">
+        <h1 class="text-xl font-bold text-navy">Períodos vencidos</h1>
+        <div class="mt-3 flex flex-wrap gap-4">
+            <div class="min-w-[120px] rounded-lg border-2 border-warn bg-warn-bg px-4 py-3 text-center">
+                <p class="text-[10px] font-bold uppercase tracking-[0.08em] text-warn">Actualmente vencidos</p>
+                <p class="text-2xl font-black text-warn">{{ kpi_ultimos_vencidos }}</p>
+                <p class="text-[11px] text-warn opacity-70">
+                    {{ kpi_naves_afectadas }} nave{{ kpi_naves_afectadas|pluralize }} afectada{{ kpi_naves_afectadas|pluralize }}
+                </p>
+            </div>
+            <div class="min-w-[120px] rounded-lg border border-surface-border bg-white px-4 py-3 text-center">
+                <p class="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-muted">Total histórico</p>
+                <p class="text-2xl font-bold text-navy">{{ kpi_total_historico }}</p>
+                <p class="text-[11px] text-ink-muted">todos los períodos</p>
+            </div>
+        </div>
+    </div>
+
+    {% if confiabilidad_por_periodicidad %}
+        <div class="mb-6 rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+            <p class="mb-3 text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
+                Confiabilidad por periodicidad
+            </p>
+            <div class="space-y-2">
+                {% for item in confiabilidad_por_periodicidad %}
+                    <div class="flex items-center gap-3">
+                        <span class="w-24 shrink-0 text-[12px] font-medium text-ink">
+                            {{ item.periodicidad.nombre }}
+                        </span>
+                        <div class="h-2 flex-1 overflow-hidden rounded-full bg-surface-border">
+                            <div
+                                class="h-full rounded-full {% if item.pct_cumplimiento >= 80 %}bg-ok{% elif item.pct_cumplimiento >= 50 %}bg-warn{% else %}bg-fail{% endif %}"
+                                style="width: {{ item.pct_cumplimiento }}%"
+                            ></div>
+                        </div>
+                        <span class="w-10 shrink-0 text-right font-mono text-[12px] {% if item.pct_cumplimiento >= 80 %}text-ok{% elif item.pct_cumplimiento >= 50 %}text-warn{% else %}text-fail{% endif %}">
+                            {{ item.pct_cumplimiento }}%
+                        </span>
+                        <span class="w-28 shrink-0 text-[11px] text-ink-muted">
+                            últimos {{ item.ventana_dias }}d
+                        </span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <form method="get" class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label for="nave" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Nave</label>
+                <select
+                    id="nave"
+                    name="nave"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+                    <option value="">Todas las naves</option>
+                    {% for nave in naves %}
+                        <option value="{{ nave.id }}" {% if nave_id == nave.id|stringformat:'s' %}selected{% endif %}>{{ nave.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="periodicidad" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Periodicidad</label>
+                <select
+                    id="periodicidad"
+                    name="periodicidad"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+                    <option value="">Todas las periodicidades</option>
+                    {% for periodicidad in periodicidades %}
+                        <option value="{{ periodicidad.id }}" {% if periodicidad_id == periodicidad.id|stringformat:'s' %}selected{% endif %}>{{ periodicidad.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="fecha_desde" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Desde</label>
+                <input
+                    id="fecha_desde"
+                    type="date"
+                    name="fecha_desde"
+                    value="{{ fecha_desde_str }}"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+            </div>
+
+            <div>
+                <label for="fecha_hasta" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Hasta</label>
+                <input
+                    id="fecha_hasta"
+                    type="date"
+                    name="fecha_hasta"
+                    value="{{ fecha_hasta_str }}"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+            </div>
+
+            <div>
+                <label for="agrupar" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Agrupar por</label>
+                <select
+                    id="agrupar"
+                    name="agrupar"
+                    class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+                >
+                    <option value="" {% if not agrupar_por %}selected{% endif %}>Sin agrupación</option>
+                    <option value="nave" {% if agrupar_por == 'nave' %}selected{% endif %}>Nave</option>
+                    <option value="periodo" {% if agrupar_por == 'periodo' %}selected{% endif %}>Periodicidad</option>
+                </select>
+            </div>
+
+            <button
+                type="submit"
+                class="inline-flex min-h-10 items-center justify-center rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-light"
+            >
+                Filtrar
+            </button>
+            <a
+                href="{% url 'inventory:periodos_vencidos' slug=slug %}"
+                class="inline-flex min-h-10 items-center justify-center rounded-lg border border-surface-border bg-white px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface hover:text-navy"
+            >
+                Limpiar
+            </a>
+        </div>
+    </form>
+
+    {% if not kpi_total_historico %}
+        <div class="rounded-xl border border-ok-border bg-ok-bg px-6 py-10 text-center">
+            <p class="text-sm font-semibold text-ok">Sin períodos vencidos</p>
+            <p class="mt-1 text-xs text-ink-muted">La flota no registra períodos omitidos ni caducos.</p>
+        </div>
+    {% elif not vencidos_filtrados_total %}
+        <div class="rounded-xl border border-surface-border bg-white px-6 py-10 text-center shadow-sm">
+            <p class="text-sm font-semibold text-navy">No hay períodos vencidos que coincidan con los filtros</p>
+            <p class="mt-1 text-xs text-ink-muted">Prueba ajustando nave, periodicidad o rango de fechas.</p>
+        </div>
+    {% else %}
+        <section class="space-y-4">
+            {% for grupo in grupos %}
+                <div class="space-y-2.5">
+                    {% if agrupar_por %}
+                        <div class="flex items-center gap-3 py-2">
+                            <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
+                                {{ grupo.label }}
+                            </span>
+                            <span class="h-px flex-1 bg-surface-border"></span>
+                            <span class="text-[11px] text-ink-muted">{{ grupo.items|length }} vencido{{ grupo.items|length|pluralize }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% for periodo in grupo.items %}
+                        <article class="flex items-center gap-4 rounded-lg border border-warn-border bg-white px-4 py-3 shadow-sm">
+                            <span class="h-8 w-1 shrink-0 rounded-sm bg-warn"></span>
+
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <a
+                                        href="{% url 'inventory:nave_detalle' slug=slug nave_id=periodo.nave.id %}"
+                                        class="text-[14px] font-semibold text-navy hover:underline"
+                                    >
+                                        {{ periodo.nave.nombre }}
+                                    </a>
+                                    <span class="rounded-[3px] border border-surface-border bg-neutral-bg px-1.5 py-0.5 text-[10px] text-ink-muted">
+                                        {{ periodo.periodicidad.nombre }}
+                                    </span>
+                                    {% include 'components/badge_estado.html' with estado=periodo.estado %}
+                                </div>
+                                <div class="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-ink-muted">
+                                    <span class="font-mono">
+                                        {{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}
+                                    </span>
+                                    <span>·</span>
+                                    {% if periodo.total_recursos_momento %}
+                                        <span>
+                                            {{ periodo.fichas_completadas|default:0 }}/{{ periodo.total_recursos_momento }} fichas
+                                        </span>
+                                    {% else %}
+                                        <span>Sin recursos registrados</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="shrink-0 text-right">
+                                <p class="text-[12px] font-medium text-warn">
+                                    {{ periodo.tiempo_desde_vencimiento_display }} atrás
+                                </p>
+                                <p class="text-[11px] font-mono text-ink-muted">
+                                    venció {{ periodo.fecha_termino|date:"d/m/Y" }}
+                                </p>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </section>
+    {% endif %}
+</div>
+{% endblock %}

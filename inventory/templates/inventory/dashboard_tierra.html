@@ -55,21 +55,23 @@
             </article>
         </a>
 
-        <article class="rounded-lg border p-5 shadow-sm {% if periodos_vencidos_total > 0 %}border-surface-border bg-warn-bg{% else %}border-surface-border bg-white{% endif %}">
-            <div class="text-[11px] font-bold uppercase tracking-[0.08em] {% if periodos_vencidos_total > 0 %}text-warn{% else %}text-ink-muted{% endif %}">
-                Períodos vencidos
-            </div>
-            <div class="mt-1 flex items-baseline gap-2">
-                <span class="text-3xl font-black {% if periodos_vencidos_total > 0 %}text-warn{% else %}text-navy{% endif %}">{{ periodos_vencidos_total }}</span>
-            </div>
-            {% if naves_con_vencidos > 0 %}
-            <div class="mt-1 text-[12px] text-warn opacity-80">
-                {{ naves_con_vencidos }} nave{{ naves_con_vencidos|pluralize }} afectada{{ naves_con_vencidos|pluralize }}
-            </div>
-            {% else %}
-            <div class="mt-1 text-[12px] font-medium text-ok">Sin vencidos</div>
-            {% endif %}
-        </article>
+        <a href="{% url 'inventory:periodos_vencidos' slug=slug %}" class="group block cursor-pointer">
+            <article class="rounded-lg border p-5 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-2 group-hover:ring-brand/10 {% if periodos_vencidos_total > 0 %}border-surface-border bg-warn-bg{% else %}border-surface-border bg-white{% endif %}">
+                <div class="text-[11px] font-bold uppercase tracking-[0.08em] {% if periodos_vencidos_total > 0 %}text-warn{% else %}text-ink-muted{% endif %}">
+                    Períodos vencidos
+                </div>
+                <div class="mt-1 flex items-baseline gap-2">
+                    <span class="text-3xl font-black {% if periodos_vencidos_total > 0 %}text-warn{% else %}text-navy{% endif %}">{{ periodos_vencidos_total }}</span>
+                </div>
+                {% if naves_con_vencidos > 0 %}
+                <div class="mt-1 text-[12px] text-warn opacity-80">
+                    {{ naves_con_vencidos }} nave{{ naves_con_vencidos|pluralize }} afectada{{ naves_con_vencidos|pluralize }}
+                </div>
+                {% else %}
+                <div class="mt-1 text-[12px] font-medium text-ok">Sin vencidos</div>
+                {% endif %}
+            </article>
+        </a>
     </section>
 
     <section x-data="{ q: '{{ query_busqueda|escapejs }}' }" class="space-y-3">
