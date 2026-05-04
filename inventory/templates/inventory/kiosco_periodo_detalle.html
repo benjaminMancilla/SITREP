@@ -95,15 +95,14 @@
                 Hay cambios sin guardar de una sesión anterior.
             </div>
             <div class="flex shrink-0 gap-2">
-                <!-- Recuperar el borrador solo rehidrata el estado del componente raíz; las fichas hijas no se rerenderizan hasta recargar, pero el badge y guardarTodo() sí usan este estado. -->
                 <button
                     type="button"
                     @click="
                         cambiosPorRecurso = _borradorPendiente;
                         totalCambios = Object.keys(cambiosPorRecurso).length;
+                        $dispatch('borrador-recuperado', { cambios: _borradorPendiente });
                         _borradorPendiente = null;
                         _mostrarBannerRecuperacion = false;
-                        $dispatch('borrador-recuperado');
                     "
                     class="rounded-md border border-warn-border bg-white px-3 py-1.5 text-xs font-semibold text-warn transition hover:bg-amber-50"
                 >
@@ -543,11 +542,12 @@
             cambiosPorRecurso: {},
             _borradorPendiente: null,
             _mostrarBannerRecuperacion: false,
+            _guardadoExitoso: false,
 
             init() {
                 const self = this;
                 window.addEventListener('beforeunload', function(e) {
-                    if (self.totalCambios > 0) {
+                    if (self.totalCambios > 0 && !self._guardadoExitoso) {
                         e.preventDefault();
                         e.returnValue = '';
                     }
@@ -556,7 +556,7 @@
             },
 
             _claveLocalStorage() {
-                return 'sitrep_borrador_{{ request.user.id }}_periodo_{{ periodo.id }}';
+                return 'sitrep_borrador_periodo_{{ periodo.id }}';
             },
 
             _guardarBorrador() {
@@ -646,6 +646,7 @@
                     }
 
                     this._limpiarBorrador();
+                    this._guardadoExitoso = true;
                     window.location.reload();
                 } catch (error) {
                     alert('Error de conexión. Intenta nuevamente.');
@@ -675,6 +676,28 @@
                     obsInicial: obsBase,
                 };
             }),
+
+            init() {
+                const self = this;
+                window.addEventListener('borrador-recuperado', function(e) {
+                    const draft = e.detail?.cambios?.[String(self.recursoId)];
+                    if (!draft) return;
+
+                    if (draft.observacion_general !== undefined) {
+                        self.observacionGeneral = draft.observacion_general;
+                    }
+
+                    const cl = draft.payload_checklist || {};
+                    self.checklist.forEach(function(item, index) {
+                        if (cl[item.key] !== undefined) {
+                            self.checklist[index].estado = cl[item.key].cumple ?? null;
+                            self.checklist[index].obs = cl[item.key].observacion || '';
+                        }
+                    });
+
+                    self.notificarCambio();
+                });
+            },
 
             estadoAnterior(key) {
                 const item = this.periodoAnterior.checklist?.[key];
