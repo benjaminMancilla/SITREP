@@ -271,6 +271,106 @@ def _obtener_filtros_historial_desde_request(request):
     }
 
 
+def _nombre_usuario_display(usuario):
+    if not usuario:
+        return ""
+    nombre_completo = f"{usuario.first_name} {usuario.last_name}".strip()
+    return nombre_completo or usuario.rut
+
+
+def _formatear_tiempo_transcurrido_es(fecha, ahora=None):
+    if not fecha:
+        return ""
+
+    if ahora is None:
+        ahora = timezone.now()
+
+    if timezone.is_naive(fecha):
+        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
+
+    delta = ahora - fecha
+    total_segundos = max(0, int(delta.total_seconds()))
+
+    unidades = (
+        ("día", "días", 24 * 60 * 60),
+        ("hora", "horas", 60 * 60),
+        ("minuto", "minutos", 60),
+    )
+    partes = []
+    resto = total_segundos
+
+    for singular, plural, segundos_unidad in unidades:
+        valor, resto = divmod(resto, segundos_unidad)
+        if valor:
+            etiqueta = singular if valor == 1 else plural
+            partes.append(f"{valor} {etiqueta}")
+        if len(partes) == 2:
+            break
+
+    return ", ".join(partes) if partes else "menos de 1 minuto"
+
+
+def _adjuntar_detalle_a_fallos(fallos, naviera):
+    if not fallos:
+        return
+
+    ahora = timezone.now()
+    nave_ids = {fallo.nave_id for fallo in fallos}
+    recurso_ids = {fallo.recurso_id for fallo in fallos}
+    fichas_ordenadas = (
+        FichaRegistro.objects.filter(
+            periodo__nave__naviera=naviera,
+            periodo__nave_id__in=nave_ids,
+            recurso_id__in=recurso_ids,
+            estado_operativo=False,
+        )
+        .select_related("usuario", "modificado_por", "periodo", "periodo__nave")
+        .annotate(evento_en=Coalesce("modificado_en", "fecha_revision"))
+        .order_by("periodo__nave_id", "recurso_id", F("evento_en").desc(), "-id")
+    )
+
+    ultimas_fichas = {}
+    for ficha in fichas_ordenadas:
+        clave = (ficha.periodo.nave_id, ficha.recurso_id)
+        if clave not in ultimas_fichas:
+            ultimas_fichas[clave] = ficha
+
+    for fallo in fallos:
+        fallo.tiempo_desde_display = _formatear_tiempo_transcurrido_es(
+            fallo.ultimo_estado_operativo_en,
+            ahora=ahora,
+        )
+        ficha = ultimas_fichas.get((fallo.nave_id, fallo.recurso_id))
+        fallo.ficha_detalle = ficha
+        fallo.ficha_usuario_display = _nombre_usuario_display(
+            (ficha.modificado_por or ficha.usuario) if ficha else None
+        )
+        fallo.ficha_evento_en = (
+            ficha.modificado_en or ficha.fecha_revision
+            if ficha else None
+        )
+        fallo.ficha_observacion_general = (
+            (ficha.observacion_general or "").strip()
+            if ficha else ""
+        )
+
+        if not ficha:
+            fallo.checklist_fallido = []
+            continue
+
+        payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
+        checklist_items = MotorFichas.construir_checklist_items(
+            recurso=fallo.recurso,
+            cantidad=fallo.cantidad,
+            payload_checklist=payload_actual,
+            incluir_requisito_cantidad=MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual,
+        )
+        fallo.checklist_fallido = [
+            item for item in checklist_items
+            if item["checked"] is False
+        ]
+
+
 def _construir_periodos_detalle(nave, periodos):
     periodos_detalle = []
     # TODO: optimizar con annotate() y prefetch_related en Fase 4
@@ -742,6 +842,7 @@ def fallos_activos(request, slug):
             fecha_hasta_str = ""
 
     fallos = list(qs)
+    _adjuntar_detalle_a_fallos(fallos, naviera)
     grupos = []
     if agrupar_por == "nave":
         agrupado = {}

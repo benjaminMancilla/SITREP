@@ -4,6 +4,12 @@
 {% block page_title %}SITREP | Fallos activos{% endblock %}
 {% block topbar_title %}Fallos activos{% endblock %}
 
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}
+
 {% block page_content %}
 <div class="space-y-6">
     <div class="mb-6 flex flex-wrap items-center gap-4">
@@ -138,42 +144,129 @@
                     {% endif %}
 
                     {% for fallo in grupo.items %}
-                        <article class="flex items-center gap-4 rounded-lg border border-fail-border bg-white px-4 py-3 shadow-sm">
-                            <span class="h-8 w-1 shrink-0 rounded-sm bg-fail"></span>
+                        <article x-data="{ abierto: false }" class="overflow-hidden rounded-lg border border-fail-border bg-white shadow-sm transition-shadow hover:shadow-md">
+                            <div
+                                @click="abierto = !abierto"
+                                class="flex cursor-pointer items-center gap-4 px-4 py-3 transition hover:bg-[#fcfdff]"
+                            >
+                                <span class="h-8 w-1 shrink-0 rounded-sm bg-fail"></span>
 
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="text-[14px] font-semibold text-navy">{{ fallo.recurso.nombre }}</span>
-                                    {% if fallo.recurso.area %}
-                                        <span class="rounded-[3px] border border-surface-border bg-neutral-bg px-1.5 py-0.5 text-[10px] text-ink-muted">
-                                            {{ fallo.recurso.area.nombre }}
-                                        </span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="text-[14px] font-semibold text-navy">{{ fallo.recurso.nombre }}</span>
+                                        {% if fallo.recurso.area %}
+                                            <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold {{ fallo.recurso.area.css_classes }}">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-current opacity-70"></span>
+                                                {{ fallo.recurso.area.nombre }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-ink-muted">
+                                        <a
+                                            href="{% url 'inventory:nave_detalle' slug=slug nave_id=fallo.nave.id %}"
+                                            @click.stop
+                                            class="font-medium text-ink-secondary hover:text-navy hover:underline"
+                                        >
+                                            {{ fallo.nave.nombre }}
+                                        </a>
+                                        {% if fallo.recurso.periodicidad %}
+                                            <span>·</span>
+                                            <span>{{ fallo.recurso.periodicidad.nombre }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="shrink-0 text-right">
+                                    {% if fallo.ultimo_estado_operativo_en %}
+                                        <p class="text-[12px] font-medium text-fail">
+                                            {{ fallo.tiempo_desde_display }} atrás
+                                        </p>
+                                        <p class="text-[11px] font-mono text-ink-muted">
+                                            {{ fallo.ultimo_estado_operativo_en|date:"d/m/Y H:i" }}
+                                        </p>
+                                    {% else %}
+                                        <p class="text-[11px] text-ink-muted">Sin fecha</p>
                                     {% endif %}
                                 </div>
-                                <div class="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-ink-muted">
-                                    <a
-                                        href="{% url 'inventory:nave_detalle' slug=slug nave_id=fallo.nave.id %}"
-                                        class="font-medium text-ink-secondary hover:text-navy hover:underline"
+
+                                <button
+                                    type="button"
+                                    @click.stop="abierto = !abierto"
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-surface-border bg-white text-ink-muted transition hover:border-fail-border hover:text-fail"
+                                    :aria-expanded="abierto.toString()"
+                                    aria-label="Expandir ficha del fallo"
+                                >
+                                    <svg
+                                        viewBox="0 0 14 14"
+                                        class="h-4 w-4 transition-transform"
+                                        :class="abierto ? 'rotate-180' : ''"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        aria-hidden="true"
                                     >
-                                        {{ fallo.nave.nombre }}
-                                    </a>
-                                    {% if fallo.recurso.periodicidad %}
-                                        <span>·</span>
-                                        <span>{{ fallo.recurso.periodicidad.nombre }}</span>
-                                    {% endif %}
-                                </div>
+                                        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
                             </div>
 
-                            <div class="shrink-0 text-right">
-                                {% if fallo.ultimo_estado_operativo_en %}
-                                    <p class="text-[12px] font-medium text-fail">
-                                        {{ fallo.ultimo_estado_operativo_en|timesince }} atrás
-                                    </p>
-                                    <p class="text-[11px] font-mono text-ink-muted">
-                                        {{ fallo.ultimo_estado_operativo_en|date:"d/m/Y H:i" }}
-                                    </p>
+                            <div x-show="abierto" x-cloak x-transition class="border-t border-surface-border bg-[#fcfdff] px-4 py-4">
+                                {% if fallo.ficha_detalle %}
+                                    <div class="space-y-3">
+                                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <p class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">Ficha asociada</p>
+                                                <p class="mt-1 text-[13px] font-medium text-ink">
+                                                    {{ fallo.ficha_usuario_display }}
+                                                    {% if fallo.ficha_evento_en %}
+                                                        · {{ fallo.ficha_evento_en|date:"d/m/Y H:i" }}
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                                {{ fallo.checklist_fallido|length }} requerimiento{{ fallo.checklist_fallido|length|pluralize }} con falla
+                                            </span>
+                                        </div>
+
+                                        {% if fallo.ficha_observacion_general %}
+                                            <div class="rounded-md border-l-2 border-fail-border bg-white px-3 py-2 text-[12px] text-fail">
+                                                {{ fallo.ficha_observacion_general }}
+                                            </div>
+                                        {% endif %}
+
+                                        {% if fallo.checklist_fallido %}
+                                            <div class="space-y-2">
+                                                {% for checklist in fallo.checklist_fallido %}
+                                                    <div class="overflow-hidden rounded-md border border-fail-border bg-white">
+                                                        <div class="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-start sm:justify-between">
+                                                            <div class="min-w-0 flex-1">
+                                                                <p class="text-[12px] font-medium text-ink">{{ checklist.label }}</p>
+                                                                <p class="mt-0.5 text-[11px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
+                                                                    {% if checklist.observacion %}
+                                                                        {{ checklist.observacion }}
+                                                                    {% else %}
+                                                                        Sin observación.
+                                                                    {% endif %}
+                                                                </p>
+                                                            </div>
+                                                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                                                Falló
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="rounded-md border border-surface-border bg-white px-3 py-2.5 text-[12px] text-ink-secondary">
+                                                La falla fue registrada sin requerimientos específicos marcados en falla.
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 {% else %}
-                                    <p class="text-[11px] text-ink-muted">Sin fecha</p>
+                                    <div class="rounded-md border border-surface-border bg-white px-3 py-2.5 text-[12px] text-ink-muted">
+                                        No se encontró una ficha asociada a este fallo.
+                                    </div>
                                 {% endif %}
                             </div>
                         </article>

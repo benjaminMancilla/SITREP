@@ -43,8 +43,8 @@
             <p class="mt-1.5 text-[11px] text-ink-muted">Kioscos registrados</p>
         </article>
 
-        <a href="{% url 'inventory:fallos_activos' slug=slug %}" class="block transition hover:opacity-90">
-            <article class="rounded-lg border p-5 shadow-sm {% if fallos_activos_total > 0 %}border-surface-border bg-fail-bg{% else %}border-surface-border bg-white{% endif %}">
+        <a href="{% url 'inventory:fallos_activos' slug=slug %}" class="group block cursor-pointer">
+            <article class="rounded-lg border p-5 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-2 group-hover:ring-brand/10 {% if fallos_activos_total > 0 %}border-surface-border bg-fail-bg{% else %}border-surface-border bg-white{% endif %}">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.07em] {% if fallos_activos_total > 0 %}text-fail{% else %}text-ink-muted{% endif %}">
                     Fallos activos
                 </p>
