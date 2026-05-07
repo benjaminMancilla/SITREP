@@ -1525,6 +1525,35 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertEqual(codigos_salvamento, ["1.1-Q", "1.8-Q", "1.15-Q", "1.21-Q"])
         self.assertEqual(codigos_incendio, ["2.3-Q", "2.10-Q"])
 
+    def test_grupos_de_areas_se_ordenan_por_orden_y_no_por_nombre(self):
+        from inventory.views import _agrupar_recursos_por_area, _construir_recursos_lista_periodo
+
+        area_zeta = Area.objects.create(nombre="Zeta", orden=1)
+        area_alfa = Area.objects.create(nombre="Alfa", orden=2)
+        nave = self._crear_nave("Nave Orden Areas", "INT-042", 15)
+        periodo = self._get_periodo(nave)
+
+        self._crear_recurso(
+            nombre="Recurso Zeta",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_zeta,
+            codigo="9.1-Q",
+        )
+        self._crear_recurso(
+            nombre="Recurso Alfa",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_alfa,
+            codigo="1.1-Q",
+        )
+        MotorReglasSITREP.sincronizar_matriz_nave(nave)
+
+        recursos = _construir_recursos_lista_periodo(nave, periodo)
+        grupos = _agrupar_recursos_por_area(recursos)
+
+        self.assertEqual([grupo["area"].id for grupo in grupos], [area_zeta.id, area_alfa.id])
+
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(
             nombre="Recurso Cantidad Fallida",

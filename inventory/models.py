@@ -272,7 +272,7 @@ class Area(models.Model):
     )
 
     class Meta:
-        ordering = ["nombre"]
+        ordering = ["orden", "nombre"]
         verbose_name = "Área"
         verbose_name_plural = "Áreas"
 

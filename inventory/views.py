@@ -533,6 +533,20 @@ def _extraer_indice_codigo_recurso(codigo):
     return int(match.group(1))
 
 
+def _clave_orden_area(area):
+    if area is None:
+        return (True, True, float("inf"), "sin área", float("inf"))
+
+    nombre_display = _nombre_display_area(area).casefold()
+    return (
+        False,
+        area.orden is None,
+        area.orden if area.orden is not None else float("inf"),
+        nombre_display,
+        area.id,
+    )
+
+
 def _clave_orden_matriz_recurso_periodo(matriz):
     recurso = matriz.recurso
     area = recurso.area
@@ -540,8 +554,7 @@ def _clave_orden_matriz_recurso_periodo(matriz):
     indice_codigo = _extraer_indice_codigo_recurso(codigo)
 
     return (
-        area is None,
-        (area.nombre or "").casefold() if area else "",
+        *_clave_orden_area(area),
         indice_codigo is None,
         indice_codigo if indice_codigo is not None else float("inf"),
         codigo.casefold(),
@@ -627,7 +640,7 @@ def _nombre_display_area(area):
 
 def _ordenar_grupos_por_area(grupos_por_area):
     grupos_con_area = [grupo for grupo in grupos_por_area.values() if grupo["area"] is not None]
-    grupos_con_area.sort(key=lambda grupo: grupo["nombre_display"].casefold())
+    grupos_con_area.sort(key=lambda grupo: _clave_orden_area(grupo["area"]))
 
     grupo_sin_area = grupos_por_area.get(None)
     if grupo_sin_area is not None:
@@ -939,7 +952,7 @@ def fallos_activos(request, slug):
     naves = Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre")
     areas = Area.objects.filter(
         id__in=filtros_base.exclude(recurso__area_id__isnull=True).values_list("recurso__area_id", flat=True)
-    ).order_by("nombre")
+    ).order_by(F("orden").asc(nulls_last=True), "nombre")
     periodicidades = Periodicidad.objects.filter(
         id__in=filtros_base.values_list("recurso__periodicidad_id", flat=True)
     ).order_by("duracion_dias", "nombre")
