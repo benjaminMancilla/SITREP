@@ -181,6 +181,7 @@ def _procesar_recurso(
         Recurso.objects.create(
             nombre=nombre,
             codigo=recurso_data.get("codigo"),
+            descripcion=recurso_data.get("descripcion"),
             periodicidad=periodicidad,
             area=area,
             proposito=proposito_obj,
