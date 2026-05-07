@@ -207,6 +207,11 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
     def has_view_permission(self, request, obj=None):
         return request.user.is_superuser
 
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["importar_url"] = "/admin/inventory/proposito/importar-json/"
+        return super().changelist_view(request, extra_context=extra_context)
+
 
 admin.site.register(Naviera)
 admin.site.register(Tripulacion)
