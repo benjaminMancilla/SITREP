@@ -153,6 +153,7 @@
                         <article
                             x-data="recursoFichaPeriodo({
                                 recursoId: {{ item.recurso.id }},
+                                nombreRecurso: '{{ item.recurso.nombre|escapejs }}',
                                 abiertoInicial: {{ item.recurso.id }} === {{ error_recurso_id|default:0 }},
                                 tieneFichaInicial: {{ item.tiene_ficha|yesno:'true,false' }},
                                 estadoOperativoInicial: {{ item.estado_operativo|yesno:'true,false,null' }},
@@ -567,6 +568,58 @@
             </div>
         </div>
     </main>
+
+    <div
+        x-show="_mostrarModalErrores"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @keydown.escape.window="_mostrarModalErrores = false"
+    >
+        <div class="modal-backdrop absolute inset-0" @click="_mostrarModalErrores = false"></div>
+
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div class="border-b border-surface-border px-6 py-4">
+                <h2 class="text-[15px] font-bold text-navy">Faltan observaciones</h2>
+                <p class="mt-1 text-[13px] text-ink-muted">
+                    Los siguientes recursos tienen requisitos marcados como falla sin observación.
+                    Agrega una observación antes de guardar.
+                </p>
+            </div>
+
+            <div class="max-h-64 space-y-3 overflow-y-auto px-6 py-4">
+                <template x-for="error in _erroresValidacion" :key="error.recursoId">
+                    <div>
+                        <p class="text-[13px] font-semibold text-navy" x-text="error.nombre"></p>
+                        <ul class="mt-1 space-y-0.5">
+                            <template x-for="item in error.items" :key="item">
+                                <li class="flex items-center gap-2 text-[12px] text-fail">
+                                    <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-fail"></span>
+                                    <span x-text="item"></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+            </div>
+
+            <div class="flex items-center justify-between border-t border-surface-border px-6 py-4">
+                <button
+                    type="button"
+                    @click="_irAPrimerErrorDeValidacion()"
+                    class="text-[13px] font-semibold text-brand hover:underline"
+                >
+                    Ir al primer error
+                </button>
+                <button
+                    type="button"
+                    @click="_mostrarModalErrores = false"
+                    class="rounded-lg border border-surface-border bg-white px-4 py-2 text-[13px] font-semibold text-ink-secondary transition hover:bg-surface"
+                >
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -580,6 +633,8 @@
             _borradorPendiente: null,
             _mostrarBannerRecuperacion: false,
             _guardadoExitoso: false,
+            _erroresValidacion: [],
+            _mostrarModalErrores: false,
 
             init() {
                 const self = this;
@@ -640,10 +695,74 @@
                 this._guardarBorrador();
             },
 
+            _validarAntesDeGuardar() {
+                const errores = [];
+
+                for (const [recursoIdStr, payload] of Object.entries(this.cambiosPorRecurso)) {
+                    const checklist = payload.payload_checklist || {};
+                    const itemsProblema = [];
+
+                    for (const [key, val] of Object.entries(checklist)) {
+                        if (val.cumple === false && !val.observacion?.trim()) {
+                            itemsProblema.push(val.label || key);
+                        }
+                    }
+
+                    if (itemsProblema.length > 0) {
+                        errores.push({
+                            recursoId: parseInt(recursoIdStr, 10),
+                            nombre: payload.nombre || `Recurso ${recursoIdStr}`,
+                            items: itemsProblema,
+                        });
+                    }
+                }
+
+                return errores;
+            },
+
+            _irAPrimerErrorDeValidacion() {
+                this._mostrarModalErrores = false;
+
+                if (this._erroresValidacion.length === 0) {
+                    return;
+                }
+
+                const primerError = this._erroresValidacion[0];
+                const el = document.querySelector(
+                    '[data-recurso-id="' + primerError.recursoId + '"]'
+                );
+                if (!el) {
+                    return;
+                }
+
+                let actual = el;
+                while (actual) {
+                    const data = actual._x_dataStack?.[0];
+                    if (data && Object.prototype.hasOwnProperty.call(data, 'abierto')) {
+                        data.abierto = true;
+                    }
+                    actual = actual.parentElement;
+                }
+
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    });
+                });
+            },
+
             async guardarTodo() {
                 if (this.guardandoTodo || this.totalCambios === 0) {
                     return;
                 }
+
+                const errores = this._validarAntesDeGuardar();
+                if (errores.length > 0) {
+                    this._erroresValidacion = errores;
+                    this._mostrarModalErrores = true;
+                    return;
+                }
+
                 this.guardandoTodo = true;
 
                 const fichas = Object.entries(this.cambiosPorRecurso).map(function(entry) {
@@ -696,6 +815,7 @@
     function recursoFichaPeriodo(config) {
         return {
             recursoId: config.recursoId,
+            nombreRecurso: config.nombreRecurso,
             abierto: config.abiertoInicial,
             modalCarga: false,
             tieneFichaInicial: config.tieneFichaInicial,
@@ -774,6 +894,7 @@
                         return;
                     }
                     payload[item.key] = {
+                        label: item.label,
                         cumple: item.estado,
                         observacion: item.obs,
                     };
@@ -822,6 +943,7 @@
                 this.$dispatch('recurso-modificado', {
                     recursoId: this.recursoId,
                     payload: {
+                        nombre: this.nombreRecurso,
                         estado_operativo: null,
                         observacion_general: this.observacionGeneral,
                         payload_checklist: this.buildChecklist(),
