@@ -396,12 +396,14 @@ def _construir_periodos_detalle(nave, periodos):
     for periodo in periodos:
         fichas = list(
             TenantQueryService.get_fichas_de_periodo(periodo).order_by(
+                F("recurso__area__orden").asc(nulls_last=True),
                 F("recurso__area__nombre").asc(nulls_last=True),
                 "recurso__nombre",
             )
         )
         matrices = list(
             TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+                F("recurso__area__orden").asc(nulls_last=True),
                 F("recurso__area__nombre").asc(nulls_last=True),
                 "recurso__nombre"
             )
