@@ -5,6 +5,7 @@ from django.utils import timezone
 from unittest.mock import patch
 
 from .models import (
+    Area,
     Dispositivo,
     FichaRegistro,
     MatrizNaveRecurso,
@@ -887,12 +888,16 @@ class TestIntegracionMotorReglas(TestCase):
         requerimientos=None,
         naviera=None,
         periodicidad=None,
+        codigo=None,
+        area=None,
     ):
         return Recurso.objects.create(
             naviera=naviera,
             proposito=self.proposito,
             periodicidad=periodicidad or self.periodicidad,
+            area=area,
             nombre=nombre,
+            codigo=codigo,
             requerimientos=requerimientos if requerimientos is not None else [],
             regla_aplicacion=regla_aplicacion,
         )
@@ -1455,6 +1460,70 @@ class TestIntegracionMotorReglas(TestCase):
         recursos = _construir_recursos_lista_periodo(nave, periodo, for_history=True)
         nombres = [r["recurso"].nombre for r in recursos]
         self.assertNotIn("Recurso Fantasma", nombres)
+
+    def test_recursos_se_ordenan_por_segundo_tramo_del_codigo_dentro_del_area(self):
+        from inventory.views import _construir_recursos_lista_periodo
+
+        area_salvamento = Area.objects.create(nombre="Salvamento")
+        area_incendio = Area.objects.create(nombre="Incendio")
+        nave = self._crear_nave("Nave Orden Codigos", "INT-041", 15)
+        periodo = self._get_periodo(nave)
+
+        self._crear_recurso(
+            nombre="Salvamento 15",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.15-Q",
+        )
+        self._crear_recurso(
+            nombre="Salvamento 1",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.1-Q",
+        )
+        self._crear_recurso(
+            nombre="Salvamento 21",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.21-Q",
+        )
+        self._crear_recurso(
+            nombre="Salvamento 8",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.8-Q",
+        )
+        self._crear_recurso(
+            nombre="Incendio 10",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_incendio,
+            codigo="2.10-Q",
+        )
+        self._crear_recurso(
+            nombre="Incendio 3",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_incendio,
+            codigo="2.3-Q",
+        )
+        MotorReglasSITREP.sincronizar_matriz_nave(nave)
+
+        recursos = _construir_recursos_lista_periodo(nave, periodo)
+
+        codigos_salvamento = [
+            item["recurso"].codigo for item in recursos if item["recurso"].area_id == area_salvamento.id
+        ]
+        codigos_incendio = [
+            item["recurso"].codigo for item in recursos if item["recurso"].area_id == area_incendio.id
+        ]
+
+        self.assertEqual(codigos_salvamento, ["1.1-Q", "1.8-Q", "1.15-Q", "1.21-Q"])
+        self.assertEqual(codigos_incendio, ["2.3-Q", "2.10-Q"])
 
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(

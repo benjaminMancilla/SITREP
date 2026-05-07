@@ -470,18 +470,18 @@ def _parse_estado_checklist_form(raw_estado):
 
 
 def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False):
-    matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
-        F("recurso__area__nombre").asc(nulls_last=True),
-        F("recurso__codigo").asc(nulls_last=True),
-        "recurso__nombre"
-    )
+    matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo)
     if for_history:
         matrices = matrices.filter(recurso__created_at__date__lte=periodo.fecha_termino)
+
+    matrices = list(matrices)
+    matrices.sort(key=_clave_orden_matriz_recurso_periodo)
+
     fichas_por_recurso_id = {
         ficha.recurso_id: ficha
         for ficha in FichaRegistro.objects.filter(
             periodo=periodo,
-            recurso_id__in=matrices.values_list("recurso_id", flat=True),
+            recurso_id__in=[matriz.recurso_id for matriz in matrices],
         ).select_related("usuario", "modificado_por")
     }
 
@@ -517,6 +517,35 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=Fals
         recursos_lista.append(item)
 
     return recursos_lista
+
+
+def _extraer_indice_codigo_recurso(codigo):
+    codigo = (codigo or "").strip()
+    if not codigo:
+        return None
+
+    match = re.match(r"^\d+\.(\d+)", codigo)
+    if not match:
+        return None
+
+    return int(match.group(1))
+
+
+def _clave_orden_matriz_recurso_periodo(matriz):
+    recurso = matriz.recurso
+    area = recurso.area
+    codigo = (recurso.codigo or "").strip()
+    indice_codigo = _extraer_indice_codigo_recurso(codigo)
+
+    return (
+        area is None,
+        (area.nombre or "").casefold() if area else "",
+        indice_codigo is None,
+        indice_codigo if indice_codigo is not None else float("inf"),
+        codigo.casefold(),
+        (recurso.nombre or "").casefold(),
+        recurso.id,
+    )
 
 
 def _agrupar_recursos_por_area(recursos_lista):
