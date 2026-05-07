@@ -127,7 +127,7 @@
         <div class="space-y-3">
             {% for grupo in areas_grupos %}
             <section class="space-y-2">
-                <div x-data="{ abierto: true }" class="space-y-2">
+                <div x-data="{ abierto: false }" class="space-y-2">
                     <button
                         type="button"
                         @click="abierto = !abierto"
@@ -154,6 +154,8 @@
                             x-data="recursoFichaPeriodo({
                                 recursoId: {{ item.recurso.id }},
                                 abiertoInicial: {{ item.recurso.id }} === {{ error_recurso_id|default:0 }},
+                                tieneFichaInicial: {{ item.tiene_ficha|yesno:'true,false' }},
+                                estadoOperativoInicial: {{ item.estado_operativo|yesno:'true,false,null' }},
                                 observacionGeneralInicial: '{{ item.observacion_general|default:''|escapejs }}',
                                 periodoAnterior: JSON.parse('{{ item.periodo_anterior_json|escapejs }}'),
                                 checklistInicial: [
@@ -186,6 +188,9 @@
 
                                     <div class="flex min-w-0 flex-1 flex-col gap-1.5">
                                         <span class="block text-base font-bold text-navy">{{ item.recurso.nombre }}</span>
+                                        {% if item.recurso.codigo %}
+                                            <span class="font-mono text-[10px] text-ink-muted tracking-wide">{{ item.recurso.codigo }}</span>
+                                        {% endif %}
                                         {% if item.tiene_ficha and item.ficha.usuario %}
                                             <div class="font-mono text-[11px] text-ink-muted">
                                                 Registrado por
@@ -217,20 +222,28 @@
                                 </button>
 
                                 <span class="flex shrink-0 items-center gap-3">
-                                    {% if item.tiene_ficha %}
-                                        {% if item.estado_operativo == True %}
-                                            {% include 'components/badge_estado.html' with estado='operativo' %}
-                                        {% elif item.estado_operativo == False %}
-                                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
-                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
-                                                Con falla
+                                    <span class="flex shrink-0 items-center">
+                                        <template x-if="estadoTentativo() === 'operativo'">
+                                            <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-ok-bg px-2.5 py-0.5 text-xs font-medium text-ok">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Operativo
                                             </span>
-                                        {% else %}
-                                            {% include 'components/badge_estado.html' with estado='en_proceso' %}
-                                        {% endif %}
-                                    {% else %}
-                                        {% include 'components/badge_estado.html' with estado='pendiente' %}
-                                    {% endif %}
+                                        </template>
+                                        <template x-if="estadoTentativo() === 'fallo'">
+                                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Con falla
+                                            </span>
+                                        </template>
+                                        <template x-if="estadoTentativo() === 'en_proceso'">
+                                            <span class="inline-flex items-center gap-1 rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-xs font-medium text-warn">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>En proceso
+                                            </span>
+                                        </template>
+                                        <template x-if="estadoTentativo() === 'pendiente'">
+                                            <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-neutral-bg px-2.5 py-0.5 text-xs font-medium text-neutral">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Pendiente
+                                            </span>
+                                        </template>
+                                    </span>
 
                                     <button
                                         type="button"
@@ -349,7 +362,9 @@
                                                         rows="2"
                                                         :placeholder="obsAnterior(checklist[{{ forloop.counter0 }}].key) || 'Observación obligatoria si falla…'"
                                                         class="obs-prev w-full resize-none rounded-md border border-fail-border bg-white px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-fail/10"
-                                                        :class="!checklist[{{ forloop.counter0 }}].obs.trim() ? 'ring-1 ring-fail/30' : ''"
+                                                        :class="checklist[{{ forloop.counter0 }}].estado === false && !checklist[{{ forloop.counter0 }}].obs.trim()
+                                                            ? 'ring-2 ring-fail/40 border-fail-border animate-pulse'
+                                                            : (!checklist[{{ forloop.counter0 }}].obs.trim() ? 'ring-1 ring-fail/30' : '')"
                                                     ></textarea>
                                                 </div>
 
@@ -365,6 +380,28 @@
                                     {% else %}
                                         <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
                                             Este recurso no tiene requerimientos específicos.
+                                        </div>
+                                    {% endif %}
+
+                                    {% if item.recurso.descripcion %}
+                                        <div x-data="{ descAbierta: false }" class="mb-4">
+                                            <button
+                                                type="button"
+                                                @click="descAbierta = !descAbierta"
+                                                class="flex items-center gap-1.5 text-[11px] text-ink-muted hover:text-ink transition"
+                                            >
+                                                <svg class="h-3 w-3 transition-transform" :class="descAbierta ? 'rotate-180' : ''"
+                                                     viewBox="0 0 12 12" fill="none">
+                                                    <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" stroke-width="1.4"
+                                                          stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                                <span x-text="descAbierta ? 'Ocultar descripción' : 'Ver descripción'"></span>
+                                            </button>
+                                            <div x-show="descAbierta" x-transition x-cloak
+                                                 class="mt-2 rounded-lg border border-surface-border bg-neutral-bg px-3 py-2.5
+                                                        text-[12px] leading-5 text-ink-secondary italic">
+                                                {{ item.recurso.descripcion }}
+                                            </div>
                                         </div>
                                     {% endif %}
 
@@ -661,6 +698,8 @@
             recursoId: config.recursoId,
             abierto: config.abiertoInicial,
             modalCarga: false,
+            tieneFichaInicial: config.tieneFichaInicial,
+            estadoOperativoInicial: config.estadoOperativoInicial,
             observacionGeneral: config.observacionGeneralInicial || (config.periodoAnterior?.obsGeneral || ''),
             observacionGeneralInicial: config.observacionGeneralInicial || (config.periodoAnterior?.obsGeneral || ''),
             periodoAnterior: config.periodoAnterior || { obsGeneral: '', checklist: {} },
@@ -750,6 +789,25 @@
                 return this.checklist.some(function(item) {
                     return item.estado !== item.estadoInicial || item.obs !== item.obsInicial;
                 });
+            },
+
+            estadoTentativo() {
+                if (!this.hayCambios()) {
+                    if (!this.tieneFichaInicial) return 'pendiente';
+                    if (this.estadoOperativoInicial === true) return 'operativo';
+                    if (this.estadoOperativoInicial === false) return 'fallo';
+                    return 'en_proceso';
+                }
+
+                const hayFallo = this.checklist.some(c => c.estado === false);
+                const hayPendiente = this.checklist.some(c => c.estado === null);
+                const estadoOp = this.checklist.length === 0
+                    ? null
+                    : hayFallo ? false : hayPendiente ? null : true;
+                if (estadoOp === false) return 'fallo';
+                if (estadoOp === true) return 'operativo';
+                if (this.observacionGeneral.trim()) return 'en_proceso';
+                return 'pendiente';
             },
 
             notificarCambio() {

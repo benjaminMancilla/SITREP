@@ -472,6 +472,7 @@ def _parse_estado_checklist_form(raw_estado):
 def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False):
     matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
         F("recurso__area__nombre").asc(nulls_last=True),
+        F("recurso__codigo").asc(nulls_last=True),
         "recurso__nombre"
     )
     if for_history:
