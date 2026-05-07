@@ -258,6 +258,12 @@ class Area(models.Model):
 
     nombre_tecnico = models.CharField(max_length=100, unique=False, null=True, blank=True)
 
+    orden = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Orden de visualización del área. Basado en el primer dígito del código de sus recursos.",
+    )
+
     token_color = models.CharField(
         max_length=30,
         blank=True,
@@ -409,7 +415,7 @@ class Recurso(models.Model):
         blank=True,
         help_text="Código del recurso según la documentación del cliente (ej: 3.3-Q).",
     )
-    
+
     descripcion = models.TextField(
         null=True,
         blank=True,

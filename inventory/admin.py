@@ -20,6 +20,7 @@ from .models import (
 from .services import MotorReglasSITREP
 
 from django.http import HttpResponseForbidden
+from django.db.models import F
 from django.template.response import TemplateResponse
 from django.urls import path
 from django.utils.html import format_html
@@ -28,7 +29,10 @@ import json
 
 @admin.register(Area)
 class AreaAdmin(admin.ModelAdmin):
-    list_display = ["nombre", "nombre_tecnico", "token_color"]
+    list_display = ["orden", "nombre", "nombre_tecnico", "token_color"]
+    list_editable = ["orden"]
+    list_display_links = ["nombre"]
+    ordering = [F("orden").asc(nulls_last=True)]
     search_fields = ["nombre", "nombre_tecnico"]
     list_filter = ["token_color"]
 
