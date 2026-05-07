@@ -410,6 +410,12 @@ class Recurso(models.Model):
         help_text="Código del recurso según la documentación del cliente (ej: 3.3-Q).",
     )
     
+    descripcion = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Descripción extendida del recurso. Separada del nombre para nombres limpios.",
+    )
+    
     created_at = models.DateTimeField(
         auto_now_add=True,
         help_text=(
