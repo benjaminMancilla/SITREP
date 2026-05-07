@@ -402,6 +402,14 @@ class Recurso(models.Model):
     )
     
     nombre = models.CharField(max_length=255)
+
+    codigo = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="Código del recurso según la documentación del cliente (ej: 3.3-Q).",
+    )
+    
     created_at = models.DateTimeField(
         auto_now_add=True,
         help_text=(
