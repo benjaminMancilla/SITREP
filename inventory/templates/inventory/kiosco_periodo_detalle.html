@@ -187,12 +187,7 @@
                                     <span class="h-9 w-1 shrink-0 rounded-sm {% if item.tiene_ficha %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"></span>
 
                                     <div class="flex min-w-0 flex-1 flex-col gap-1">
-                                        <div class="flex min-w-0 items-baseline gap-2">
-                                            <span class="block min-w-0 flex-1 text-base font-bold text-navy">{{ item.recurso.nombre }}</span>
-                                            {% if item.recurso.codigo %}
-                                                <span class="shrink-0 font-mono text-[10px] text-ink-muted tracking-wide">{{ item.recurso.codigo }}</span>
-                                            {% endif %}
-                                        </div>
+                                        <span class="block min-w-0 flex-1 text-base font-bold text-navy">{{ item.recurso.nombre }}</span>
                                         {% if item.tiene_ficha and item.ficha.usuario %}
                                             <div class="font-mono text-[11px] text-ink-muted">
                                                 Registrado por
@@ -224,6 +219,9 @@
                                 </button>
 
                                 <span class="flex shrink-0 items-center gap-3">
+                                    {% if item.recurso.codigo %}
+                                        <span class="shrink-0 self-center font-mono text-[10px] text-ink-muted tracking-wide">{{ item.recurso.codigo }}</span>
+                                    {% endif %}
                                     <span class="flex shrink-0 items-center">
                                         <template x-if="estadoTentativo() === 'operativo'">
                                             <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-ok-bg px-2.5 py-0.5 text-xs font-medium text-ok">
