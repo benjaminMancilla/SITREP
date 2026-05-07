@@ -1,0 +1,118 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Importar recursos desde JSON{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px;">
+
+  <h1 style="margin-bottom: 24px;">Importar recursos desde JSON</h1>
+
+  {% if error %}
+  <div style="background:#fff0f0;border:1px solid #f5c6c6;border-radius:6px;padding:14px 18px;margin-bottom:20px;color:#b91c1c;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  {# ── Resultado ───────────────────────────────────────────────────────── #}
+  {% if resultado %}
+  <div style="background:{% if dry_run %}#fffbeb{% else %}#f0fdf4{% endif %};border:1px solid {% if dry_run %}#fde68a{% else %}#bbf7d0{% endif %};border-radius:6px;padding:18px;margin-bottom:28px;">
+    <h2 style="margin-top:0;font-size:15px;color:{% if dry_run %}#b45309{% else %}#15803d{% endif %};">
+      {% if dry_run %}Dry run — nada fue escrito{% else %}Importación completada{% endif %}
+    </h2>
+    <table style="border-collapse:collapse;width:100%;margin-bottom:14px;">
+      <tr><td style="padding:4px 0;color:#475569;">Áreas creadas</td>
+          <td style="padding:4px 0;font-weight:600;">{{ resultado.areas_creadas }}</td></tr>
+      <tr><td style="padding:4px 0;color:#475569;">Propósitos creados</td>
+          <td style="padding:4px 0;font-weight:600;">{{ resultado.propositos_creados }}</td></tr>
+      <tr><td style="padding:4px 0;color:#475569;">Recursos creados</td>
+          <td style="padding:4px 0;font-weight:600;color:#15803d;">{{ resultado.recursos_creados }}</td></tr>
+      <tr><td style="padding:4px 0;color:#475569;">Recursos omitidos (ya existían)</td>
+          <td style="padding:4px 0;font-weight:600;">{{ resultado.recursos_omitidos }}</td></tr>
+      <tr><td style="padding:4px 0;color:#475569;">Errores</td>
+          <td style="padding:4px 0;font-weight:600;color:{% if resultado.errores %}#b91c1c{% else %}#15803d{% endif %};">
+            {{ resultado.errores }}</td></tr>
+    </table>
+
+    {% if resultado.log %}
+    <details style="margin-top:8px;">
+      <summary style="cursor:pointer;font-size:12px;color:#475569;user-select:none;">
+        Ver log detallado ({{ resultado.log|length }} líneas)
+      </summary>
+      <pre style="margin-top:10px;font-size:11px;line-height:1.6;background:#fff;border:1px solid #e2e8f0;border-radius:4px;padding:12px;overflow-x:auto;max-height:400px;overflow-y:auto;">{% for nivel, msg in resultado.log %}{% if nivel == 'error' %}<span style="color:#b91c1c;">{{ msg }}</span>{% else %}{{ msg }}{% endif %}
+{% endfor %}</pre>
+    </details>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Formulario ──────────────────────────────────────────────────────── #}
+  <form method="post" enctype="multipart/form-data"
+        style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;">
+    {% csrf_token %}
+
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;">
+        Archivo JSON
+      </label>
+      <input type="file" name="json_file" accept=".json" required
+             style="display:block;width:100%;font-size:13px;">
+      <p style="margin:6px 0 0;font-size:12px;color:#94a3b8;">
+        Generado por <code>extract_recursos.py</code>. Puede incluir múltiples documentos.
+      </p>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">
+        Alcance
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
+        <input type="radio" name="scope" value="global" checked
+               onchange="document.getElementById('naviera-select').style.display='none'">
+        <span style="font-size:13px;">
+          <strong>Global</strong> — visibles para todas las navieras
+        </span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="radio" name="scope" value="naviera"
+               onchange="document.getElementById('naviera-select').style.display='block'">
+        <span style="font-size:13px;">
+          <strong>Privado</strong> — solo para una naviera
+        </span>
+      </label>
+
+      <div id="naviera-select" style="display:none;margin-top:12px;padding-left:24px;">
+        <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;">
+          Naviera
+        </label>
+        <select name="naviera_id"
+                style="min-width:260px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+          <option value="">— Seleccionar —</option>
+          {% for nav in navieras %}
+          <option value="{{ nav.pk }}">{{ nav.nombre }} ({{ nav.slug }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" name="dry_run" value="on">
+        <span style="font-size:13px;">
+          <strong>Dry run</strong> — mostrar qué se crearía sin escribir en la BD
+        </span>
+      </label>
+    </div>
+
+    <button type="submit"
+            style="background:#0f2d4a;color:#fff;border:none;border-radius:6px;padding:10px 22px;font-size:14px;font-weight:600;cursor:pointer;">
+      Importar recursos
+    </button>
+  </form>
+
+  <p style="margin-top:16px;font-size:12px;color:#94a3b8;">
+    Esta vista solo es accesible para superusuarios.
+    La importación es idempotente — recursos ya existentes se omiten.
+  </p>
+</div>
+{% endblock %}
