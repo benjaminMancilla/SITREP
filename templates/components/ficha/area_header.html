@@ -1,9 +1,13 @@
-{% if variant == "detalle" %}
+{% if variant == "detalle" or variant == "historial_sticky" %}
 <button
     type="button"
     @click="abierto = !abierto"
     :class="abierto ? 'shadow-sm' : ''"
+    {% if variant == "detalle" %}
     :style="{ top: _offsetStickyAreas() + 'px' }"
+    {% else %}
+    style="top: 60px"
+    {% endif %}
     class="sticky z-20 -mx-[5px] flex w-[calc(100%+10px)] items-center gap-3 rounded-lg border px-[21px] py-3 text-left transition hover:opacity-95 {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}"
 >
     <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-current opacity-70"></span>
@@ -34,6 +38,27 @@
     <svg
         viewBox="0 0 18 18"
         class="h-3.5 w-3.5 text-ink-muted transition-transform"
+        :class="abierto ? 'rotate-180' : ''"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+    >
+        <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+</button>
+{% elif variant == "nave_color" %}
+<button
+    type="button"
+    @click="abierto = !abierto"
+    :class="abierto ? 'shadow-sm' : ''"
+    class="-mx-[5px] flex w-[calc(100%+10px)] items-center gap-3 rounded-lg border px-[21px] py-3 text-left transition hover:opacity-95 {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}"
+>
+    <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-current opacity-70"></span>
+    <span class="flex-1 text-[13px] font-bold">{{ grupo.nombre_display }}</span>
+    <span class="text-[11px] opacity-80">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
+    <svg
+        viewBox="0 0 18 18"
+        class="h-4 w-4 transition-transform opacity-75"
         :class="abierto ? 'rotate-180' : ''"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

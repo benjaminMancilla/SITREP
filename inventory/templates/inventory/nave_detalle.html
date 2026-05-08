@@ -85,7 +85,7 @@
         <div class="space-y-2">
             {% for item in periodos_abiertos_detalle %}
             <article
-                x-data="{ abierto: {{ forloop.first|yesno:'true,false' }} }"
+                x-data="{ abierto: false }"
                 class="overflow-hidden rounded-lg border bg-white shadow-sm transition"
                 :class="abierto ? 'border-info-border' : '{% if item.has_fallos %}border-fail-border{% else %}border-surface-border{% endif %}'"
             >
@@ -133,7 +133,7 @@
                     </div>
                 </button>
 
-                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border">
+                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border pb-3">
                     {% if item.registros %}
                         {% for grupo in item.registros_por_area %}
                             {% include 'components/ficha/area_registros_readonly.html' with grupo=grupo periodo_estado=item.periodo.estado variant='abierto' %}
@@ -269,7 +269,7 @@
                     </div>
                 </button>
 
-                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border">
+                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border pb-3">
                     {% if item.registros %}
                         {% for grupo in item.registros_por_area %}
                             {% include 'components/ficha/area_registros_readonly.html' with grupo=grupo periodo_estado=item.periodo.estado variant='historial' %}
