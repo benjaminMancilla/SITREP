@@ -1,6 +1,11 @@
 {% if variant == "nave_abierto" or variant == "nave_historial" %}
-<div class="border-b border-[#f8fafc] px-5 py-3 last:border-b-0">
-    <div class="flex items-start gap-3">
+<div x-data="{ abierto: false }" class="border-b border-surface-border last:border-b-0">
+    <button
+        type="button"
+        @click="abierto = !abierto"
+        class="flex w-full items-start gap-4 px-6 py-3.5 text-left transition hover:bg-[#f8fafc]"
+        :class="abierto ? 'bg-[#fafcff]' : ''"
+    >
         <span class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full {% if item.estado_operativo == False %}bg-fail{% elif item.estado_operativo %}bg-ok{% else %}bg-warn{% endif %}"></span>
         <div class="min-w-0 flex-1">
             <div class="text-[13px] font-semibold text-ink">{{ item.recurso.nombre }}</div>
@@ -18,99 +23,8 @@
                 {% endif %}
                 · {{ item.ficha.fecha_revision|date:"d/m/Y H:i" }}
             </div>
-
-            {% if show_description and item.recurso.descripcion %}
-                <div x-data="{ descAbierta: false }" class="mt-3">
-                    <button
-                        type="button"
-                        @click="descAbierta = !descAbierta"
-                        class="flex items-center gap-1.5 text-[11px] text-ink-muted transition hover:text-ink"
-                    >
-                        <svg
-                            class="h-3 w-3 transition-transform"
-                            :class="descAbierta ? 'rotate-180' : ''"
-                            viewBox="0 0 12 12"
-                            fill="none"
-                            aria-hidden="true"
-                        >
-                            <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span x-text="descAbierta ? 'Ocultar descripción' : 'Ver descripción'"></span>
-                    </button>
-                    <div
-                        x-show="descAbierta"
-                        x-transition
-                        x-cloak
-                        class="mt-2 rounded-lg border border-surface-border bg-neutral-bg px-3 py-2.5 text-[12px] leading-5 text-ink-secondary italic"
-                    >
-                        {{ item.recurso.descripcion }}
-                    </div>
-                </div>
-            {% endif %}
-
-            {% if item.ficha.observacion_general.strip %}
-                <div class="mt-2 rounded-[4px] border-l-2 px-2 py-1 text-[11px] {% if variant == 'nave_historial' and periodo_estado == 'observado' %}border-info-border bg-info-bg text-info{% elif item.estado_operativo == False %}border-fail-border bg-fail-bg text-fail{% else %}border-warn-border bg-warn-bg text-[#b45309]{% endif %}">
-                    {{ item.ficha.observacion_general }}
-                </div>
-            {% endif %}
-
-            {% if item.checklist_items %}
-                <div x-data="{ checklistAbierto: false }" class="mt-3 space-y-1.5">
-                    <button
-                        type="button"
-                        @click="checklistAbierto = !checklistAbierto"
-                        class="flex w-full items-center justify-between rounded-md border border-surface-border bg-[#fafcff] px-3 py-2 text-left transition hover:bg-white"
-                    >
-                        <span class="text-[11px] font-semibold text-ink" x-text="checklistAbierto ? 'Ocultar requerimientos' : 'Ver requerimientos'"></span>
-                        <span class="inline-flex items-center gap-2 text-[11px] text-ink-muted">
-                            <span>{{ item.checklist_items|length }}</span>
-                            <svg
-                                viewBox="0 0 14 14"
-                                class="h-3.5 w-3.5 transition-transform"
-                                :class="checklistAbierto ? 'rotate-180' : ''"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                aria-hidden="true"
-                            >
-                                <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </span>
-                    </button>
-                    <div x-show="checklistAbierto" x-transition x-cloak class="space-y-1.5">
-                        {% for checklist in item.checklist_items %}
-                        <div class="overflow-hidden rounded-md border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
-                            <div class="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-[12px] font-medium text-ink">{{ checklist.label }}</p>
-                                    <p class="mt-0.5 text-[11px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
-                                        {% if checklist.observacion %}
-                                            {{ checklist.observacion }}
-                                        {% else %}
-                                            Sin observación.
-                                        {% endif %}
-                                    </p>
-                                </div>
-                                {% if checklist.checked == True %}
-                                    <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2 py-0.5 text-[11px] font-semibold text-ok">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Cumplió
-                                    </span>
-                                {% elif checklist.checked == False %}
-                                    <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2 py-0.5 text-[11px] font-semibold text-fail">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falló
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Sin registrar
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
         </div>
-        <div class="shrink-0">
+        <div class="flex shrink-0 items-center gap-3">
             {% if item.estado_operativo == False %}
                 <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
                     <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falla
@@ -124,52 +38,112 @@
                     <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>En proceso
                 </span>
             {% endif %}
+            <svg
+                viewBox="0 0 14 14"
+                class="mt-0.5 h-4 w-4 shrink-0 text-ink-muted transition-transform"
+                :class="abierto ? 'rotate-180' : ''"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+            >
+                <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
+    </button>
+
+    <div x-show="abierto" x-transition x-cloak class="space-y-3 border-t border-surface-border pl-11 pr-6 pb-4 pt-3">
+        {% if item.checklist_items %}
+            <div class="space-y-1.5">
+                {% for checklist in item.checklist_items %}
+                <div class="overflow-hidden rounded-md border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
+                    <div class="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[12px] font-medium text-ink">{{ checklist.label }}</p>
+                            <p class="mt-0.5 text-[11px] {% if checklist.observacion %}text-ink-secondary{% else %}text-ink-muted{% endif %}">
+                                {% if checklist.observacion %}
+                                    {{ checklist.observacion }}
+                                {% else %}
+                                    Sin observación.
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% if checklist.checked == True %}
+                            <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2 py-0.5 text-[11px] font-semibold text-ok">
+                                <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Cumplió
+                            </span>
+                        {% elif checklist.checked == False %}
+                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falló
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral">
+                                <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Sin registrar
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if show_description and item.recurso.descripcion %}
+            <div x-data="{ descAbierta: false }">
+                <button
+                    type="button"
+                    @click="descAbierta = !descAbierta"
+                    class="flex items-center gap-1.5 text-[11px] text-ink-muted transition hover:text-ink"
+                >
+                    <svg
+                        class="h-3 w-3 transition-transform"
+                        :class="descAbierta ? 'rotate-180' : ''"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        aria-hidden="true"
+                    >
+                        <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span x-text="descAbierta ? 'Ocultar descripción' : 'Ver descripción'"></span>
+                </button>
+                <div
+                    x-show="descAbierta"
+                    x-transition
+                    x-cloak
+                    class="mt-2 rounded-lg border border-surface-border bg-neutral-bg px-3 py-2.5 text-[12px] leading-5 text-ink-secondary italic"
+                >
+                    {{ item.recurso.descripcion }}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if not item.checklist_items %}
+            {% if show_description and item.recurso.descripcion %}
+            {% else %}
+                <p class="text-[12px] text-ink-muted">Sin detalles adicionales.</p>
+            {% endif %}
+        {% endif %}
     </div>
 </div>
-{% else %}
+{% elif variant == "historial_mar" %}
 <article
-    class="overflow-hidden rounded-[10px] border-[1.5px] bg-white shadow-sm {% if has_record %}{% if item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}{% else %}border-surface-border{% endif %}"
+    x-data="{ abierto: false }"
+    :class="abierto ? 'shadow-[0_4px_16px_rgba(0,0,0,0.08)]' : 'shadow-sm'"
+    class="overflow-hidden rounded-[10px] border-[1.5px] bg-white transition-all {% if has_record %}{% if item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}{% else %}border-surface-border{% endif %}"
 >
-    <div class="flex items-start justify-between gap-4 px-5 py-[14px]">
-        <div class="min-w-0 flex items-start gap-3">
-            <span
-                class="mt-1 h-8 w-1 shrink-0 rounded-sm {% if has_record %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"
-            ></span>
-            <div class="min-w-0">
-                <h2 class="text-[15px] font-bold text-navy">{{ item.recurso.nombre }}</h2>
-                {% if item.recurso.codigo %}
-                    <p class="mt-0.5 font-mono text-[10px] tracking-wide text-ink-muted">{{ item.recurso.codigo }}</p>
-                {% endif %}
-                {% if item.recurso.descripcion %}
-                    <div x-data="{ descAbierta: false }" class="mt-2">
-                        <button
-                            type="button"
-                            @click="descAbierta = !descAbierta"
-                            class="flex items-center gap-1.5 text-[11px] text-ink-muted transition hover:text-ink"
-                        >
-                            <svg
-                                class="h-3 w-3 transition-transform"
-                                :class="descAbierta ? 'rotate-180' : ''"
-                                viewBox="0 0 12 12"
-                                fill="none"
-                                aria-hidden="true"
-                            >
-                                <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <span x-text="descAbierta ? 'Ocultar descripción' : 'Ver descripción'"></span>
-                        </button>
-                        <div
-                            x-show="descAbierta"
-                            x-transition
-                            x-cloak
-                            class="mt-2 rounded-lg border border-surface-border bg-neutral-bg px-3 py-2.5 text-[12px] leading-5 text-ink-secondary italic"
-                        >
-                            {{ item.recurso.descripcion }}
-                        </div>
-                    </div>
-                {% endif %}
-                {% if has_record %}
+    <button
+        type="button"
+        @click="abierto = !abierto"
+        class="flex w-full items-start gap-4 px-5 py-[14px] text-left transition hover:bg-[#f8fafc]"
+        :class="abierto ? 'bg-[#fafcff]' : ''"
+    >
+        <span
+            class="mt-1 h-8 w-1 shrink-0 rounded-sm {% if has_record %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"
+        ></span>
+        <div class="min-w-0 flex-1">
+            <h2 class="text-[15px] font-bold text-navy">{{ item.recurso.nombre }}</h2>
+            {% if item.recurso.codigo %}
+                <p class="mt-0.5 font-mono text-[10px] tracking-wide text-ink-muted">{{ item.recurso.codigo }}</p>
+            {% endif %}
+            {% if has_record %}
                 <p class="mt-0.5 text-[11px] text-ink-muted">
                     {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
                         {{ item.ficha.usuario.first_name }} {{ item.ficha.usuario.last_name }}
@@ -181,11 +155,10 @@
                         · editado {{ item.ficha.modificado_en|date:"d/m/Y H:i" }}
                     {% endif %}
                 </p>
-                {% endif %}
-            </div>
+            {% endif %}
         </div>
 
-        <div class="shrink-0">
+        <div class="flex shrink-0 items-center gap-3">
             {% if has_record %}
                 {% if item.estado_operativo == True %}
                     {% include 'components/badge_estado.html' with estado='operativo' %}
@@ -203,54 +176,23 @@
                     Sin registro
                 </span>
             {% endif %}
+            <svg
+                viewBox="0 0 18 18"
+                class="h-5 w-5 shrink-0 text-ink-muted transition-transform"
+                :class="abierto ? 'rotate-180' : ''"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+            >
+                <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
-    </div>
+    </button>
 
-    {% if has_record %}
-    <div class="space-y-3 border-t border-surface-border px-5 py-4">
-        {% if item.ficha.observacion_general.strip %}
-            <div x-data="{ obsExpandida: false }">
-                <div class="mb-1.5 text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
-                    Observación general
-                </div>
-                <div class="relative">
-                    <p
-                        class="text-sm leading-6 text-ink"
-                        :style="obsExpandida ? '' : 'max-height: 3rem; overflow: hidden;'"
-                    >{{ item.ficha.observacion_general }}</p>
-                    <button
-                        type="button"
-                        @click="obsExpandida = !obsExpandida"
-                        class="mt-0.5 text-[11px] text-brand hover:underline"
-                        x-text="obsExpandida ? 'Ver menos' : 'Ver más'"
-                    ></button>
-                </div>
-            </div>
-        {% endif %}
-
-        {% if item.checklist_items %}
-            <div x-data="{ checklistAbierto: false }" class="space-y-3">
-                <button
-                    type="button"
-                    @click="checklistAbierto = !checklistAbierto"
-                    class="flex w-full items-center justify-between rounded-xl border border-surface-border bg-[#fafcff] px-4 py-3 text-left transition hover:bg-white"
-                >
-                    <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted" x-text="checklistAbierto ? 'Ocultar requerimientos' : 'Ver requerimientos'"></span>
-                    <span class="inline-flex items-center gap-2 text-sm text-ink-secondary">
-                        <span class="font-medium text-ink">{{ item.checklist_items|length }}</span>
-                        <svg
-                            viewBox="0 0 14 14"
-                            class="h-4 w-4 transition-transform"
-                            :class="checklistAbierto ? 'rotate-180' : ''"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                        >
-                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </span>
-                </button>
-                <div x-show="checklistAbierto" x-transition x-cloak class="space-y-2">
+    <div x-show="abierto" x-transition x-cloak class="space-y-4 border-t border-surface-border px-5 py-4 sm:px-6">
+        {% if has_record %}
+            {% if item.checklist_items %}
+                <div class="space-y-2">
                     {% for checklist in item.checklist_items %}
                     <div class="overflow-hidden rounded-lg border {% if checklist.checked == True %}border-ok-border bg-ok-bg{% elif checklist.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
                         <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -284,17 +226,46 @@
                     </div>
                     {% endfor %}
                 </div>
-            </div>
+            {% else %}
+                <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
+                    Este recurso no tiene requerimientos específicos.
+                </div>
+            {% endif %}
+
+            {% if item.recurso.descripcion %}
+                <div x-data="{ descAbierta: false }">
+                    <button
+                        type="button"
+                        @click="descAbierta = !descAbierta"
+                        class="flex items-center gap-1.5 text-[11px] text-ink-muted transition hover:text-ink"
+                    >
+                        <svg
+                            class="h-3 w-3 transition-transform"
+                            :class="descAbierta ? 'rotate-180' : ''"
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            aria-hidden="true"
+                        >
+                            <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span x-text="descAbierta ? 'Ocultar descripción' : 'Ver descripción'"></span>
+                    </button>
+                    <div
+                        x-show="descAbierta"
+                        x-transition
+                        x-cloak
+                        class="mt-2 rounded-lg border border-surface-border bg-neutral-bg px-3 py-2.5 text-[12px] leading-5 text-ink-secondary italic"
+                    >
+                        {{ item.recurso.descripcion }}
+                    </div>
+                </div>
+            {% endif %}
+
         {% else %}
-            <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
-                Este recurso no tiene requerimientos específicos.
+            <div class="text-sm text-ink-secondary">
+                {{ empty_message|default:"No existe ficha registrada para este recurso en este período." }}
             </div>
         {% endif %}
     </div>
-    {% else %}
-    <div class="border-t border-surface-border px-5 py-4 text-sm text-ink-secondary">
-        {{ empty_message|default:"No existe ficha registrada para este recurso en este período." }}
-    </div>
-    {% endif %}
 </article>
 {% endif %}

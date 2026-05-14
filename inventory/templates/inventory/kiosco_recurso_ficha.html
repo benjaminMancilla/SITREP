@@ -404,20 +404,6 @@
                         </p>
                     </div>
 
-                    <div>
-                        <div class="mb-1 flex items-center justify-between">
-                            <label for="observacion_general" class="text-[13px] font-semibold text-ink">Observación general</label>
-                            <span class="text-[11px] text-ink-muted">Opcional</span>
-                        </div>
-                        <textarea
-                            id="observacion_general"
-                            name="observacion_general"
-                            rows="3"
-                            :placeholder="periodoAnterior.obsGeneral || 'Observación general…'"
-                            class="obs-prev w-full rounded-xl border border-surface-border px-4 py-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand"
-                        >{{ observacion_general_form }}</textarea>
-                    </div>
-
                     {% if ficha %}
                         <p class="text-xs text-ink-muted">
                             Registrado por

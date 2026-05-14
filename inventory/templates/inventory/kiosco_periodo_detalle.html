@@ -158,7 +158,6 @@
                                 abiertoInicial: {{ item.recurso.id }} === {{ error_recurso_id|default:0 }},
                                 tieneFichaInicial: {{ item.tiene_ficha|yesno:'true,false' }},
                                 estadoOperativoInicial: {{ item.estado_operativo|yesno:'true,false,null' }},
-                                observacionGeneralInicial: '{{ item.observacion_general|default:''|escapejs }}',
                                 periodoAnterior: JSON.parse('{{ item.periodo_anterior_json|escapejs }}'),
                                 checklistInicial: [
                                     {% for checklist in item.checklist_items %}
@@ -406,21 +405,6 @@
                                             </div>
                                         </div>
                                     {% endif %}
-
-                                    <div>
-                                        <div class="mb-1 flex items-center justify-between">
-                                            <label class="text-[13px] font-semibold text-ink">Observación general</label>
-                                            <span class="text-[11px] text-ink-muted">Opcional</span>
-                                        </div>
-                                        <textarea
-                                            name="observacion_general"
-                                            x-model="observacionGeneral"
-                                            @input="notificarCambio()"
-                                            rows="3"
-                                            :placeholder="periodoAnterior.obsGeneral || 'Observación general…'"
-                                            class="obs-prev w-full rounded-xl border border-surface-border px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand"
-                                        ></textarea>
-                                    </div>
 
                                     {% if item.tiene_ficha %}
                                         <p class="text-xs text-ink-muted">
@@ -910,9 +894,7 @@
             modalCarga: false,
             tieneFichaInicial: config.tieneFichaInicial,
             estadoOperativoInicial: config.estadoOperativoInicial,
-            observacionGeneral: config.observacionGeneralInicial || (config.periodoAnterior?.obsGeneral || ''),
-            observacionGeneralInicial: config.observacionGeneralInicial || (config.periodoAnterior?.obsGeneral || ''),
-            periodoAnterior: config.periodoAnterior || { obsGeneral: '', checklist: {} },
+            periodoAnterior: config.periodoAnterior || { checklist: {} },
             checklist: config.checklistInicial.map(function(item) {
                 const anterior = config.periodoAnterior?.checklist?.[item.key] || { estado: null, obs: '' };
                 const obsBase = item.obs || (anterior.estado === false ? (anterior.obs || '') : '');
@@ -931,10 +913,6 @@
                 window.addEventListener('borrador-recuperado', function(e) {
                     const draft = e.detail?.cambios?.[String(self.recursoId)];
                     if (!draft) return;
-
-                    if (draft.observacion_general !== undefined) {
-                        self.observacionGeneral = draft.observacion_general;
-                    }
 
                     const cl = draft.payload_checklist || {};
                     self.checklist.forEach(function(item, index) {
@@ -961,9 +939,6 @@
             },
 
             tieneRegistroAnterior() {
-                if ((this.periodoAnterior.obsGeneral || '').trim()) {
-                    return true;
-                }
                 return Object.values(this.periodoAnterior.checklist || {}).some(function(item) {
                     return item && item.estado !== null;
                 });
@@ -993,10 +968,6 @@
             },
 
             hayCambios() {
-                if (this.observacionGeneral !== this.observacionGeneralInicial) {
-                    return true;
-                }
-
                 return this.checklist.some(function(item) {
                     return item.estado !== item.estadoInicial || item.obs !== item.obsInicial;
                 });
@@ -1012,13 +983,13 @@
 
                 const hayFallo = this.checklist.some(c => c.estado === false);
                 const hayPendiente = this.checklist.some(c => c.estado === null);
+                const hayRespuesta = this.checklist.some(c => c.estado !== null);
                 const estadoOp = this.checklist.length === 0
                     ? null
                     : hayFallo ? false : hayPendiente ? null : true;
                 if (estadoOp === false) return 'fallo';
                 if (estadoOp === true) return 'operativo';
-                if (this.observacionGeneral.trim()) return 'en_proceso';
-                return 'pendiente';
+                return hayRespuesta ? 'en_proceso' : 'pendiente';
             },
 
             notificarCambio() {
@@ -1035,7 +1006,7 @@
                     payload: {
                         nombre: this.nombreRecurso,
                         estado_operativo: null,
-                        observacion_general: this.observacionGeneral,
+                        observacion_general: '',
                         payload_checklist: this.buildChecklist(),
                     },
                 });
@@ -1086,7 +1057,6 @@
                     self.checklist[index].estado = anterior.estado;
                     self.checklist[index].obs = anterior.obs || '';
                 });
-                this.observacionGeneral = this.periodoAnterior.obsGeneral || '';
                 this.cerrarModalCarga();
                 this.notificarCambio();
             },
