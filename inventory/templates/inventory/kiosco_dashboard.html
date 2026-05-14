@@ -26,7 +26,12 @@
                 <article class="rounded-2xl border {% if item.fichas_completadas > 0 %}border-info-border{% else %}border-surface-border{% endif %} bg-surface-card p-6 shadow-sm shadow-slate-900/5">
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
-                            <h2 class="text-2xl font-bold leading-tight text-navy">{{ item.periodo.periodicidad.nombre }}</h2>
+                            <h2 class="text-2xl font-bold leading-tight text-navy">
+                                {{ item.periodo.periodicidad.nombre }}
+                                {% if item.numero %}
+                                    <span class="text-base font-normal text-ink-muted">· {{ item.numero_label }} {{ item.numero }}</span>
+                                {% endif %}
+                            </h2>
                             <p class="mt-1 flex items-center gap-2 font-mono text-xs text-ink-muted">
                                 {{ item.periodo.fecha_inicio|date:"d/m/Y" }} - {{ item.periodo.fecha_termino|date:"d/m/Y" }}
                                 {% if not item.completado %}
@@ -186,7 +191,12 @@
                     <article class="flex flex-col gap-4 rounded-2xl border border-surface-border bg-surface-card px-5 py-4 shadow-sm shadow-slate-900/5 md:flex-row md:items-center">
                         <div class="min-w-0 flex-1">
                             <div class="mb-1 flex flex-wrap items-center gap-2">
-                                <h3 class="text-base font-semibold text-navy">{{ periodo.periodicidad.nombre }}</h3>
+                                <h3 class="text-base font-semibold text-navy">
+                                    {{ periodo.periodicidad.nombre }}
+                                    {% if periodo.numero_periodo %}
+                                        <span class="text-sm font-normal text-ink-muted">· {{ periodo.numero_periodo_label }} {{ periodo.numero_periodo }}</span>
+                                    {% endif %}
+                                </h3>
                                 {% include 'components/badge_estado.html' with estado=periodo.estado %}
                             </div>
                             <p class="font-mono text-xs text-ink-muted">

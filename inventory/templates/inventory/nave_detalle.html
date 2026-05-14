@@ -96,7 +96,12 @@
                 >
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-[14px] font-semibold text-navy">{{ item.periodo.periodicidad.nombre }}</span>
+                            <span class="text-[14px] font-semibold text-navy">
+                                {{ item.periodo.periodicidad.nombre }}
+                                {% if item.numero %}
+                                    <span class="text-[12px] font-normal text-ink-muted">· {{ item.numero_label }} {{ item.numero }}</span>
+                                {% endif %}
+                            </span>
                             {% include 'components/badge_estado.html' with estado=item.periodo.get_estado_display %}
                             {% if item.has_fallos %}
                                 <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
@@ -238,7 +243,12 @@
                 >
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-[13px] font-semibold text-ink">{{ item.periodo.periodicidad.nombre }}</span>
+                            <span class="text-[13px] font-semibold text-ink">
+                                {{ item.periodo.periodicidad.nombre }}
+                                {% if item.numero %}
+                                    <span class="text-[12px] font-normal text-ink-muted">· {{ item.numero_label }} {{ item.numero }}</span>
+                                {% endif %}
+                            </span>
                             {% include 'components/badge_estado.html' with estado=item.periodo.get_estado_display %}
                         </div>
                         <div class="mt-1 font-mono text-[11px] text-ink-muted">

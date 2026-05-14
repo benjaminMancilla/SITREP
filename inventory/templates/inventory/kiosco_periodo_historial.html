@@ -17,7 +17,12 @@
             </a>
 
             <div class="min-w-0 flex-1">
-                <div class="truncate text-base font-bold text-navy">{{ periodo.periodicidad.nombre }}</div>
+                <div class="truncate text-base font-bold text-navy">
+                    {{ periodo.periodicidad.nombre }}
+                    {% if numero_periodo %}
+                        <span class="ml-1 text-sm font-normal text-ink-muted">· {{ numero_periodo_label }} {{ numero_periodo }}</span>
+                    {% endif %}
+                </div>
                 <div class="text-[12px] text-ink-muted">
                     {{ nave.nombre }} · {{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}
                 </div>
