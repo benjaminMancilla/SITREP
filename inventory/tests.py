@@ -1313,6 +1313,27 @@ class TestIntegracionMotorReglas(TestCase):
         )
         self.assertEqual(estado, "completa")
 
+    def test_calcular_estado_ficha_distingue_pendiente_y_en_progreso(self):
+        recurso = self._crear_recurso(
+            nombre="Recurso Estado Parcial",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia", "operatividad"],
+        )
+
+        estado = MotorFichas.calcular_estado_ficha(
+            recurso=recurso,
+            estado_operativo=None,
+            payload_checklist={},
+        )
+        self.assertEqual(estado, "pendiente")
+
+        estado = MotorFichas.calcular_estado_ficha(
+            recurso=recurso,
+            estado_operativo=None,
+            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+        )
+        self.assertEqual(estado, "en_progreso")
+
     def test_crear_ficha_operativa_actualiza_ultimo_estado(self):
         """Crear ficha con estado_operativo=True setea ultimo_estado_operativo=True en matriz."""
         recurso = self._crear_recurso(
@@ -1553,6 +1574,53 @@ class TestIntegracionMotorReglas(TestCase):
         grupos = _agrupar_recursos_por_area(recursos)
 
         self.assertEqual([grupo["area"].id for grupo in grupos], [area_zeta.id, area_alfa.id])
+
+    def test_registros_se_ordenan_por_codigo_dentro_del_area(self):
+        from inventory.views import _agrupar_registros_por_area
+
+        area_salvamento = Area.objects.create(nombre="Salvamento")
+        recurso_15 = self._crear_recurso(
+            nombre="Salvamento 15",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.15-Q",
+        )
+        recurso_1 = self._crear_recurso(
+            nombre="Salvamento 1",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.1-Q",
+        )
+        recurso_21 = self._crear_recurso(
+            nombre="Salvamento 21",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.21-Q",
+        )
+        recurso_8 = self._crear_recurso(
+            nombre="Salvamento 8",
+            regla_aplicacion=None,
+            requerimientos=[],
+            area=area_salvamento,
+            codigo="1.8-Q",
+        )
+
+        grupos = _agrupar_registros_por_area(
+            [
+                {"tipo": "pendiente", "recurso": recurso_15},
+                {"tipo": "pendiente", "recurso": recurso_1},
+                {"tipo": "pendiente", "recurso": recurso_21},
+                {"tipo": "pendiente", "recurso": recurso_8},
+            ]
+        )
+
+        self.assertEqual(
+            [registro["recurso"].codigo for registro in grupos[0]["registros"]],
+            ["1.1-Q", "1.8-Q", "1.15-Q", "1.21-Q"],
+        )
 
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(

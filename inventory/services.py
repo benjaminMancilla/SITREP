@@ -723,20 +723,23 @@ class MotorFichas:
 
     @classmethod
     def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist, cantidad=0):
-        if estado_operativo is None:
-            return "en_progreso"
-
-        definicion = cls.construir_definicion_checklist(recurso, cantidad)
-        if not definicion:
+        payload = cls.normalizar_payload_checklist(payload_checklist)
+        checklist_completo, _faltantes = cls.validar_payload_checklist_completo(
+            recurso,
+            payload,
+            cantidad=cantidad,
+        )
+        if estado_operativo is not None and checklist_completo:
             return "completa"
 
-        payload = cls.normalizar_payload_checklist(payload_checklist)
-        all_complete = all(
-            isinstance(payload.get(item["key"]), dict)
-            and "cumple" in payload.get(item["key"], {})
-            for item in definicion
+        hay_respuesta = any(
+            isinstance(valor, dict) and valor.get("cumple") is not None
+            for valor in payload.values()
         )
-        return "completa" if all_complete else "en_progreso"
+        if estado_operativo is None and not hay_respuesta:
+            return "pendiente"
+
+        return "en_progreso"
 
     @classmethod
     def crear_ficha(
