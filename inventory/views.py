@@ -549,6 +549,10 @@ def _clave_orden_area(area):
 
 def _clave_orden_matriz_recurso_periodo(matriz):
     recurso = matriz.recurso
+    return _clave_orden_recurso(recurso)
+
+
+def _clave_orden_recurso(recurso):
     area = recurso.area
     codigo = (recurso.codigo or "").strip()
     indice_codigo = _extraer_indice_codigo_recurso(codigo)
@@ -604,6 +608,9 @@ def _agrupar_recursos_por_area(recursos_lista):
         if item["estado_operativo"] is False:
             grupo["tiene_fallo"] = True
 
+    for grupo in grupos_por_area.values():
+        grupo["recursos"].sort(key=lambda item: _clave_orden_recurso(item["recurso"]))
+
     return _ordenar_grupos_por_area(grupos_por_area)
 
 
@@ -628,6 +635,9 @@ def _agrupar_registros_por_area(registros):
         grupo["total"] += 1
         if registro["tipo"] == "ficha":
             grupo["con_ficha"] += 1
+
+    for grupo in grupos_por_area.values():
+        grupo["registros"].sort(key=lambda registro: _clave_orden_recurso(registro["recurso"]))
 
     return _ordenar_grupos_por_area(grupos_por_area)
 
@@ -923,11 +933,12 @@ def fallos_activos(request, slug):
             if fallo.recurso.area_id:
                 key = fallo.recurso.area_id
                 label = fallo.recurso.area.nombre
-                sort_key = (0, label.lower())
+                orden = fallo.recurso.area.orden if fallo.recurso.area.orden is not None else 9999
+                sort_key = (0, orden, label.lower())
             else:
                 key = None
                 label = "Sin área"
-                sort_key = (1, "")
+                sort_key = (1, 9999, "")
             grupo = agrupado.setdefault(key, {"label": label, "sort_key": sort_key, "items": []})
             grupo["items"].append(fallo)
         grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]

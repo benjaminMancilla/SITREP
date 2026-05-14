@@ -1,4 +1,4 @@
-<div x-data="{ abierto: true }" class="space-y-1">
+<div x-data="{ abierto: false }" class="space-y-1">
     <div class="px-3 pt-3">
         {% include 'components/ficha/area_header.html' with grupo=grupo variant='nave_color' %}
     </div>
@@ -12,7 +12,7 @@
                     {% include 'components/ficha/recurso_readonly.html' with item=registro variant='nave_abierto' periodo_estado=periodo_estado %}
                 {% endif %}
             {% else %}
-                <div class="flex items-center gap-3 border-b border-[#f8fafc] px-5 py-3 text-[12px] text-ink-muted last:border-b-0">
+                <div class="flex items-center gap-3 border-b border-surface-border px-6 py-3.5 text-[12px] text-ink-muted last:border-b-0">
                     <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if variant == 'historial' %}{% if periodo_estado == 'omitido' or periodo_estado == 'fallido' %}bg-fail{% else %}bg-surface-border{% endif %}{% else %}bg-surface-border{% endif %}"></span>
                     <span>{{ registro.recurso.nombre }} · <em>Sin registrar{% if variant == 'historial' %}{% if periodo_estado != 'operativo' and periodo_estado != 'observado' %} (período cerrado){% endif %}{% endif %}</em></span>
                 </div>
