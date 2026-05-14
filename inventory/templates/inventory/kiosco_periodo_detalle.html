@@ -420,7 +420,7 @@
                                         </section>
                                     {% else %}
                                         <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
-                                            Este recurso no tiene requerimientos específicos.
+                                            Este recurso no tiene requisitos específicos.
                                         </div>
                                     {% endif %}
 
@@ -687,22 +687,8 @@
                     .replace(/[\u0300-\u036f]/g, '');
             },
 
-            _coincideSubsecuencia(texto, consulta) {
-                if (!consulta) {
-                    return true;
-                }
-
-                let indiceConsulta = 0;
-                for (const caracter of texto) {
-                    if (caracter === consulta[indiceConsulta]) {
-                        indiceConsulta += 1;
-                        if (indiceConsulta === consulta.length) {
-                            return true;
-                        }
-                    }
-                }
-
-                return false;
+            _compactarTextoBusqueda(texto) {
+                return this._normalizarTextoBusqueda(texto).replace(/[^a-z0-9]+/g, '');
             },
 
             coincideBusqueda(nombre, codigo) {
@@ -713,25 +699,25 @@
 
                 const nombreNormalizado = this._normalizarTextoBusqueda(nombre);
                 const codigoNormalizado = this._normalizarTextoBusqueda(codigo);
+                const nombreCompacto = this._compactarTextoBusqueda(nombre);
+                const codigoCompacto = this._compactarTextoBusqueda(codigo);
                 const campos = [
                     nombreNormalizado,
                     codigoNormalizado,
-                    `${nombreNormalizado} ${codigoNormalizado}`.trim(),
+                ].filter(Boolean);
+                const camposCompactos = [
+                    nombreCompacto,
+                    codigoCompacto,
+                    `${nombreCompacto}${codigoCompacto}`.trim(),
                 ].filter(Boolean);
                 const tokens = consulta.split(/\s+/).filter(Boolean);
 
                 return tokens.every(token => {
                     const tokenCompacto = token.replace(/\s+/g, '');
-                    return campos.some(campo => {
-                        if (campo.includes(token)) {
-                            return true;
-                        }
-
-                        return this._coincideSubsecuencia(
-                            campo.replace(/\s+/g, ''),
-                            tokenCompacto,
-                        );
-                    });
+                    return (
+                        campos.some(campo => campo.includes(token)) ||
+                        camposCompactos.some(campo => campo.includes(tokenCompacto))
+                    );
                 });
             },
 

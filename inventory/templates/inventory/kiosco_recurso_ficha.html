@@ -354,7 +354,7 @@
                         </section>
                     {% else %}
                         <div class="rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-ink-secondary">
-                            Este recurso no tiene requerimientos específicos.
+                            Este recurso no tiene requisitos específicos.
                         </div>
                     {% endif %}
 
@@ -391,16 +391,16 @@
                         </div>
 
                         <p x-show="hayFallo" x-cloak class="mt-2 text-[11px] text-warn">
-                            Un requerimiento falló. El recurso no puede marcarse como operativo.
+                            Un requisito falló. El recurso no puede marcarse como operativo.
                         </p>
                         <p x-show="hayChecklist && todosCumplidos && !hayFallo" x-cloak class="mt-2 text-[11px] text-ok">
-                            Todos los requerimientos están cumplidos. Puedes marcar el recurso como operativo.
+                            Todos los requisitos están cumplidos. Puedes marcar el recurso como operativo.
                         </p>
                         <p x-show="hayChecklist && !hayFallo && !todosCumplidos" x-cloak class="mt-2 text-[11px] text-ink-muted">
-                            Marca todos los requerimientos para habilitar esta opción.
+                            Marca todos los requisitos para habilitar esta opción.
                         </p>
                         <p x-show="!hayChecklist" x-cloak class="mt-2 text-[11px] text-ink-muted">
-                            Este recurso no tiene requerimientos. Puedes marcarlo directamente como operativo.
+                            Este recurso no tiene requisitos. Puedes marcarlo directamente como operativo.
                         </p>
                     </div>
 
