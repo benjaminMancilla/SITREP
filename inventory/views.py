@@ -116,6 +116,41 @@ def _calcular_urgencia(dias_restantes, duracion_total, cobertura):
     return round((1.0 - cobertura) * tiempo_norm, 4)
 
 
+def _numero_periodo(periodo, nave):
+    """
+    Calcula el número ordinal del período dentro del año de la nave.
+    El año se cuenta desde nave.agregado_en (no año calendario).
+    """
+    fecha_entrada_raw = getattr(nave, "agregado_en", None)
+    if not fecha_entrada_raw:
+        return None
+
+    fecha_entrada = (
+        fecha_entrada_raw.date()
+        if hasattr(fecha_entrada_raw, "date")
+        else fecha_entrada_raw
+    )
+    duracion = periodo.periodicidad.duracion_dias or 1
+    dias_desde_entrada = (periodo.fecha_inicio - fecha_entrada).days
+    if dias_desde_entrada < 0:
+        return None
+
+    periodos_por_anno = max(1, 365 // duracion)
+    return (dias_desde_entrada // duracion) % periodos_por_anno + 1
+
+
+def _etiqueta_numero_periodicidad(periodicidad):
+    nombre = (periodicidad.nombre or "").strip()
+    etiquetas = {
+        "quincenal": "Quincena",
+        "semanal": "Semana",
+        "mensual": "Mes",
+        "trimestral": "Trimestre",
+        "anual": "Año",
+    }
+    return etiquetas.get(nombre.casefold(), nombre)
+
+
 def _construir_datos_tabla_urgencia(naviera):
     estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}
     estados_relevantes = TenantQueryService.ESTADOS_ABIERTOS | estados_cerrados
@@ -394,6 +429,7 @@ def _construir_periodos_detalle(nave, periodos):
     periodos_detalle = []
     # TODO: optimizar con annotate() y prefetch_related en Fase 4
     for periodo in periodos:
+        numero_periodo = _numero_periodo(periodo, nave)
         fichas = list(
             TenantQueryService.get_fichas_de_periodo(periodo).order_by(
                 F("recurso__area__orden").asc(nulls_last=True),
@@ -450,6 +486,8 @@ def _construir_periodos_detalle(nave, periodos):
         periodos_detalle.append(
             {
                 "periodo": periodo,
+                "numero": numero_periodo,
+                "numero_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
                 "fichas": fichas,
                 "registros": registros,
                 "registros_por_area": _agrupar_registros_por_area(registros),
@@ -1286,6 +1324,7 @@ def dashboard_kiosco(request, slug):
     hoy = timezone.localdate()
     # TODO: optimizar con annotate() en Fase 4
     for periodo in periodos_abiertos:
+        numero_periodo = _numero_periodo(periodo, nave)
         total_recursos = MatrizNaveRecurso.objects.filter(
             nave=nave,
             es_visible=True,
@@ -1295,6 +1334,8 @@ def dashboard_kiosco(request, slug):
         periodos_resumen.append(
             {
                 "periodo": periodo,
+                "numero": numero_periodo,
+                "numero_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
                 "total_recursos": total_recursos,
                 "fichas_completadas": fichas_completadas,
                 "completado": fichas_completadas >= total_recursos,
@@ -1303,6 +1344,8 @@ def dashboard_kiosco(request, slug):
         )
     for periodo in historial:
         periodo.fichas_completadas_count = fichas_completadas_count.get(periodo.id, 0)
+        periodo.numero_periodo = _numero_periodo(periodo, nave)
+        periodo.numero_periodo_label = _etiqueta_numero_periodicidad(periodo.periodicidad)
 
     return render(
         request,
@@ -1401,6 +1444,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
 
     areas_grupos = _agrupar_recursos_por_area(recursos_lista)
     fichas_completadas_count = sum(1 for item in recursos_lista if item["tiene_ficha"])
+    numero_periodo = _numero_periodo(periodo, nave)
 
     return render(
         request,
@@ -1408,6 +1452,8 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         {
             "nave": nave,
             "periodo": periodo,
+            "numero_periodo": numero_periodo,
+            "numero_periodo_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
             "recursos_lista": recursos_lista,
             "areas_grupos": areas_grupos,
             "fichas_completadas_count": fichas_completadas_count,
@@ -1467,6 +1513,8 @@ def kiosco_periodo_historial(request, slug, periodo_id):
         {
             "nave": nave,
             "periodo": periodo,
+            "numero_periodo": _numero_periodo(periodo, nave),
+            "numero_periodo_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
             "areas_grupos": areas_grupos,
             "recursos_lista": recursos_lista,
             "slug": slug,

@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from django.http import Http404
 from django.test import TestCase
 from django.urls import reverse
@@ -1621,6 +1623,42 @@ class TestIntegracionMotorReglas(TestCase):
             [registro["recurso"].codigo for registro in grupos[0]["registros"]],
             ["1.1-Q", "1.8-Q", "1.15-Q", "1.21-Q"],
         )
+
+    def test_numero_periodo_se_calcula_con_reset_anual_desde_agregado_en(self):
+        from inventory.views import _numero_periodo
+
+        nave = self._crear_nave("Nave Periodos", "INT-043", 15)
+        nave.agregado_en = timezone.make_aware(datetime(2026, 1, 1, 9, 0, 0))
+
+        periodo_1 = PeriodoRevision(
+            nave=nave,
+            periodicidad=self.periodicidad,
+            fecha_inicio=date(2026, 1, 1),
+            fecha_termino=date(2026, 1, 7),
+        )
+        periodo_12 = PeriodoRevision(
+            nave=nave,
+            periodicidad=self.periodicidad,
+            fecha_inicio=date(2026, 3, 19),
+            fecha_termino=date(2026, 3, 25),
+        )
+        periodo_reset = PeriodoRevision(
+            nave=nave,
+            periodicidad=self.periodicidad,
+            fecha_inicio=date(2026, 12, 31),
+            fecha_termino=date(2027, 1, 6),
+        )
+        periodo_anterior = PeriodoRevision(
+            nave=nave,
+            periodicidad=self.periodicidad,
+            fecha_inicio=date(2025, 12, 25),
+            fecha_termino=date(2025, 12, 31),
+        )
+
+        self.assertEqual(_numero_periodo(periodo_1, nave), 1)
+        self.assertEqual(_numero_periodo(periodo_12, nave), 12)
+        self.assertEqual(_numero_periodo(periodo_reset, nave), 1)
+        self.assertIsNone(_numero_periodo(periodo_anterior, nave))
 
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(
