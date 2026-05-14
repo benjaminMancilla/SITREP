@@ -546,6 +546,7 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=Fals
             "recurso": matriz.recurso,
             "ficha": ficha,
             "tiene_ficha": ficha is not None,
+            "ficha_completa": ficha is not None and MotorPeriodos._es_ficha_completa(ficha),
             "estado_ficha": ficha.estado_ficha if ficha else "pendiente",
             "estado_operativo": ficha.estado_operativo if ficha else None,
             "observacion_general": ficha.observacion_general if ficha else "",
@@ -642,7 +643,7 @@ def _agrupar_recursos_por_area(recursos_lista):
         grupo = grupos_por_area[area_id]
         grupo["recursos"].append(item)
         grupo["total"] += 1
-        if item["tiene_ficha"]:
+        if item.get("ficha_completa"):
             grupo["con_ficha"] += 1
         if item["estado_operativo"] is False:
             grupo["tiene_fallo"] = True
@@ -1444,7 +1445,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
         ).replace("</", "<\\/")
 
     areas_grupos = _agrupar_recursos_por_area(recursos_lista)
-    fichas_completadas_count = sum(1 for item in recursos_lista if item["tiene_ficha"])
+    fichas_completadas_count = sum(1 for item in recursos_lista if item["ficha_completa"])
     numero_periodo = _numero_periodo(periodo, nave)
 
     return render(
