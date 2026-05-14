@@ -546,6 +546,7 @@ def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=Fals
             "recurso": matriz.recurso,
             "ficha": ficha,
             "tiene_ficha": ficha is not None,
+            "estado_ficha": ficha.estado_ficha if ficha else "pendiente",
             "estado_operativo": ficha.estado_operativo if ficha else None,
             "observacion_general": ficha.observacion_general if ficha else "",
             "checklist_items": checklist_items,

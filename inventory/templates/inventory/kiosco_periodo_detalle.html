@@ -139,10 +139,7 @@
     </div>
 
     <main class="mx-auto max-w-6xl px-4 py-5 pb-28 sm:px-6">
-        <div
-            class="sticky z-10 bg-surface px-1 pb-3 pt-2"
-            :style="{ top: (_offsetStickyAreas() + 48) + 'px' }"
-        >
+        <div class="px-1 pb-3">
             <div class="relative">
                 <svg
                     class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
@@ -156,6 +153,7 @@
                 <input
                     type="text"
                     x-model="busqueda"
+                    @input="alCambiarBusqueda()"
                     placeholder="Buscar recurso..."
                     class="w-full rounded-lg border border-surface-border bg-white py-2 pl-9 pr-9 text-[13px] text-ink outline-none transition focus:border-brand focus:ring-1 focus:ring-brand/20"
                 >
@@ -163,7 +161,7 @@
                     type="button"
                     x-show="busqueda"
                     x-cloak
-                    @click="busqueda = ''"
+                    @click="busqueda = ''; alCambiarBusqueda()"
                     class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
                 >
                     <svg viewBox="0 0 12 12" class="h-3.5 w-3.5" fill="none" aria-hidden="true">
@@ -185,12 +183,7 @@
             <div id="ficha-real" class="hidden space-y-3">
             {% for grupo in areas_grupos %}
             <section class="space-y-2">
-                <div
-                    x-data="{ abierto: false }"
-                    x-effect="if (busqueda.length > 0) abierto = true"
-                    data-area-idx="{{ forloop.counter0 }}"
-                    class="space-y-2"
-                >
+                <div x-data="{ abierto: false }" data-area-idx="{{ forloop.counter0 }}" class="space-y-2">
                     {% include 'components/ficha/area_header.html' with grupo=grupo variant='detalle' %}
 
                     <div x-show="abierto" x-transition x-cloak class="space-y-2 pl-2">
@@ -201,6 +194,7 @@
                                 nombreRecurso: '{{ item.recurso.nombre|escapejs }}',
                                 abiertoInicial: {{ item.recurso.id }} === {{ error_recurso_id|default:0 }},
                                 tieneFichaInicial: {{ item.tiene_ficha|yesno:'true,false' }},
+                                estadoFichaInicial: '{{ item.estado_ficha|escapejs }}',
                                 estadoOperativoInicial: {{ item.estado_operativo|yesno:'true,false,null' }},
                                 periodoAnterior: JSON.parse('{{ item.periodo_anterior_json|escapejs }}'),
                                 checklistInicial: [
@@ -220,7 +214,7 @@
                             data-recurso-nombre="{{ item.recurso.nombre|escape }}"
                             x-show="coincideBusqueda('{{ item.recurso.nombre|lower|escapejs }}', '{{ item.recurso.codigo|default:''|lower|escapejs }}')"
                             :class="abierto ? 'shadow-[0_4px_16px_rgba(0,0,0,0.08)]' : ''"
-                            class="overflow-hidden rounded-[10px] border-[1.5px] bg-white transition-all {% if item.tiene_ficha %}{% if item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}{% else %}border-surface-border{% endif %}"
+                            class="overflow-hidden rounded-[10px] border-[1.5px] bg-white transition-all {% if not item.tiene_ficha or item.estado_ficha == 'pendiente' %}border-surface-border{% elif item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}"
                         >
                             <div
                                 class="flex w-full items-center gap-4 px-5 py-[18px] transition hover:bg-[#f8fafc]"
@@ -231,7 +225,7 @@
                                     @click="abierto = !abierto"
                                     class="flex min-w-0 flex-1 items-center gap-4 text-left"
                                 >
-                                    <span class="h-9 w-1 shrink-0 rounded-sm {% if item.tiene_ficha %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"></span>
+                                    <span class="h-9 w-1 shrink-0 rounded-sm {% if not item.tiene_ficha or item.estado_ficha == 'pendiente' %}bg-neutral-border{% elif item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}"></span>
 
                                     <div class="flex min-w-0 flex-1 flex-col gap-1">
                                         <span class="block min-w-0 flex-1 text-base font-bold text-navy">{{ item.recurso.nombre }}</span>
@@ -661,6 +655,7 @@
         return {
             totalCambios: 0,
             busqueda: '',
+            _busquedaAnterior: '',
             guardandoTodo: false,
             cambiosPorRecurso: {},
             _borradorPendiente: null,
@@ -738,6 +733,28 @@
                         );
                     });
                 });
+            },
+
+            _forzarEstadoAreas(abierto) {
+                document.querySelectorAll('[data-area-idx]').forEach(function(el) {
+                    const data = el._x_dataStack?.[0];
+                    if (data) {
+                        data.abierto = abierto;
+                    }
+                });
+            },
+
+            alCambiarBusqueda() {
+                const activa = this.busqueda.trim().length > 0;
+                const estabaActiva = this._busquedaAnterior.trim().length > 0;
+
+                if (activa) {
+                    this._forzarEstadoAreas(true);
+                } else if (estabaActiva) {
+                    this._forzarEstadoAreas(false);
+                }
+
+                this._busquedaAnterior = this.busqueda;
             },
 
             _claveLocalStorage() {
@@ -996,6 +1013,7 @@
             abierto: config.abiertoInicial,
             modalCarga: false,
             tieneFichaInicial: config.tieneFichaInicial,
+            estadoFichaInicial: config.estadoFichaInicial,
             estadoOperativoInicial: config.estadoOperativoInicial,
             periodoAnterior: config.periodoAnterior || { checklist: {} },
             checklist: config.checklistInicial.map(function(item) {
@@ -1079,6 +1097,7 @@
             estadoTentativo() {
                 if (!this.hayCambios()) {
                     if (!this.tieneFichaInicial) return 'pendiente';
+                    if (this.estadoFichaInicial === 'pendiente') return 'pendiente';
                     if (this.estadoOperativoInicial === true) return 'operativo';
                     if (this.estadoOperativoInicial === false) return 'fallo';
                     return 'en_proceso';

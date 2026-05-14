@@ -1660,6 +1660,34 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertEqual(_numero_periodo(periodo_reset, nave), 1)
         self.assertIsNone(_numero_periodo(periodo_anterior, nave))
 
+    def test_construir_recursos_lista_periodo_expone_estado_ficha_pendiente(self):
+        from inventory.views import _construir_recursos_lista_periodo
+
+        recurso = self._crear_recurso(
+            nombre="Recurso Pendiente Persistido",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Estado Ficha", "INT-044", 20)
+        periodo = self._get_periodo(nave)
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={},
+        )
+        ficha.estado_ficha = "pendiente"
+        ficha.save(update_fields=["estado_ficha"])
+
+        recursos = _construir_recursos_lista_periodo(nave, periodo)
+        item = next(item for item in recursos if item["recurso"].id == recurso.id)
+
+        self.assertTrue(item["tiene_ficha"])
+        self.assertEqual(item["estado_ficha"], "pendiente")
+        self.assertIsNone(item["estado_operativo"])
+
     def test_requisito_cantidad_fallado_exige_observacion(self):
         recurso = self._crear_recurso(
             nombre="Recurso Cantidad Fallida",
