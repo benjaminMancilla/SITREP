@@ -478,6 +478,7 @@ def _construir_periodos_detalle(nave, periodos):
                     "recurso": matriz.recurso,
                     "matriz": matriz,
                     "ficha": ficha,
+                    "ficha_completa": MotorPeriodos._es_ficha_completa(ficha),
                     "estado_operativo": ficha.estado_operativo,
                     "checklist_items": checklist_items,
                 }
@@ -673,7 +674,7 @@ def _agrupar_registros_por_area(registros):
         grupo = grupos_por_area[area_id]
         grupo["registros"].append(registro)
         grupo["total"] += 1
-        if registro["tipo"] == "ficha":
+        if registro.get("ficha_completa"):
             grupo["con_ficha"] += 1
 
     for grupo in grupos_por_area.values():
