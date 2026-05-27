@@ -1,15 +1,17 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Dependencias del sistema para WeasyPrint
 RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libpangocairo-1.0-0 \
     libcairo2 \
-    libgdk-pixbuf2.0-0 \
-    libffi-dev \
+    libgdk-pixbuf-2.0-0 \
+    libfontconfig1 \
+    libharfbuzz0b \
+    libfreetype6 \
+    libffi8 \
     shared-mime-info \
-    fonts-liberation \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -23,4 +25,4 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD gunicorn core.wsgi:application --bind 0.0.0.0:$PORT
+CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]
