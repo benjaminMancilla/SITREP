@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 18mm 15mm 18mm 15mm;
+    @bottom-center {
+      content: "Página " counter(page) " de " counter(pages);
+      font-size: 8pt;
+      color: #94a3b8;
+      font-family: Arial, sans-serif;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 9pt;
+    color: #1e293b;
+    line-height: 1.4;
+  }
+
+  .doc-header {
+    border: 1.5px solid #0f2d4a;
+    border-radius: 4px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .doc-header-title {
+    background: #0f2d4a;
+    color: white;
+    padding: 6px 12px;
+    font-size: 11pt;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+  }
+  .doc-header-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid #e2e8f0;
+  }
+  .doc-header-meta-item {
+    padding: 6px 12px;
+    border-right: 1px solid #e2e8f0;
+  }
+  .doc-header-meta-item:last-child { border-right: none; }
+  .meta-label {
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+  }
+  .meta-value {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #0f2d4a;
+    margin-top: 2px;
+  }
+
+  .area-header {
+    background: #0f2d4a;
+    color: white;
+    padding: 5px 10px;
+    font-size: 9pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: 12px;
+    margin-bottom: 0;
+    border-radius: 3px 3px 0 0;
+  }
+  .area-table-wrapper {
+    border: 1px solid #cbd5e1;
+    border-top: none;
+    border-radius: 0 0 3px 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  col.col-codigo      { width: 52px; }
+  col.col-descripcion { width: auto; }
+  col.col-obs         { width: 130px; }
+  col.col-o           { width: 22px; }
+  col.col-f           { width: 22px; }
+  col.col-p           { width: 22px; }
+
+  thead th {
+    background: #f1f5f9;
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #475569;
+    padding: 4px 5px;
+    border-bottom: 1px solid #cbd5e1;
+    text-align: left;
+  }
+  thead th.col-o,
+  thead th.col-f,
+  thead th.col-p { text-align: center; }
+
+  tr.recurso-row td {
+    background: #f8fafc;
+    font-weight: bold;
+    font-size: 8.5pt;
+    color: #0f2d4a;
+    padding: 5px 5px 4px 5px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  tr.recurso-row td.codigo-cell {
+    font-family: 'Courier New', monospace;
+    font-size: 7.5pt;
+    color: #475569;
+  }
+
+  tr.req-row td {
+    padding: 3px 5px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 8pt;
+    vertical-align: top;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+  tr.req-row:last-child td { border-bottom: none; }
+
+  td.req-obs {
+    border-left: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+  }
+  td.req-ofp {
+    text-align: center;
+    border-right: 1px solid #f1f5f9;
+  }
+  td.req-ofp:last-child { border-right: none; }
+
+  .recurso-block { page-break-inside: avoid; }
+
+  .firmas {
+    margin-top: 20mm;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20mm;
+    page-break-inside: avoid;
+  }
+  .firma-linea {
+    border-top: 1px solid #1e293b;
+    padding-top: 4px;
+    font-size: 8pt;
+    color: #475569;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-header">
+  <div class="doc-header-title">
+    SITREP — Ficha de Inspección · {{ periodo.periodicidad.nombre|upper }}
+  </div>
+  <div class="doc-header-meta">
+    <div class="doc-header-meta-item">
+      <div class="meta-label">Nave</div>
+      <div class="meta-value">{{ nave.nombre }}</div>
+    </div>
+    <div class="doc-header-meta-item">
+      <div class="meta-label">Matrícula</div>
+      <div class="meta-value">{{ nave.matricula }}</div>
+    </div>
+    <div class="doc-header-meta-item">
+      <div class="meta-label">Período</div>
+      <div class="meta-value">{{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}</div>
+    </div>
+    <div class="doc-header-meta-item">
+      <div class="meta-label">Naviera</div>
+      <div class="meta-value">{{ naviera.nombre }}</div>
+    </div>
+    <div class="doc-header-meta-item">
+      <div class="meta-label">Periodicidad</div>
+      <div class="meta-value">{{ periodo.periodicidad.nombre }}</div>
+    </div>
+    <div class="doc-header-meta-item">
+      <div class="meta-label">Fecha impresión</div>
+      <div class="meta-value">{% now "d/m/Y" %}</div>
+    </div>
+  </div>
+</div>
+
+{% for grupo in areas_grupos %}
+<div>
+  <div class="area-header">{{ grupo.nombre_display }}</div>
+  <div class="area-table-wrapper">
+    <table>
+      <colgroup>
+        <col class="col-codigo">
+        <col class="col-descripcion">
+        <col class="col-obs">
+        <col class="col-o">
+        <col class="col-f">
+        <col class="col-p">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Recurso / Requisito</th>
+          <th>Observación</th>
+          <th class="col-o">O</th>
+          <th class="col-f">F</th>
+          <th class="col-p">P</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in grupo.recursos %}
+        <tbody class="recurso-block">
+          <tr class="recurso-row">
+            <td class="codigo-cell">{{ item.recurso.codigo|default:"—" }}</td>
+            <td colspan="5">{{ item.recurso.nombre }}</td>
+          </tr>
+          {% for req in item.recurso.requerimientos %}
+          <tr class="req-row">
+            <td></td>
+            <td>{{ req }}</td>
+            <td class="req-obs"></td>
+            <td class="req-ofp"></td>
+            <td class="req-ofp"></td>
+            <td class="req-ofp"></td>
+          </tr>
+          {% empty %}
+          <tr class="req-row">
+            <td></td>
+            <td colspan="5" style="color:#94a3b8;font-style:italic;">Sin requisitos específicos.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+<div class="firmas">
+  <div class="firma-linea">Firma responsable de inspección</div>
+  <div class="firma-linea">Firma supervisor / capitán</div>
+</div>
+
+</body>
+</html>

@@ -11,7 +11,8 @@ from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.db.models import Count, F, IntegerField, Max, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce, Greatest
-from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
+from django.template.loader import render_to_string
 from django.shortcuts import redirect, render
 from django.utils.text import slugify
 from django.utils import timezone
@@ -1508,6 +1509,53 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
             "slug": slug,
         },
     )
+
+
+@tenant_member_required
+@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+def kiosco_periodo_pdf(request, slug, periodo_id):
+    import io
+    from weasyprint import HTML
+
+    nave_id = request.session.get("nave_id")
+    if not nave_id:
+        return redirect(f"/{slug}/kiosco/login/")
+    try:
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    except Http404:
+        return redirect(f"/{slug}/kiosco/login/")
+
+    try:
+        periodo = PeriodoRevision.objects.select_related("periodicidad").get(
+            id=periodo_id,
+            nave=nave,
+            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
+        )
+    except PeriodoRevision.DoesNotExist:
+        return redirect(f"/{slug}/kiosco/")
+
+    recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
+    areas_grupos = _agrupar_recursos_por_area(recursos_lista)
+
+    html_string = render_to_string(
+        "inventory/ficha_pdf.html",
+        {
+            "nave": nave,
+            "periodo": periodo,
+            "areas_grupos": areas_grupos,
+            "naviera": request.naviera,
+        },
+        request=request,
+    )
+
+    pdf_file = io.BytesIO()
+    HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf(pdf_file)
+    pdf_file.seek(0)
+
+    nombre_archivo = f"ficha_{nave.matricula}_{periodo.periodicidad.nombre}_{periodo.fecha_inicio}.pdf"
+    response = HttpResponse(pdf_file.read(), content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
+    return response
 
 
 @tenant_member_required
