@@ -88,7 +88,12 @@ class RecursoAdmin(admin.ModelAdmin):
 
 @admin.register(MatrizNaveRecurso)
 class MatrizNaveRecursoAdmin(admin.ModelAdmin):
-    list_display = ("nave", "recurso", "cantidad", "es_visible", "modificado_manualmente")
+    list_display = (
+        "nave", "recurso", "cantidad", "es_visible",
+        "ultimo_estado_operativo", "ultimo_estado_operativo_anterior",
+        "es_fallo_nuevo", "modificado_manualmente",
+    )
+    readonly_fields = ("ultimo_estado_operativo_en",)
     list_filter = ("nave__naviera", "es_visible", "modificado_manualmente")
     search_fields = ("nave__nombre", "recurso__nombre")
     actions = ["marcar_como_automatico"]

@@ -2,6 +2,7 @@ import operator
 import logging
 from datetime import timedelta
 from django.db import IntegrityError, transaction
+from django.db.models import Exists, F, OuterRef
 from django.http import Http404
 from django.utils import timezone
 
@@ -408,6 +409,24 @@ class MotorPeriodos:
         return "caduco"
 
     @classmethod
+    def _cerrar_periodo(cls, periodo):
+        matrices = MatrizNaveRecurso.objects.filter(
+            nave=periodo.nave,
+            recurso__periodicidad=periodo.periodicidad,
+            es_visible=True,
+        )
+        matrices.update(
+            ultimo_estado_operativo_anterior=F("ultimo_estado_operativo")
+        )
+        tiene_ficha_en_periodo = FichaRegistro.objects.filter(
+            periodo=periodo,
+            recurso=OuterRef("recurso"),
+        )
+        matrices.filter(es_fallo_nuevo=True).exclude(
+            Exists(tiene_ficha_en_periodo)
+        ).update(es_fallo_nuevo=False)
+
+    @classmethod
     def sincronizar_periodos_nave(cls, nave):
         """
         Garantiza que exista un periodo abierto por periodicidad para la nave.
@@ -447,6 +466,7 @@ class MotorPeriodos:
                     if fecha_expiracion < hoy:
                         periodo_abierto.estado = cls._determinar_estado_cierre(periodo_abierto)
                         periodo_abierto.save(update_fields=['estado'])
+                        cls._cerrar_periodo(periodo_abierto)
                         stats['periodos_vencidos'] += 1
 
                         MotorReglasSITREP.sincronizar_matriz_nave(nave)
@@ -817,9 +837,17 @@ class MotorFichas:
                 ) from exc
 
             if estado_operativo is not None:
+                matriz.es_fallo_nuevo = (
+                    estado_operativo is False
+                    and matriz.ultimo_estado_operativo_anterior is not False
+                )
                 matriz.ultimo_estado_operativo = estado_operativo
                 matriz.ultimo_estado_operativo_en = timezone.now()
-                matriz.save(update_fields=["ultimo_estado_operativo", "ultimo_estado_operativo_en"])
+                matriz.save(update_fields=[
+                    "ultimo_estado_operativo",
+                    "ultimo_estado_operativo_en",
+                    "es_fallo_nuevo",
+                ])
 
             MotorPeriodos.sincronizar_estado_periodo_abierto(periodo)
             return ficha
@@ -901,9 +929,17 @@ class MotorFichas:
             )
 
             if estado_operativo is not None:
+                matriz.es_fallo_nuevo = (
+                    estado_operativo is False
+                    and matriz.ultimo_estado_operativo_anterior is not False
+                )
                 matriz.ultimo_estado_operativo = estado_operativo
                 matriz.ultimo_estado_operativo_en = timezone.now()
-                matriz.save(update_fields=["ultimo_estado_operativo", "ultimo_estado_operativo_en"])
+                matriz.save(update_fields=[
+                    "ultimo_estado_operativo",
+                    "ultimo_estado_operativo_en",
+                    "es_fallo_nuevo",
+                ])
 
             MotorPeriodos.sincronizar_estado_periodo_abierto(ficha.periodo)
             return ficha
