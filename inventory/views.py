@@ -210,6 +210,17 @@ def _construir_datos_tabla_urgencia(naviera):
         .annotate(total=Count("id"))
     }
 
+    fallos_nuevos_urgencia = {
+        (item["nave_id"], item["recurso__periodicidad_id"]): item["total"]
+        for item in MatrizNaveRecurso.objects.filter(
+            nave_id__in=nave_ids,
+            es_visible=True,
+            es_fallo_nuevo=True,
+        )
+        .values("nave_id", "recurso__periodicidad_id")
+        .annotate(total=Count("id"))
+    }
+
     periodicidades_activas = {}
     for periodo in periodos:
         if periodo.estado in TenantQueryService.ESTADOS_ABIERTOS:
@@ -274,6 +285,7 @@ def _construir_datos_tabla_urgencia(naviera):
                 "dias_restantes": dias_restantes,
                 "duracion_total": duracion_total,
                 "fallos": fallos.get((nave.id, periodicidad_id), 0),
+                "fallos_nuevos": fallos_nuevos_urgencia.get((nave.id, periodicidad_id), 0),
                 "fecha_cierre": (
                     None if es_periodo_abierto else periodo.fecha_termino.strftime("%d/%m/%Y")
                 ),
@@ -786,6 +798,12 @@ def dashboard_tierra(request, slug):
         es_visible=True,
         ultimo_estado_operativo=False,
     ).count()
+    fallos_nuevos_total = MatrizNaveRecurso.objects.filter(
+        nave__naviera=request.naviera,
+        nave__is_active=True,
+        es_visible=True,
+        es_fallo_nuevo=True,
+    ).count()
     estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}
     estados_vencidos = {"omitido", "caduco"}
     todos_periodos_cerrados = (
@@ -845,6 +863,14 @@ def dashboard_tierra(request, slug):
             ),
             distinct=True,
         ),
+        fallos_nuevos=Count(
+            "matriz_recursos",
+            filter=Q(
+                matriz_recursos__es_visible=True,
+                matriz_recursos__es_fallo_nuevo=True,
+            ),
+            distinct=True,
+        ),
         fichas_hoy=Count(
             "periodos__fichas",
             filter=Q(periodos__fichas__fecha_revision__date=timezone.localdate()),
@@ -887,6 +913,7 @@ def dashboard_tierra(request, slug):
             "total_dispositivos": total_dispositivos,
             "fichas_hoy_total": fichas_hoy_total,
             "fallos_activos_total": fallos_activos_total,
+            "fallos_nuevos_total": fallos_nuevos_total,
             "periodos_vencidos_total": periodos_vencidos_total,
             "naves_con_vencidos": naves_con_vencidos,
             "naves_capitan": naves_capitan,
@@ -926,6 +953,10 @@ def fallos_activos(request, slug):
     agrupar_por = request.GET.get("agrupar", "").strip()
     if agrupar_por not in {"", "nave", "area", "periodo"}:
         agrupar_por = ""
+
+    solo_nuevos = request.GET.get("solo_nuevos") == "1"
+    if solo_nuevos:
+        qs = qs.filter(es_fallo_nuevo=True)
 
     if nave_id:
         try:
@@ -1014,6 +1045,7 @@ def fallos_activos(request, slug):
 
     total_fallos = fallos_base.count()
     naves_afectadas = fallos_base.values("nave").distinct().count()
+    fallos_nuevos_total_sin_filtro = fallos_base.filter(es_fallo_nuevo=True).count()
 
     return render(
         request,
@@ -1033,6 +1065,8 @@ def fallos_activos(request, slug):
             "fecha_desde_str": fecha_desde_str,
             "fecha_hasta_str": fecha_hasta_str,
             "fallos_filtrados_total": len(fallos),
+            "solo_nuevos": solo_nuevos,
+            "fallos_nuevos_total_sin_filtro": fallos_nuevos_total_sin_filtro,
         },
     )
 
@@ -1270,6 +1304,11 @@ def nave_detalle(request, slug, nave_id):
         es_visible=True,
         ultimo_estado_operativo=False,
     ).count()
+    fallos_nuevos_nave = MatrizNaveRecurso.objects.filter(
+        nave=nave,
+        es_visible=True,
+        es_fallo_nuevo=True,
+    ).count()
     total_recursos_nave = sum(item["total_recursos"] for item in periodos_abiertos_detalle)
 
     es_admin = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
@@ -1283,6 +1322,7 @@ def nave_detalle(request, slug, nave_id):
             "historial_detalle": historial_detalle,
             "periodicidades": periodicidades,
             "fallos_activos_nave": fallos_activos_nave,
+            "fallos_nuevos_nave": fallos_nuevos_nave,
             "total_recursos_nave": total_recursos_nave,
             "slug": slug,
             "es_admin": es_admin,
@@ -1933,6 +1973,14 @@ def listar_naves(request, slug):
             filter=Q(
                 matriz_recursos__es_visible=True,
                 matriz_recursos__ultimo_estado_operativo=False,
+            ),
+            distinct=True,
+        ),
+        fallos_nuevos=Count(
+            "matriz_recursos",
+            filter=Q(
+                matriz_recursos__es_visible=True,
+                matriz_recursos__es_fallo_nuevo=True,
             ),
             distinct=True,
         ),
