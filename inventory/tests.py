@@ -1834,3 +1834,63 @@ class TestIntegracionMotorReglas(TestCase):
             payload_normalizado,
             {"req": {"cumple": True, "observacion": ""}},
         )
+
+    def test_fallo_nuevo_al_pasar_de_operativo_a_fallo(self):
+        """operativo → fallo en mismo período = es_fallo_nuevo True."""
+        recurso = self._crear_recurso("Recurso Fallo Nuevo", None, ["vigencia"])
+        nave = self._crear_nave("Nave Fallo Nuevo", "INT-060", 15)
+        periodo = self._get_periodo(nave)
+        matriz = self._get_matriz(nave, recurso)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo, recurso=recurso, usuario=self.usuario,
+            estado_operativo=True, observacion_general="",
+            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+        )
+        matriz.refresh_from_db()
+        matriz.ultimo_estado_operativo_anterior = True
+        matriz.save(update_fields=["ultimo_estado_operativo_anterior"])
+
+        MotorFichas.modificar_ficha(
+            ficha=ficha, usuario_modificador=self.usuario,
+            estado_operativo=False, observacion_general="roto",
+            payload_checklist={"vigencia": {"cumple": False, "observacion": "roto"}},
+        )
+        matriz.refresh_from_db()
+        self.assertTrue(matriz.es_fallo_nuevo)
+
+    def test_fallo_a_fallo_no_es_fallo_nuevo(self):
+        """fallo → fallo en mismo período NO debe marcar es_fallo_nuevo."""
+        recurso = self._crear_recurso("Recurso Fallo Persistente", None, ["vigencia"])
+        nave = self._crear_nave("Nave Fallo Persistente", "INT-061", 15)
+        periodo = self._get_periodo(nave)
+        matriz = self._get_matriz(nave, recurso)
+
+        matriz.ultimo_estado_operativo_anterior = False
+        matriz.ultimo_estado_operativo = False
+        matriz.save(update_fields=["ultimo_estado_operativo_anterior", "ultimo_estado_operativo"])
+
+        MotorFichas.crear_ficha(
+            periodo=periodo, recurso=recurso, usuario=self.usuario,
+            estado_operativo=False, observacion_general="sigue roto",
+            payload_checklist={"vigencia": {"cumple": False, "observacion": "sigue roto"}},
+        )
+        matriz.refresh_from_db()
+        self.assertFalse(matriz.es_fallo_nuevo)
+
+    def test_cierre_periodo_hace_snapshot_y_expira_fallos(self):
+        """Al cerrar período: snapshot de estado y expiración de fallos nuevos sin ficha."""
+        recurso = self._crear_recurso("Recurso Cierre", None, ["vigencia"])
+        nave = self._crear_nave("Nave Cierre", "INT-062", 15)
+        periodo = self._get_periodo(nave)
+        matriz = self._get_matriz(nave, recurso)
+
+        matriz.ultimo_estado_operativo = False
+        matriz.es_fallo_nuevo = True
+        matriz.save(update_fields=["ultimo_estado_operativo", "es_fallo_nuevo"])
+
+        MotorPeriodos._cerrar_periodo(periodo)
+
+        matriz.refresh_from_db()
+        self.assertFalse(matriz.ultimo_estado_operativo_anterior)
+        self.assertFalse(matriz.es_fallo_nuevo)
