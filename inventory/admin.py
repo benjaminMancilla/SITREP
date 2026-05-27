@@ -60,6 +60,7 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(Recurso)
 class RecursoAdmin(admin.ModelAdmin):
     list_display = (
+        "codigo",
         "nombre",
         "naviera",
         "proposito",
@@ -69,7 +70,7 @@ class RecursoAdmin(admin.ModelAdmin):
         "num_requerimientos",
     )
     list_filter = ("naviera", "proposito", "periodicidad")
-    search_fields = ("nombre",)
+    search_fields = ("codigo", "nombre")
     readonly_fields = ("created_at",)
 
     def tiene_regla(self, obj):
