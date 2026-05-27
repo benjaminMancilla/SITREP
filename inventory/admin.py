@@ -63,13 +63,14 @@ class RecursoAdmin(admin.ModelAdmin):
         "codigo",
         "nombre",
         "naviera",
+        "area",
         "proposito",
         "periodicidad",
         "created_at",
         "tiene_regla",
         "num_requerimientos",
     )
-    list_filter = ("naviera", "proposito", "periodicidad")
+    list_filter = ("naviera", "proposito", "periodicidad", "area")
     search_fields = ("codigo", "nombre")
     readonly_fields = ("created_at",)
 
