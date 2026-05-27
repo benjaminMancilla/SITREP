@@ -26,29 +26,22 @@
             </p>
         </div>
         {% if fallos_nuevos_total_sin_filtro > 0 %}
-            <div>
-                {% if solo_nuevos %}
-                    <a
-                        href="{% url 'inventory:fallos_activos' slug=slug %}"
-                        class="inline-flex items-center gap-1.5 rounded-md border border-warn-border bg-warn-bg px-3 py-1.5 text-[12px] font-semibold text-warn transition hover:bg-amber-100"
-                    >
-                        <span class="h-2 w-2 rounded-full bg-warn"></span>
-                        Solo nuevos (activo) — ver todos
-                    </a>
-                {% else %}
-                    <a
-                        href="?solo_nuevos=1"
-                        class="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-1.5 text-[12px] font-semibold text-ink-secondary transition hover:border-warn-border hover:bg-warn-bg hover:text-warn"
-                    >
-                        <span class="h-2 w-2 rounded-full bg-warn"></span>
-                        Ver solo nuevos ({{ fallos_nuevos_total_sin_filtro }})
-                    </a>
-                {% endif %}
+            <div x-data>
+                <button
+                    type="button"
+                    @click="const u = new URL(window.location.href); u.searchParams.get('solo_nuevos') === '1' ? u.searchParams.delete('solo_nuevos') : u.searchParams.set('solo_nuevos', '1'); window.location.href = u.toString()"
+                    class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-semibold transition
+                           {% if solo_nuevos %}border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100{% else %}border-surface-border bg-white text-ink-secondary hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600{% endif %}"
+                >
+                    <span class="h-2 w-2 rounded-full {% if solo_nuevos %}bg-orange-500{% else %}bg-ink-muted opacity-40{% endif %}"></span>
+                    {% if solo_nuevos %}Solo nuevos (activo){% else %}Ver solo nuevos ({{ fallos_nuevos_total_sin_filtro }}){% endif %}
+                </button>
             </div>
         {% endif %}
     </div>
 
     <form method="get" class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        {% if solo_nuevos %}<input type="hidden" name="solo_nuevos" value="1">{% endif %}
         <div class="flex flex-wrap items-end gap-3">
             <div>
                 <label for="nave" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Nave</label>
@@ -168,7 +161,7 @@
                     {% endif %}
 
                     {% for fallo in grupo.items %}
-                        <article x-data="{ abierto: false }" class="overflow-hidden rounded-lg border border-fail-border bg-white shadow-sm transition-shadow hover:shadow-md">
+                        <article x-data="{ abierto: false }" class="overflow-hidden rounded-lg bg-white shadow-sm transition-shadow hover:shadow-md {% if fallo.es_fallo_nuevo %}border-2 border-orange-400{% else %}border border-fail-border{% endif %}">
                             <div
                                 @click="abierto = !abierto"
                                 class="flex cursor-pointer items-center gap-4 px-4 py-3 transition hover:bg-[#fcfdff]"

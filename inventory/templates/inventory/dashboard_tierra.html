@@ -52,24 +52,24 @@
                 Fallos
             </p>
 
-            <div class="mt-2 flex items-baseline gap-2">
-                <span class="text-[28px] font-bold leading-none {% if fallos_nuevos_total > 0 %}text-fail{% else %}text-navy{% endif %}">
-                    {{ fallos_nuevos_total|default:"0" }}
-                </span>
-                <span class="text-[12px] font-semibold {% if fallos_nuevos_total > 0 %}text-fail{% else %}text-ink-muted{% endif %}">
-                    nuevo{{ fallos_nuevos_total|pluralize }}
-                </span>
-            </div>
-
-            <div class="my-2 border-t border-surface-border"></div>
-
-            <div class="flex items-baseline gap-1.5">
-                <span class="text-[18px] font-bold leading-none {% if fallos_activos_total > 0 %}text-fail opacity-60{% else %}text-navy opacity-40{% endif %}">
-                    {{ fallos_activos_total|default:"0" }}
-                </span>
-                <span class="text-[11px] text-ink-muted">
-                    activo{{ fallos_activos_total|pluralize }} en total
-                </span>
+            <div class="mt-2 flex items-center gap-3">
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-[28px] font-bold leading-none {% if fallos_nuevos_total > 0 %}text-fail{% else %}text-navy{% endif %}">
+                        {{ fallos_nuevos_total|default:"0" }}
+                    </span>
+                    <span class="text-[12px] font-semibold {% if fallos_nuevos_total > 0 %}text-fail{% else %}text-ink-muted{% endif %}">
+                        nuevo{{ fallos_nuevos_total|pluralize }}
+                    </span>
+                </div>
+                <div class="h-8 w-px shrink-0 bg-surface-border"></div>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-[18px] font-bold leading-none {% if fallos_activos_total > 0 %}text-fail opacity-60{% else %}text-navy opacity-40{% endif %}">
+                        {{ fallos_activos_total|default:"0" }}
+                    </span>
+                    <span class="text-[11px] text-ink-muted">
+                        activo{{ fallos_activos_total|pluralize }}
+                    </span>
+                </div>
             </div>
         </a>
 
@@ -140,6 +140,7 @@
                                 <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Matrícula</th>
                                 <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Períodos abiertos</th>
                                 <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos activos</th>
+                                <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos nuevos</th>
                                 <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fichas hoy</th>
                                 <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Último registro</th>
                                 <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]"></th>
@@ -165,20 +166,22 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3.5 text-center">
-                                        <div class="inline-flex flex-col items-center gap-0.5">
-                                            {% if nave.fallos_activos > 0 %}
-                                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>{{ nave.fallos_activos }}
-                                                </span>
-                                            {% else %}
-                                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
-                                            {% endif %}
-                                            {% if nave.fallos_nuevos > 0 %}
-                                                <span class="inline-flex items-center gap-0.5 rounded-[4px] border border-orange-300 bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-600">
-                                                    ↑{{ nave.fallos_nuevos }} nuevo{{ nave.fallos_nuevos|pluralize }}
-                                                </span>
-                                            {% endif %}
-                                        </div>
+                                        {% if nave.fallos_activos > 0 %}
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>{{ nave.fallos_activos }}
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3.5 text-center">
+                                        {% if nave.fallos_nuevos > 0 %}
+                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-orange-300 bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-600">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>{{ nave.fallos_nuevos }}
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
+                                        {% endif %}
                                     </td>
                                     <td class="px-4 py-3.5 text-center">
                                         {% if nave.fichas_hoy > 0 %}
@@ -322,14 +325,14 @@
                                                          :class="urgencyBg(cell.urgencia)"
                                                          @mouseenter="tip = true"
                                                          @mouseleave="tip = false">
-                                                        <template x-if="cell.fallos > 0">
-                                                            <span class="absolute top-1.5 right-1.5 flex items-center gap-1 rounded-[4px] bg-fail-bg border border-fail-border px-1.5 py-1">
+                                                        <template x-if="cell.fallos_nuevos > 0">
+                                                            <span class="absolute top-1.5 right-1.5 flex items-center gap-1 rounded-[4px] bg-orange-50 border border-orange-300 px-1.5 py-1">
                                                                 <svg width="11" height="11" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
-                                                                    <path d="M4 1L7 7H1L4 1Z" fill="#b91c1c" stroke="#b91c1c" stroke-width="0.5" stroke-linejoin="round"/>
+                                                                    <path d="M4 1L7 7H1L4 1Z" fill="#ea580c" stroke="#ea580c" stroke-width="0.5" stroke-linejoin="round"/>
                                                                     <rect x="3.5" y="3.5" width="1" height="1.5" rx="0.5" fill="white"/>
                                                                     <rect x="3.5" y="5.5" width="1" height="0.8" rx="0.4" fill="white"/>
                                                                 </svg>
-                                                                <span class="font-mono text-[11px] font-semibold text-fail leading-none" x-text="cell.fallos"></span>
+                                                                <span class="font-mono text-[11px] font-semibold text-orange-600 leading-none" x-text="cell.fallos_nuevos"></span>
                                                             </span>
                                                         </template>
                                                         <span class="font-mono font-medium text-[15px] leading-none"
