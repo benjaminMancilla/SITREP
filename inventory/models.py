@@ -475,6 +475,23 @@ class MatrizNaveRecurso(models.Model):
         default=None,
         help_text="Timestamp de la última vez que ultimo_estado_operativo fue actualizado.",
     )
+    es_fallo_nuevo = models.BooleanField(
+        default=False,
+        help_text=(
+            "True si el recurso pasó de operativo/pendiente a fallado en el período actual. "
+            "Se resetea al cerrar el período."
+        ),
+    )
+    ultimo_estado_operativo_anterior = models.BooleanField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text=(
+            "Snapshot de ultimo_estado_operativo al momento del último cierre de período. "
+            "Se actualiza solo al cerrar período, nunca al guardar fichas individuales. "
+            "Usado para determinar si un fallo es nuevo comparando contra el estado del período anterior."
+        ),
+    )
 
     class Meta:
         # Constraint de integridad crítico
