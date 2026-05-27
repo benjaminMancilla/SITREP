@@ -425,7 +425,7 @@ def _adjuntar_detalle_a_fallos(fallos, naviera):
         ]
 
 
-def _construir_periodos_detalle(nave, periodos):
+def _construir_periodos_detalle(nave, periodos, for_history=False):
     periodos_detalle = []
     # TODO: optimizar con annotate() y prefetch_related en Fase 4
     for periodo in periodos:
@@ -437,8 +437,11 @@ def _construir_periodos_detalle(nave, periodos):
                 "recurso__nombre",
             )
         )
+        matrices_qs = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo)
+        if for_history:
+            matrices_qs = matrices_qs.filter(recurso__created_at__date__lte=periodo.fecha_termino)
         matrices = list(
-            TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo).order_by(
+            matrices_qs.order_by(
                 F("recurso__area__orden").asc(nulls_last=True),
                 F("recurso__area__nombre").asc(nulls_last=True),
                 "recurso__nombre"
@@ -1261,7 +1264,7 @@ def nave_detalle(request, slug, nave_id):
     )
     periodicidades = Periodicidad.objects.all().order_by("nombre")
     periodos_abiertos_detalle = _construir_periodos_detalle(nave, periodos_abiertos)
-    historial_detalle = _construir_periodos_detalle(nave, historial)
+    historial_detalle = _construir_periodos_detalle(nave, historial, for_history=True)
     fallos_activos_nave = MatrizNaveRecurso.objects.filter(
         nave=nave,
         es_visible=True,
