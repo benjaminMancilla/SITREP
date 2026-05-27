@@ -109,6 +109,7 @@
                         <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Cap. personas</th>
                         <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Períodos abiertos</th>
                         <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos activos</th>
+                        <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos nuevos</th>
                         <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
                     </tr>
                 </thead>
@@ -143,6 +144,15 @@
                             {% if nave.fallos_activos > 0 %}
                                 <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
                                     <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>{{ nave.fallos_activos }}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3.5 text-center">
+                            {% if nave.fallos_nuevos > 0 %}
+                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>{{ nave.fallos_nuevos }}
                                 </span>
                             {% else %}
                                 <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>

@@ -12,7 +12,7 @@
 
 {% block page_content %}
 <div class="space-y-6">
-    <div class="mb-6 flex flex-wrap items-center gap-4">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-xl font-bold text-navy">Fallos activos</h1>
             <p class="mt-0.5 text-sm text-ink-muted">
@@ -20,8 +20,32 @@
                 recurso{{ total_fallos|pluralize }} con falla ·
                 <span class="font-semibold text-navy">{{ naves_afectadas }}</span>
                 nave{{ naves_afectadas|pluralize }} afectada{{ naves_afectadas|pluralize }}
+                {% if fallos_nuevos_total_sin_filtro > 0 %}
+                    · <span class="font-semibold text-warn">{{ fallos_nuevos_total_sin_filtro }} nuevo{{ fallos_nuevos_total_sin_filtro|pluralize }} este período</span>
+                {% endif %}
             </p>
         </div>
+        {% if fallos_nuevos_total_sin_filtro > 0 %}
+            <div>
+                {% if solo_nuevos %}
+                    <a
+                        href="{% url 'inventory:fallos_activos' slug=slug %}"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-warn-border bg-warn-bg px-3 py-1.5 text-[12px] font-semibold text-warn transition hover:bg-amber-100"
+                    >
+                        <span class="h-2 w-2 rounded-full bg-warn"></span>
+                        Solo nuevos (activo) — ver todos
+                    </a>
+                {% else %}
+                    <a
+                        href="?solo_nuevos=1"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-1.5 text-[12px] font-semibold text-ink-secondary transition hover:border-warn-border hover:bg-warn-bg hover:text-warn"
+                    >
+                        <span class="h-2 w-2 rounded-full bg-warn"></span>
+                        Ver solo nuevos ({{ fallos_nuevos_total_sin_filtro }})
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 
     <form method="get" class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
@@ -158,6 +182,12 @@
                                             <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold {{ fallo.recurso.area.css_classes }}">
                                                 <span class="h-1.5 w-1.5 rounded-full bg-current opacity-70"></span>
                                                 {{ fallo.recurso.area.nombre }}
+                                            </span>
+                                        {% endif %}
+                                        {% if fallo.es_fallo_nuevo %}
+                                            <span class="inline-flex items-center gap-1 rounded-full border border-orange-300 bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-600">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
+                                                Nuevo
                                             </span>
                                         {% endif %}
                                     </div>

@@ -43,16 +43,34 @@
             <p class="mt-1.5 text-[11px] text-ink-muted">Kioscos registrados</p>
         </article>
 
-        <a href="{% url 'inventory:fallos_activos' slug=slug %}" class="group block cursor-pointer">
-            <article class="rounded-lg border p-5 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-2 group-hover:ring-brand/10 {% if fallos_activos_total > 0 %}border-surface-border bg-fail-bg{% else %}border-surface-border bg-white{% endif %}">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.07em] {% if fallos_activos_total > 0 %}text-fail{% else %}text-ink-muted{% endif %}">
-                    Fallos activos
-                </p>
-                <p class="mt-2 text-[28px] font-bold leading-none {% if fallos_activos_total > 0 %}text-fail{% else %}text-navy{% endif %}">
-                    {{ fallos_activos_total|default:"—" }}
-                </p>
-                <p class="mt-1.5 text-[11px] text-ink-muted">{{ fichas_hoy_total }} fichas hoy</p>
-            </article>
+        <a href="{% url 'inventory:fallos_activos' slug=slug %}"
+           class="block rounded-lg border p-5 shadow-sm transition hover:opacity-90
+                  {% if fallos_nuevos_total > 0 %}border-fail-border bg-fail-bg
+                  {% else %}border-surface-border bg-white{% endif %}">
+
+            <p class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">
+                Fallos
+            </p>
+
+            <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-[28px] font-bold leading-none {% if fallos_nuevos_total > 0 %}text-fail{% else %}text-navy{% endif %}">
+                    {{ fallos_nuevos_total|default:"0" }}
+                </span>
+                <span class="text-[12px] font-semibold {% if fallos_nuevos_total > 0 %}text-fail{% else %}text-ink-muted{% endif %}">
+                    nuevo{{ fallos_nuevos_total|pluralize }}
+                </span>
+            </div>
+
+            <div class="my-2 border-t border-surface-border"></div>
+
+            <div class="flex items-baseline gap-1.5">
+                <span class="text-[18px] font-bold leading-none {% if fallos_activos_total > 0 %}text-fail opacity-60{% else %}text-navy opacity-40{% endif %}">
+                    {{ fallos_activos_total|default:"0" }}
+                </span>
+                <span class="text-[11px] text-ink-muted">
+                    activo{{ fallos_activos_total|pluralize }} en total
+                </span>
+            </div>
         </a>
 
         <a href="{% url 'inventory:periodos_vencidos' slug=slug %}" class="group block cursor-pointer">
@@ -147,13 +165,20 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3.5 text-center">
-                                        {% if nave.fallos_activos > 0 %}
-                                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
-                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>{{ nave.fallos_activos }}
-                                            </span>
-                                        {% else %}
-                                            <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
-                                        {% endif %}
+                                        <div class="inline-flex flex-col items-center gap-0.5">
+                                            {% if nave.fallos_activos > 0 %}
+                                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>{{ nave.fallos_activos }}
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
+                                            {% endif %}
+                                            {% if nave.fallos_nuevos > 0 %}
+                                                <span class="inline-flex items-center gap-0.5 rounded-[4px] border border-orange-300 bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-600">
+                                                    ↑{{ nave.fallos_nuevos }} nuevo{{ nave.fallos_nuevos|pluralize }}
+                                                </span>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3.5 text-center">
                                         {% if nave.fichas_hoy > 0 %}
@@ -337,6 +362,11 @@
                                                                 <template x-if="cell.fallos > 0">
                                                                     <div class="flex justify-between text-xs border-t border-surface-border pt-1 mt-1">
                                                                         <span class="text-fail font-semibold" x-text="cell.fallos + ' fallo' + (cell.fallos > 1 ? 's' : '') + ' detectado' + (cell.fallos > 1 ? 's' : '')"></span>
+                                                                    </div>
+                                                                </template>
+                                                                <template x-if="cell.fallos_nuevos > 0">
+                                                                    <div class="flex justify-between text-xs">
+                                                                        <span class="text-warn font-semibold" x-text="cell.fallos_nuevos + ' nuevo' + (cell.fallos_nuevos > 1 ? 's' : '') + ' este período'"></span>
                                                                     </div>
                                                                 </template>
                                                             </div>
