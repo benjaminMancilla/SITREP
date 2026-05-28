@@ -1538,14 +1538,15 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     areas_grupos = _agrupar_recursos_por_area(recursos_lista)
 
     _AREA_COLORS = {
-        "navy":   {"bg": "#0f2d4a", "text": "#ffffff"},
-        "blue":   {"bg": "#1d4ed8", "text": "#ffffff"},
-        "green":  {"bg": "#15803d", "text": "#ffffff"},
-        "red":    {"bg": "#b91c1c", "text": "#ffffff"},
-        "amber":  {"bg": "#b45309", "text": "#ffffff"},
-        "slate":  {"bg": "#475569", "text": "#ffffff"},
-        "teal":   {"bg": "#0f766e", "text": "#ffffff"},
-        "purple": {"bg": "#7e22ce", "text": "#ffffff"},
+        "salvamento":   {"bg": "#854d0e", "text": "#ffffff"},
+        "incendio":     {"bg": "#be123c", "text": "#ffffff"},
+        "inundacion":   {"bg": "#a21caf", "text": "#ffffff"},
+        "gobierno":     {"bg": "#b45309", "text": "#ffffff"},
+        "contaminacion":{"bg": "#475569", "text": "#ffffff"},
+        "navegacion":   {"bg": "#0369a1", "text": "#ffffff"},
+        "maquinas":     {"bg": "#c2410c", "text": "#ffffff"},
+        "telecom":      {"bg": "#047857", "text": "#ffffff"},
+        "general":      {"bg": "#475569", "text": "#ffffff"},
     }
     _DEFAULT_COLOR = {"bg": "#0f2d4a", "text": "#ffffff"}
     for grupo in areas_grupos:
