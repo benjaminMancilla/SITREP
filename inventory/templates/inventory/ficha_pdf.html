@@ -225,8 +225,8 @@
       {% for item in grupo.recursos %}
       <tbody class="recurso-block">
         <tr class="recurso-row">
-          <td class="codigo-cell">{{ item.recurso.codigo|default:"—" }}</td>
-          <td colspan="5">{{ item.recurso.nombre }}</td>
+          <td class="codigo-cell" style="background: {{ grupo.area_color.bg_light }} !important;">{{ item.recurso.codigo|default:"—" }}</td>
+          <td colspan="5" style="background: {{ grupo.area_color.bg_light }} !important;">{{ item.recurso.nombre }}</td>
         </tr>
         {% for req in item.recurso.requerimientos %}
         <tr class="req-row">
