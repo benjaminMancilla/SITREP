@@ -1537,6 +1537,22 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
     areas_grupos = _agrupar_recursos_por_area(recursos_lista)
 
+    _AREA_COLORS = {
+        "navy":   {"bg": "#0f2d4a", "text": "#ffffff"},
+        "blue":   {"bg": "#1d4ed8", "text": "#ffffff"},
+        "green":  {"bg": "#15803d", "text": "#ffffff"},
+        "red":    {"bg": "#b91c1c", "text": "#ffffff"},
+        "amber":  {"bg": "#b45309", "text": "#ffffff"},
+        "slate":  {"bg": "#475569", "text": "#ffffff"},
+        "teal":   {"bg": "#0f766e", "text": "#ffffff"},
+        "purple": {"bg": "#7e22ce", "text": "#ffffff"},
+    }
+    _DEFAULT_COLOR = {"bg": "#0f2d4a", "text": "#ffffff"}
+    for grupo in areas_grupos:
+        area = grupo.get("area")
+        token = area.token_color if area else None
+        grupo["area_color"] = _AREA_COLORS.get(token, _DEFAULT_COLOR)
+
     html_string = render_to_string(
         "inventory/ficha_pdf.html",
         {

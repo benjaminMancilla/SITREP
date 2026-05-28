@@ -5,10 +5,10 @@
 <style>
   @page {
     size: A4 portrait;
-    margin: 18mm 15mm 18mm 15mm;
+    margin: 12mm 10mm 12mm 10mm;
     @bottom-center {
       content: "Página " counter(page) " de " counter(pages);
-      font-size: 8pt;
+      font-size: 7pt;
       color: #94a3b8;
       font-family: Arial, sans-serif;
     }
@@ -18,7 +18,7 @@
 
   body {
     font-family: Arial, sans-serif;
-    font-size: 9pt;
+    font-size: 7.5pt;
     color: #1e293b;
     line-height: 1.4;
   }
@@ -32,8 +32,8 @@
   .doc-header-title {
     background: #0f2d4a;
     color: white;
-    padding: 6px 12px;
-    font-size: 11pt;
+    padding: 4px 10px;
+    font-size: 9.5pt;
     font-weight: bold;
     letter-spacing: 0.05em;
   }
@@ -43,33 +43,31 @@
     border-top: 1px solid #e2e8f0;
   }
   .doc-header-meta-item {
-    padding: 6px 12px;
+    padding: 4px 10px;
     border-right: 1px solid #e2e8f0;
   }
   .doc-header-meta-item:last-child { border-right: none; }
   .meta-label {
-    font-size: 7pt;
+    font-size: 6pt;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: #64748b;
   }
   .meta-value {
-    font-size: 9pt;
+    font-size: 7.5pt;
     font-weight: bold;
     color: #0f2d4a;
-    margin-top: 2px;
+    margin-top: 1px;
   }
 
   .area-header {
-    background: #0f2d4a;
-    color: white;
-    padding: 5px 10px;
-    font-size: 9pt;
+    padding: 4px 8px;
+    font-size: 7.5pt;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    margin-top: 12px;
+    margin-top: 8px;
     margin-bottom: 0;
     border-radius: 3px 3px 0 0;
   }
@@ -87,21 +85,21 @@
     table-layout: fixed;
   }
 
-  col.col-codigo      { width: 52px; }
+  col.col-codigo      { width: 44px; }
   col.col-descripcion { width: auto; }
-  col.col-obs         { width: 130px; }
-  col.col-o           { width: 22px; }
-  col.col-f           { width: 22px; }
-  col.col-p           { width: 22px; }
+  col.col-obs         { width: 160px; }
+  col.col-o           { width: 18px; }
+  col.col-f           { width: 18px; }
+  col.col-p           { width: 18px; }
 
   thead th {
     background: #f1f5f9;
-    font-size: 7pt;
+    font-size: 6pt;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.07em;
     color: #475569;
-    padding: 4px 5px;
+    padding: 3px 4px;
     border-bottom: 1px solid #cbd5e1;
     text-align: left;
   }
@@ -112,11 +110,13 @@
   tr.recurso-row td {
     background: #f8fafc;
     font-weight: bold;
-    font-size: 8.5pt;
+    font-size: 7.5pt;
     color: #0f2d4a;
-    padding: 5px 5px 4px 5px;
+    padding: 4px 4px 3px 4px;
     border-bottom: 1px solid #e2e8f0;
     vertical-align: top;
+    page-break-inside: avoid;
+    page-break-before: auto;
   }
   tr.recurso-row td.codigo-cell {
     font-family: 'Courier New', monospace;
@@ -124,10 +124,14 @@
     color: #475569;
   }
 
+  tr.req-row {
+    min-height: 14px;
+    page-break-inside: avoid;
+  }
   tr.req-row td {
-    padding: 3px 5px;
+    padding: 2px 4px;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 8pt;
+    font-size: 7pt;
     vertical-align: top;
     word-break: normal;
     overflow-wrap: break-word;
@@ -137,14 +141,13 @@
   td.req-obs {
     border-left: 1px solid #e2e8f0;
     border-right: 1px solid #e2e8f0;
+    min-height: 14px;
   }
   td.req-ofp {
     text-align: center;
     border-right: 1px solid #f1f5f9;
   }
   td.req-ofp:last-child { border-right: none; }
-
-  .recurso-block { page-break-inside: avoid; }
 
   .firmas {
     margin-top: 20mm;
@@ -198,7 +201,7 @@
 
 {% for grupo in areas_grupos %}
 <div>
-  <div class="area-header">{{ grupo.nombre_display }}</div>
+  <div class="area-header" style="background: {{ grupo.area_color.bg }}; color: {{ grupo.area_color.text }};">{{ grupo.nombre_display }}</div>
   <div class="area-table-wrapper">
     <table>
       <colgroup>
@@ -219,31 +222,29 @@
           <th class="col-p">P</th>
         </tr>
       </thead>
-      <tbody>
-        {% for item in grupo.recursos %}
-        <tbody class="recurso-block">
-          <tr class="recurso-row">
-            <td class="codigo-cell">{{ item.recurso.codigo|default:"—" }}</td>
-            <td colspan="5">{{ item.recurso.nombre }}</td>
-          </tr>
-          {% for req in item.recurso.requerimientos %}
-          <tr class="req-row">
-            <td></td>
-            <td>{{ req }}</td>
-            <td class="req-obs"></td>
-            <td class="req-ofp"></td>
-            <td class="req-ofp"></td>
-            <td class="req-ofp"></td>
-          </tr>
-          {% empty %}
-          <tr class="req-row">
-            <td></td>
-            <td colspan="5" style="color:#94a3b8;font-style:italic;">Sin requisitos específicos.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
+      {% for item in grupo.recursos %}
+      <tbody class="recurso-block">
+        <tr class="recurso-row">
+          <td class="codigo-cell">{{ item.recurso.codigo|default:"—" }}</td>
+          <td colspan="5">{{ item.recurso.nombre }}</td>
+        </tr>
+        {% for req in item.recurso.requerimientos %}
+        <tr class="req-row">
+          <td></td>
+          <td>{{ req }}</td>
+          <td class="req-obs"></td>
+          <td class="req-ofp"></td>
+          <td class="req-ofp"></td>
+          <td class="req-ofp"></td>
+        </tr>
+        {% empty %}
+        <tr class="req-row">
+          <td></td>
+          <td colspan="5" style="color:#94a3b8;font-style:italic;">Sin requisitos específicos.</td>
+        </tr>
         {% endfor %}
       </tbody>
+      {% endfor %}
     </table>
   </div>
 </div>
