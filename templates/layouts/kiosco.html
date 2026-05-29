@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{% block page_title %}SITREP | Kiosco{% endblock %}{% endblock %}
 
@@ -10,14 +11,8 @@
         <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div class="flex min-w-0 items-center gap-4">
-                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/5">
-                        <svg viewBox="0 0 48 48" class="h-7 w-7" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <rect x="14" y="14" width="20" height="20" rx="2" transform="rotate(45 24 24)" stroke="currentColor" stroke-width="2"/>
-                            <path d="M24 6V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M24 32V42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M6 24H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M32 24H42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white p-2">
+                        <img src="{% static 'img/logo.svg' %}" class="h-full w-full" alt="SITREP">
                     </span>
 
                     <div class="min-w-0">
