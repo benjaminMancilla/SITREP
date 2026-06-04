@@ -30,12 +30,19 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-x$$*6k_#o7=-+nd03--kot7=v6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-railway_domain = os.getenv('RAILWAY_PUBLIC_DOMAIN', 'web-production-5356a.up.railway.app')
-ALLOWED_HOSTS = [railway_domain, 'localhost', '127.0.0.1']
+railway_domain = os.getenv('RAILWAY_PUBLIC_DOMAIN', 'sitrep-nav-production.up.railway.app')
+allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')
+extra_hosts = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
+
+ALLOWED_HOSTS = [
+    railway_domain,
+    'localhost',
+    '127.0.0.1',
+] + extra_hosts
 
 CSRF_TRUSTED_ORIGINS = [
     f'https://{railway_domain}',
-]
+] + [f'https://{h}' for h in extra_hosts]
 
 
 # Application definition
