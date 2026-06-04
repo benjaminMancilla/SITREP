@@ -148,3 +148,7 @@ AUTHENTICATION_BACKENDS = [
     'inventory.backends.KioscoTenantBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Proxy SSL (Cloudflare)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
