@@ -7,6 +7,8 @@ from django.contrib.auth.models import AbstractUser
 
 from django.contrib.auth.hashers import make_password, check_password
 
+from core.tenant import TenantManager
+
 # ==========================================
 # CORE & AISLAMIENTO MULTI-TENANT
 # ==========================================
@@ -122,7 +124,9 @@ class Nave(models.Model):
     # Blindaje Soft Delete
     is_active = models.BooleanField(default=True, help_text="Si es False, la nave fue vendida o dada de baja")
     agregado_en = models.DateTimeField(auto_now_add=True)
-    
+
+    objects = TenantManager()
+
     class Meta:
         constraints = [
             UniqueConstraint(
@@ -179,7 +183,9 @@ class Dispositivo(models.Model):
     
     is_active = models.BooleanField(default=True, help_text="Apagar si la tablet se pierde o se daña")
     creado_en = models.DateTimeField(auto_now_add=True)
-    
+
+    objects = TenantManager()
+
     def generar_nuevo_token(self):
         """
         Genera un token seguro, guarda su hash y retorna el token plano UNA SOLA VEZ.
