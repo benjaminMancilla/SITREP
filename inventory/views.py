@@ -1,8 +1,7 @@
-import bisect
 import json
 import logging
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 
@@ -14,7 +13,6 @@ from django.db.models.functions import Coalesce, Greatest
 from django.http import Http404, HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.template.loader import render_to_string
 from django.shortcuts import redirect, render
-from django.utils.text import slugify
 from django.utils import timezone
 
 from .decorators import requiere_rol, tenant_member_required
@@ -30,7 +28,9 @@ from .models import (
     Tripulacion,
     Usuario,
 )
-from .services import MotorFichas, MotorPeriodos, TenantQueryService
+from . import presenters, repositories
+from .permissions import tiene_rol_api_kiosco
+from .services import MotorFichas, MotorPeriodos, TenantQueryService, contar_fichas_completas_por_periodo
 
 logger = logging.getLogger(__name__)
 
@@ -49,26 +49,12 @@ def _pin_valido_4_digitos(raw_pin):
     return bool(raw_pin) and len(raw_pin) == 4 and raw_pin.isdigit()
 
 
-ROLES_API_KIOSCO = {"mar", "capitan", "tierra", "admin_naviera", "admin_sitrep"}
-CONFIABILIDAD_UMBRALES = [1, 7, 30, 90, 365]
-CONFIABILIDAD_VENTANAS = [30, 30, 90, 365, 730, 1825]
-
-
-def _ventana_confiabilidad(duracion_dias):
-    """
-    Retorna la ventana de confiabilidad en días para una periodicidad.
-    Usa bisect_left para encontrar el intervalo correcto en O(log n).
-    """
-    indice = bisect.bisect_left(CONFIABILIDAD_UMBRALES, duracion_dias)
-    return CONFIABILIDAD_VENTANAS[indice]
-
-
 def _json_error(mensaje, status):
     return JsonResponse({"error": mensaje}, status=status)
 
 
 def _validar_rol_api_kiosco(request):
-    if getattr(request.user, "rol", None) not in ROLES_API_KIOSCO:
+    if not tiene_rol_api_kiosco(request.user):
         return _json_error("Acceso denegado: rango insuficiente.", 403)
     return None
 
@@ -86,222 +72,8 @@ def _obtener_nave_activa_desde_sesion(request):
     return nave, None
 
 
-def _obtener_periodo_de_nave(nave, periodo_id):
-    try:
-        return PeriodoRevision.objects.select_related("periodicidad").get(id=periodo_id, nave=nave)
-    except PeriodoRevision.DoesNotExist:
-        return None
 
 
-def _contar_fichas_completas(fichas):
-    return sum(1 for ficha in fichas if MotorPeriodos._es_ficha_completa(ficha))
-
-
-def _contar_fichas_completas_por_periodo(periodo_ids):
-    conteos = {periodo_id: 0 for periodo_id in periodo_ids}
-    if not periodo_ids:
-        return conteos
-
-    fichas = FichaRegistro.objects.filter(periodo_id__in=periodo_ids).select_related("recurso")
-    for ficha in fichas:
-        if MotorPeriodos._es_ficha_completa(ficha):
-            conteos[ficha.periodo_id] += 1
-    return conteos
-
-
-def _calcular_urgencia(dias_restantes, duracion_total, cobertura):
-    if duracion_total == 0:
-        return 0.0
-    dias_restantes = min(max(0, dias_restantes), duracion_total)
-    tiempo_norm = (duracion_total - dias_restantes) / duracion_total
-    return round((1.0 - cobertura) * tiempo_norm, 4)
-
-
-def _numero_periodo(periodo, nave):
-    """
-    Calcula el número ordinal del período dentro del año de la nave.
-    El año se cuenta desde nave.agregado_en (no año calendario).
-    """
-    fecha_entrada_raw = getattr(nave, "agregado_en", None)
-    if not fecha_entrada_raw:
-        return None
-
-    fecha_entrada = (
-        fecha_entrada_raw.date()
-        if hasattr(fecha_entrada_raw, "date")
-        else fecha_entrada_raw
-    )
-    duracion = periodo.periodicidad.duracion_dias or 1
-    dias_desde_entrada = (periodo.fecha_inicio - fecha_entrada).days
-    if dias_desde_entrada < 0:
-        return None
-
-    periodos_por_anno = max(1, 365 // duracion)
-    return (dias_desde_entrada // duracion) % periodos_por_anno + 1
-
-
-def _etiqueta_numero_periodicidad(periodicidad):
-    nombre = (periodicidad.nombre or "").strip()
-    etiquetas = {
-        "quincenal": "Quincena",
-        "semanal": "Semana",
-        "mensual": "Mes",
-        "trimestral": "Trimestre",
-        "anual": "Año",
-    }
-    return etiquetas.get(nombre.casefold(), nombre)
-
-
-def _construir_datos_tabla_urgencia(naviera):
-    estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}
-    estados_relevantes = TenantQueryService.ESTADOS_ABIERTOS | estados_cerrados
-    hoy = date.today()
-
-    naves = list(Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre"))
-    if not naves:
-        return {"columns": [], "naves": []}
-
-    nave_ids = [nave.id for nave in naves]
-
-    periodos_ordenados = list(
-        PeriodoRevision.objects.filter(
-            nave_id__in=nave_ids,
-            estado__in=estados_relevantes,
-        )
-        .select_related("periodicidad")
-        .order_by("nave_id", "periodicidad_id", "-fecha_inicio", "-id")
-    )
-
-    periodos_por_clave = {}
-    for periodo in periodos_ordenados:
-        clave = (periodo.nave_id, periodo.periodicidad_id)
-        if clave not in periodos_por_clave:
-            periodos_por_clave[clave] = periodo
-
-    periodos = list(periodos_por_clave.values())
-    periodo_ids = [periodo.id for periodo in periodos] or [-1]
-
-    fichas_completas = {periodo_id: 0 for periodo_id in periodo_ids}
-    for ficha in (
-        FichaRegistro.objects.filter(periodo_id__in=periodo_ids)
-        .select_related("recurso")
-        .only("periodo_id", "estado_operativo", "payload_checklist", "recurso__requerimientos")
-    ):
-        if MotorPeriodos._es_ficha_completa(ficha):
-            fichas_completas[ficha.periodo_id] += 1
-
-    totales = {
-        (item["nave_id"], item["recurso__periodicidad_id"]): item["total"]
-        for item in MatrizNaveRecurso.objects.filter(
-            nave_id__in=nave_ids,
-            es_visible=True,
-        )
-        .values("nave_id", "recurso__periodicidad_id")
-        .annotate(total=Count("id"))
-    }
-
-    fallos = {
-        (item["nave_id"], item["recurso__periodicidad_id"]): item["total"]
-        for item in MatrizNaveRecurso.objects.filter(
-            nave_id__in=nave_ids,
-            es_visible=True,
-            ultimo_estado_operativo=False,
-        )
-        .values("nave_id", "recurso__periodicidad_id")
-        .annotate(total=Count("id"))
-    }
-
-    fallos_nuevos_urgencia = {
-        (item["nave_id"], item["recurso__periodicidad_id"]): item["total"]
-        for item in MatrizNaveRecurso.objects.filter(
-            nave_id__in=nave_ids,
-            es_visible=True,
-            es_fallo_nuevo=True,
-        )
-        .values("nave_id", "recurso__periodicidad_id")
-        .annotate(total=Count("id"))
-    }
-
-    periodicidades_activas = {}
-    for periodo in periodos:
-        if periodo.estado in TenantQueryService.ESTADOS_ABIERTOS:
-            periodicidades_activas[periodo.periodicidad_id] = periodo.periodicidad
-
-    periodicidades_ordenadas = sorted(
-        periodicidades_activas.values(),
-        key=lambda periodicidad: (
-            periodicidad.duracion_dias,
-            periodicidad.nombre.lower(),
-            periodicidad.id,
-        ),
-    )
-
-    keys_por_periodicidad = {}
-    used_keys = set()
-    columns = []
-    for periodicidad in periodicidades_ordenadas:
-        key_source = getattr(periodicidad, "nombre_tecnico", None) or periodicidad.nombre
-        base_key = slugify(key_source).replace("-", "_") or f"periodicidad_{periodicidad.id}"
-        key = base_key
-        if key in used_keys:
-            key = f"{base_key}_{periodicidad.id}"
-        used_keys.add(key)
-        keys_por_periodicidad[periodicidad.id] = key
-        columns.append(
-            {
-                "key": key,
-                "label": periodicidad.nombre,
-            }
-        )
-
-    periodicidad_ids_activas = {periodicidad.id for periodicidad in periodicidades_ordenadas}
-    naves_data = []
-    for nave in naves:
-        periodos_nave = {column["key"]: None for column in columns}
-
-        for periodicidad_id in periodicidad_ids_activas:
-            periodo = periodos_por_clave.get((nave.id, periodicidad_id))
-            if periodo is None:
-                continue
-
-            total_recursos = totales.get((nave.id, periodicidad_id), 0)
-            cobertura = (
-                1.0
-                if total_recursos == 0
-                else min(1.0, round(fichas_completas.get(periodo.id, 0) / total_recursos, 4))
-            )
-            es_periodo_abierto = periodo.estado in TenantQueryService.ESTADOS_ABIERTOS
-            dias_restantes = max(0, (periodo.fecha_termino - hoy).days) if es_periodo_abierto else 0
-            duracion_total = periodo.periodicidad.duracion_dias or 0
-            key = keys_por_periodicidad[periodicidad_id]
-
-            periodos_nave[key] = {
-                "estado": "en_curso" if es_periodo_abierto else periodo.estado,
-                "urgencia": (
-                    _calcular_urgencia(dias_restantes, duracion_total, cobertura)
-                    if es_periodo_abierto
-                    else None
-                ),
-                "cobertura": cobertura,
-                "dias_restantes": dias_restantes,
-                "duracion_total": duracion_total,
-                "fallos": fallos.get((nave.id, periodicidad_id), 0),
-                "fallos_nuevos": fallos_nuevos_urgencia.get((nave.id, periodicidad_id), 0),
-                "fecha_cierre": (
-                    None if es_periodo_abierto else periodo.fecha_termino.strftime("%d/%m/%Y")
-                ),
-            }
-
-        naves_data.append(
-            {
-                "id": nave.id,
-                "nombre": nave.nombre,
-                "matricula": nave.matricula,
-                "periodos": periodos_nave,
-            }
-        )
-
-    return {"columns": columns, "naves": naves_data}
 
 
 def _obtener_filtros_historial_desde_request(request):
@@ -331,191 +103,6 @@ def _obtener_filtros_historial_desde_request(request):
     }
 
 
-def _nombre_usuario_display(usuario):
-    if not usuario:
-        return ""
-    nombre_completo = f"{usuario.first_name} {usuario.last_name}".strip()
-    return nombre_completo or usuario.rut
-
-
-def _formatear_tiempo_transcurrido_es(fecha, ahora=None):
-    if not fecha:
-        return ""
-
-    if isinstance(fecha, datetime):
-        if ahora is None:
-            ahora = timezone.now()
-        if timezone.is_naive(fecha):
-            fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
-        delta = ahora - fecha
-        total_segundos = max(0, int(delta.total_seconds()))
-    else:
-        if isinstance(ahora, datetime):
-            hoy = timezone.localdate(ahora)
-        elif isinstance(ahora, date):
-            hoy = ahora
-        else:
-            hoy = timezone.localdate()
-        total_segundos = max(0, (hoy - fecha).days) * 24 * 60 * 60
-
-    unidades = (
-        ("día", "días", 24 * 60 * 60),
-        ("hora", "horas", 60 * 60),
-        ("minuto", "minutos", 60),
-    )
-    partes = []
-    resto = total_segundos
-
-    for singular, plural, segundos_unidad in unidades:
-        valor, resto = divmod(resto, segundos_unidad)
-        if valor:
-            etiqueta = singular if valor == 1 else plural
-            partes.append(f"{valor} {etiqueta}")
-        if len(partes) == 2:
-            break
-
-    return ", ".join(partes) if partes else "menos de 1 minuto"
-
-
-def _adjuntar_detalle_a_fallos(fallos, naviera):
-    if not fallos:
-        return
-
-    ahora = timezone.now()
-    nave_ids = {fallo.nave_id for fallo in fallos}
-    recurso_ids = {fallo.recurso_id for fallo in fallos}
-    fichas_ordenadas = (
-        FichaRegistro.objects.filter(
-            periodo__nave__naviera=naviera,
-            periodo__nave_id__in=nave_ids,
-            recurso_id__in=recurso_ids,
-            estado_operativo=False,
-        )
-        .select_related("usuario", "modificado_por", "periodo", "periodo__nave")
-        .annotate(evento_en=Coalesce("modificado_en", "fecha_revision"))
-        .order_by("periodo__nave_id", "recurso_id", F("evento_en").desc(), "-id")
-    )
-
-    ultimas_fichas = {}
-    for ficha in fichas_ordenadas:
-        clave = (ficha.periodo.nave_id, ficha.recurso_id)
-        if clave not in ultimas_fichas:
-            ultimas_fichas[clave] = ficha
-
-    for fallo in fallos:
-        fallo.tiempo_desde_display = _formatear_tiempo_transcurrido_es(
-            fallo.ultimo_estado_operativo_en,
-            ahora=ahora,
-        )
-        ficha = ultimas_fichas.get((fallo.nave_id, fallo.recurso_id))
-        fallo.ficha_detalle = ficha
-        fallo.ficha_usuario_display = _nombre_usuario_display(
-            (ficha.modificado_por or ficha.usuario) if ficha else None
-        )
-        fallo.ficha_evento_en = (
-            ficha.modificado_en or ficha.fecha_revision
-            if ficha else None
-        )
-        fallo.ficha_observacion_general = (
-            (ficha.observacion_general or "").strip()
-            if ficha else ""
-        )
-
-        if not ficha:
-            fallo.checklist_fallido = []
-            continue
-
-        payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
-        checklist_items = MotorFichas.construir_checklist_items(
-            recurso=fallo.recurso,
-            cantidad=fallo.cantidad,
-            payload_checklist=payload_actual,
-            incluir_requisito_cantidad=MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual,
-        )
-        fallo.checklist_fallido = [
-            item for item in checklist_items
-            if item["checked"] is False
-        ]
-
-
-def _construir_periodos_detalle(nave, periodos, for_history=False):
-    periodos_detalle = []
-    # TODO: optimizar con annotate() y prefetch_related en Fase 4
-    for periodo in periodos:
-        numero_periodo = _numero_periodo(periodo, nave)
-        fichas = list(
-            TenantQueryService.get_fichas_de_periodo(periodo).order_by(
-                F("recurso__area__orden").asc(nulls_last=True),
-                F("recurso__area__nombre").asc(nulls_last=True),
-                "recurso__nombre",
-            )
-        )
-        matrices_qs = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo)
-        if for_history:
-            matrices_qs = matrices_qs.filter(recurso__created_at__date__lte=periodo.fecha_termino)
-        matrices = list(
-            matrices_qs.order_by(
-                F("recurso__area__orden").asc(nulls_last=True),
-                F("recurso__area__nombre").asc(nulls_last=True),
-                "recurso__nombre"
-            )
-        )
-        total_recursos = len(matrices)
-        fichas_count = _contar_fichas_completas(fichas)
-        fichas_por_recurso_id = {ficha.recurso_id: ficha for ficha in fichas}
-        registros = []
-        fallos_count = 0
-
-        for matriz in matrices:
-            ficha = fichas_por_recurso_id.get(matriz.recurso_id)
-            if ficha is None:
-                registros.append(
-                    {
-                        "tipo": "pendiente",
-                        "recurso": matriz.recurso,
-                    }
-                )
-                continue
-
-            if ficha.estado_operativo is False:
-                fallos_count += 1
-
-            payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
-            checklist_items = MotorFichas.construir_checklist_items(
-                recurso=matriz.recurso,
-                cantidad=matriz.cantidad,
-                payload_checklist=payload_actual,
-                incluir_requisito_cantidad=MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual,
-            )
-
-            registros.append(
-                {
-                    "tipo": "ficha",
-                    "recurso": matriz.recurso,
-                    "matriz": matriz,
-                    "ficha": ficha,
-                    "ficha_completa": MotorPeriodos._es_ficha_completa(ficha),
-                    "estado_operativo": ficha.estado_operativo,
-                    "checklist_items": checklist_items,
-                }
-            )
-
-        periodos_detalle.append(
-            {
-                "periodo": periodo,
-                "numero": numero_periodo,
-                "numero_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
-                "fichas": fichas,
-                "registros": registros,
-                "registros_por_area": _agrupar_registros_por_area(registros),
-                "total_recursos": total_recursos,
-                "fichas_count": fichas_count,
-                "fallos_count": fallos_count,
-                "has_fallos": fallos_count > 0,
-                "avance_pct": int((fichas_count * 100) / total_recursos) if total_recursos else 0,
-            }
-        )
-    return periodos_detalle
 
 
 def _parse_estado_checklist_form(raw_estado):
@@ -526,194 +113,6 @@ def _parse_estado_checklist_form(raw_estado):
     return None
 
 
-def _construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False):
-    matrices = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo)
-    if for_history:
-        matrices = matrices.filter(recurso__created_at__date__lte=periodo.fecha_termino)
-
-    matrices = list(matrices)
-    matrices.sort(key=_clave_orden_matriz_recurso_periodo)
-
-    fichas_por_recurso_id = {
-        ficha.recurso_id: ficha
-        for ficha in FichaRegistro.objects.filter(
-            periodo=periodo,
-            recurso_id__in=[matriz.recurso_id for matriz in matrices],
-        ).select_related("usuario", "modificado_por")
-    }
-
-    recursos_lista = []
-    for matriz in matrices:
-        ficha = fichas_por_recurso_id.get(matriz.recurso_id)
-        payload_actual = MotorFichas.normalizar_payload_checklist(
-            ficha.payload_checklist if ficha else {}
-        )
-        incluir_requisito_cantidad = matriz.cantidad > 1 and (
-            not for_history or MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual
-        )
-        checklist_items = MotorFichas.construir_checklist_items(
-            recurso=matriz.recurso,
-            cantidad=matriz.cantidad,
-            payload_checklist=payload_actual,
-            incluir_requisito_cantidad=incluir_requisito_cantidad,
-        )
-
-        item = {
-            "matriz": matriz,
-            "recurso": matriz.recurso,
-            "ficha": ficha,
-            "tiene_ficha": ficha is not None,
-            "ficha_completa": ficha is not None and MotorPeriodos._es_ficha_completa(ficha),
-            "estado_ficha": ficha.estado_ficha if ficha else "pendiente",
-            "estado_operativo": ficha.estado_operativo if ficha else None,
-            "observacion_general": ficha.observacion_general if ficha else "",
-            "checklist_items": checklist_items,
-        }
-        if slug is not None:
-            item["action_url"] = (
-                f"/{slug}/kiosco/periodos/{periodo.id}/recursos/{matriz.recurso.id}/ficha/"
-            )
-        recursos_lista.append(item)
-
-    return recursos_lista
-
-
-def _extraer_indice_codigo_recurso(codigo):
-    codigo = (codigo or "").strip()
-    if not codigo:
-        return None
-
-    match = re.match(r"^\d+\.(\d+)", codigo)
-    if not match:
-        return None
-
-    return int(match.group(1))
-
-
-def _clave_orden_area(area):
-    if area is None:
-        return (True, True, float("inf"), "sin área", float("inf"))
-
-    nombre_display = _nombre_display_area(area).casefold()
-    return (
-        False,
-        area.orden is None,
-        area.orden if area.orden is not None else float("inf"),
-        nombre_display,
-        area.id,
-    )
-
-
-def _clave_orden_matriz_recurso_periodo(matriz):
-    recurso = matriz.recurso
-    return _clave_orden_recurso(recurso)
-
-
-def _clave_orden_recurso(recurso):
-    area = recurso.area
-    codigo = (recurso.codigo or "").strip()
-    indice_codigo = _extraer_indice_codigo_recurso(codigo)
-
-    return (
-        *_clave_orden_area(area),
-        indice_codigo is None,
-        indice_codigo if indice_codigo is not None else float("inf"),
-        codigo.casefold(),
-        (recurso.nombre or "").casefold(),
-        recurso.id,
-    )
-
-
-def _agrupar_recursos_por_area(recursos_lista):
-    """
-    Agrupa recursos_lista por área. Los recursos sin área van al final
-    en un grupo especial con area=None.
-    Retorna lista de dicts:
-    [
-        {
-            "area": <Area instance o None>,
-            "nombre_display": "Salvamento" o "Sin área",
-            "recursos": [...items de recursos_lista...],
-            "total": int,
-            "con_ficha": int,
-            "tiene_fallo": bool,
-        },
-        ...
-    ]
-    """
-    grupos_por_area = {}
-
-    for item in recursos_lista:
-        area = item["recurso"].area
-        area_id = area.id if area is not None else None
-
-        if area_id not in grupos_por_area:
-            grupos_por_area[area_id] = {
-                "area": area,
-                "nombre_display": _nombre_display_area(area),
-                "recursos": [],
-                "total": 0,
-                "con_ficha": 0,
-                "tiene_fallo": False,
-            }
-
-        grupo = grupos_por_area[area_id]
-        grupo["recursos"].append(item)
-        grupo["total"] += 1
-        if item.get("ficha_completa"):
-            grupo["con_ficha"] += 1
-        if item["estado_operativo"] is False:
-            grupo["tiene_fallo"] = True
-
-    for grupo in grupos_por_area.values():
-        grupo["recursos"].sort(key=lambda item: _clave_orden_recurso(item["recurso"]))
-
-    return _ordenar_grupos_por_area(grupos_por_area)
-
-
-def _agrupar_registros_por_area(registros):
-    grupos_por_area = {}
-
-    for registro in registros:
-        area = registro["recurso"].area
-        area_id = area.id if area is not None else None
-
-        if area_id not in grupos_por_area:
-            grupos_por_area[area_id] = {
-                "area": area,
-                "nombre_display": _nombre_display_area(area),
-                "registros": [],
-                "total": 0,
-                "con_ficha": 0,
-            }
-
-        grupo = grupos_por_area[area_id]
-        grupo["registros"].append(registro)
-        grupo["total"] += 1
-        if registro.get("ficha_completa"):
-            grupo["con_ficha"] += 1
-
-    for grupo in grupos_por_area.values():
-        grupo["registros"].sort(key=lambda registro: _clave_orden_recurso(registro["recurso"]))
-
-    return _ordenar_grupos_por_area(grupos_por_area)
-
-
-def _nombre_display_area(area):
-    if area is None:
-        return "Sin área"
-    return (area.nombre_tecnico or area.nombre or "").strip() or area.nombre
-
-
-def _ordenar_grupos_por_area(grupos_por_area):
-    grupos_con_area = [grupo for grupo in grupos_por_area.values() if grupo["area"] is not None]
-    grupos_con_area.sort(key=lambda grupo: _clave_orden_area(grupo["area"]))
-
-    grupo_sin_area = grupos_por_area.get(None)
-    if grupo_sin_area is not None:
-        grupos_con_area.append(grupo_sin_area)
-
-    return grupos_con_area
 
 
 def _cargar_payload_json(request):
@@ -900,7 +299,7 @@ def dashboard_tierra(request, slug):
         )
         .order_by("-fecha_revision")[:10]
     )
-    tabla_urgencia = _construir_datos_tabla_urgencia(request.naviera)
+    tabla_urgencia = presenters.construir_tabla_urgencia(request.naviera)
 
     return render(
         request,
@@ -992,7 +391,7 @@ def fallos_activos(request, slug):
             fecha_hasta_str = ""
 
     fallos = list(qs)
-    _adjuntar_detalle_a_fallos(fallos, naviera)
+    presenters.adjuntar_detalle_a_fallos(fallos, naviera)
     grupos = []
     if agrupar_por == "nave":
         agrupado = {}
@@ -1149,7 +548,7 @@ def periodos_vencidos(request, slug):
 
     periodos = list(qs)
     for periodo in periodos:
-        periodo.tiempo_desde_vencimiento_display = _formatear_tiempo_transcurrido_es(
+        periodo.tiempo_desde_vencimiento_display = presenters.formatear_tiempo_transcurrido_es(
             periodo.fecha_termino,
             ahora=hoy,
         )
@@ -1194,7 +593,7 @@ def periodos_vencidos(request, slug):
     for periodicidad in Periodicidad.objects.filter(id__in=periodicidad_ids_con_historial).order_by(
         "duracion_dias", "nombre"
     ):
-        ventana = _ventana_confiabilidad(periodicidad.duracion_dias)
+        ventana = presenters.ventana_confiabilidad(periodicidad.duracion_dias)
         desde = hoy - timedelta(days=ventana)
         total_cerrados = PeriodoRevision.objects.filter(
             nave__naviera=naviera,
@@ -1298,8 +697,8 @@ def nave_detalle(request, slug, nave_id):
         periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
     )
     periodicidades = Periodicidad.objects.all().order_by("nombre")
-    periodos_abiertos_detalle = _construir_periodos_detalle(nave, periodos_abiertos)
-    historial_detalle = _construir_periodos_detalle(nave, historial, for_history=True)
+    periodos_abiertos_detalle = presenters.construir_periodos_detalle(nave, periodos_abiertos)
+    historial_detalle = presenters.construir_periodos_detalle(nave, historial, for_history=True)
     fallos_activos_nave = MatrizNaveRecurso.objects.filter(
         nave=nave,
         es_visible=True,
@@ -1362,16 +761,16 @@ def dashboard_kiosco(request, slug):
         )
     )
     periodicidades = Periodicidad.objects.all().order_by("nombre")
-    fichas_completadas_por_periodo = _contar_fichas_completas_por_periodo(
+    fichas_completadas_por_periodo = contar_fichas_completas_por_periodo(
         [periodo.id for periodo in periodos_abiertos]
     )
-    fichas_completadas_count = _contar_fichas_completas_por_periodo([periodo.id for periodo in historial])
+    fichas_completadas_count = contar_fichas_completas_por_periodo([periodo.id for periodo in historial])
 
     periodos_resumen = []
     hoy = timezone.localdate()
     # TODO: optimizar con annotate() en Fase 4
     for periodo in periodos_abiertos:
-        numero_periodo = _numero_periodo(periodo, nave)
+        numero_periodo = presenters.numero_periodo(periodo, nave)
         total_recursos = MatrizNaveRecurso.objects.filter(
             nave=nave,
             es_visible=True,
@@ -1382,7 +781,7 @@ def dashboard_kiosco(request, slug):
             {
                 "periodo": periodo,
                 "numero": numero_periodo,
-                "numero_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
+                "numero_label": presenters.etiqueta_numero_periodicidad(periodo.periodicidad),
                 "total_recursos": total_recursos,
                 "fichas_completadas": fichas_completadas,
                 "completado": fichas_completadas >= total_recursos,
@@ -1391,8 +790,8 @@ def dashboard_kiosco(request, slug):
         )
     for periodo in historial:
         periodo.fichas_completadas_count = fichas_completadas_count.get(periodo.id, 0)
-        periodo.numero_periodo = _numero_periodo(periodo, nave)
-        periodo.numero_periodo_label = _etiqueta_numero_periodicidad(periodo.periodicidad)
+        periodo.numero_periodo = presenters.numero_periodo(periodo, nave)
+        periodo.numero_periodo_label = presenters.etiqueta_numero_periodicidad(periodo.periodicidad)
 
     return render(
         request,
@@ -1459,39 +858,17 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
     except (TypeError, ValueError):
         error_recurso_id = None
 
-    recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
-    datos_anterior = _obtener_datos_periodo_anterior(nave, periodo)
+    recursos_lista = presenters.construir_recursos_lista_periodo(nave, periodo, slug=slug)
+    datos_anterior = repositories.get_datos_periodo_anterior(nave, periodo)
     for item in recursos_lista:
         ficha_anterior = datos_anterior.get(item["recurso"].id)
-        for checklist_item in item["checklist_items"]:
-            if ficha_anterior:
-                payload_item = ficha_anterior["payload_checklist"].get(checklist_item["key"], {})
-                if isinstance(payload_item, dict) and "cumple" in payload_item:
-                    checklist_item["periodo_anterior"] = {
-                        "estado": payload_item.get("cumple"),
-                        "obs": payload_item.get("observacion", ""),
-                    }
-                else:
-                    checklist_item["periodo_anterior"] = {"estado": None, "obs": ""}
-            else:
-                checklist_item["periodo_anterior"] = {"estado": None, "obs": ""}
+        item["periodo_anterior_json"] = presenters.construir_periodo_anterior_json(
+            ficha_anterior, item["checklist_items"]
+        )
 
-        item["periodo_anterior_json"] = json.dumps(
-            {
-                "obsGeneral": (
-                    ficha_anterior["observacion_general"] if ficha_anterior else ""
-                ),
-                "checklist": {
-                    checklist_item["key"]: checklist_item["periodo_anterior"]
-                    for checklist_item in item["checklist_items"]
-                },
-            },
-            ensure_ascii=False,
-        ).replace("</", "<\\/")
-
-    areas_grupos = _agrupar_recursos_por_area(recursos_lista)
+    areas_grupos = presenters.agrupar_recursos_por_area(recursos_lista)
     fichas_completadas_count = sum(1 for item in recursos_lista if item["ficha_completa"])
-    numero_periodo = _numero_periodo(periodo, nave)
+    numero_periodo = presenters.numero_periodo(periodo, nave)
 
     return render(
         request,
@@ -1500,7 +877,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
             "nave": nave,
             "periodo": periodo,
             "numero_periodo": numero_periodo,
-            "numero_periodo_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
+            "numero_periodo_label": presenters.etiqueta_numero_periodicidad(periodo.periodicidad),
             "recursos_lista": recursos_lista,
             "areas_grupos": areas_grupos,
             "fichas_completadas_count": fichas_completadas_count,
@@ -1534,8 +911,8 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     except PeriodoRevision.DoesNotExist:
         return redirect(f"/{slug}/kiosco/")
 
-    recursos_lista = _construir_recursos_lista_periodo(nave, periodo, slug=slug)
-    areas_grupos = _agrupar_recursos_por_area(recursos_lista)
+    recursos_lista = presenters.construir_recursos_lista_periodo(nave, periodo, slug=slug)
+    areas_grupos = presenters.agrupar_recursos_por_area(recursos_lista)
 
     _AREA_COLORS = {
         "salvamento":    {"bg": "#854d0e", "text": "#ffffff", "bg_light": "#fef9c3"},
@@ -1615,8 +992,8 @@ def kiosco_periodo_historial(request, slug, periodo_id):
         )
         return redirect(f"/{slug}/kiosco/")
 
-    recursos_lista = _construir_recursos_lista_periodo(nave, periodo, for_history=True)
-    areas_grupos = _agrupar_recursos_por_area(recursos_lista)
+    recursos_lista = presenters.construir_recursos_lista_periodo(nave, periodo, for_history=True)
+    areas_grupos = presenters.agrupar_recursos_por_area(recursos_lista)
 
     return render(
         request,
@@ -1624,8 +1001,8 @@ def kiosco_periodo_historial(request, slug, periodo_id):
         {
             "nave": nave,
             "periodo": periodo,
-            "numero_periodo": _numero_periodo(periodo, nave),
-            "numero_periodo_label": _etiqueta_numero_periodicidad(periodo.periodicidad),
+            "numero_periodo": presenters.numero_periodo(periodo, nave),
+            "numero_periodo_label": presenters.etiqueta_numero_periodicidad(periodo.periodicidad),
             "areas_grupos": areas_grupos,
             "recursos_lista": recursos_lista,
             "slug": slug,
@@ -1633,43 +1010,6 @@ def kiosco_periodo_historial(request, slug, periodo_id):
     )
 
 
-def _obtener_datos_periodo_anterior(nave, periodo):
-    """
-    Busca el período cerrado más reciente para nave+periodicidad
-    y retorna un dict {recurso_id: {estado_operativo, observacion_general, payload_checklist}}.
-    Solo incluye fichas con estado_operativo confirmado (not None).
-    Si no hay período anterior, retorna {}.
-    """
-    estados_cerrados = getattr(
-        TenantQueryService,
-        "ESTADOS_CERRADOS",
-        {"operativo", "observado", "fallido", "omitido", "caduco"},
-    )
-    periodo_anterior = (
-        PeriodoRevision.objects.filter(
-            nave=nave,
-            periodicidad=periodo.periodicidad,
-            estado__in=estados_cerrados,
-            fecha_termino__lt=periodo.fecha_inicio,
-        )
-        .order_by("-fecha_termino")
-        .first()
-    )
-    if not periodo_anterior:
-        return {}
-
-    fichas = FichaRegistro.objects.filter(
-        periodo=periodo_anterior,
-        estado_operativo__isnull=False,
-    )
-    return {
-        ficha.recurso_id: {
-            "estado_operativo": ficha.estado_operativo,
-            "observacion_general": ficha.observacion_general or "",
-            "payload_checklist": ficha.payload_checklist or {},
-        }
-        for ficha in fichas
-    }
 
 
 @tenant_member_required
@@ -1810,33 +1150,9 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         payload_checklist=payload_checklist_form,
         incluir_requisito_cantidad=matriz.cantidad > 1,
     )
-    datos_anterior = _obtener_datos_periodo_anterior(nave, periodo)
+    datos_anterior = repositories.get_datos_periodo_anterior(nave, periodo)
     ficha_anterior = datos_anterior.get(recurso.id)
-
-    for item in checklist_items:
-        if ficha_anterior:
-            payload_item = ficha_anterior["payload_checklist"].get(item["key"], {})
-            if isinstance(payload_item, dict) and "cumple" in payload_item:
-                item["periodo_anterior"] = {
-                    "estado": payload_item.get("cumple"),
-                    "obs": payload_item.get("observacion", ""),
-                }
-            else:
-                item["periodo_anterior"] = {"estado": None, "obs": ""}
-        else:
-            item["periodo_anterior"] = {"estado": None, "obs": ""}
-
-    obs_general_anterior = ficha_anterior["observacion_general"] if ficha_anterior else ""
-    periodo_anterior_json = json.dumps(
-        {
-            "obsGeneral": obs_general_anterior,
-            "checklist": {
-                item["key"]: item["periodo_anterior"]
-                for item in checklist_items
-            },
-        },
-        ensure_ascii=False,
-    ).replace("</", "<\\/")
+    periodo_anterior_json = presenters.construir_periodo_anterior_json(ficha_anterior, checklist_items)
 
     return render(
         request,
@@ -2459,7 +1775,7 @@ def api_periodos_nave(request, slug):
             )
         }
 
-    fichas_por_periodo = _contar_fichas_completas_por_periodo(periodo_ids)
+    fichas_por_periodo = contar_fichas_completas_por_periodo(periodo_ids)
 
     payload = {
         "nave": {
@@ -2496,7 +1812,7 @@ def api_recursos_periodo(request, slug, periodo_id):
     if error:
         return error
 
-    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    periodo = repositories.get_periodo_de_nave(nave, periodo_id)
     if periodo is None:
         return _json_error("Período no encontrado.", 404)
 
@@ -2553,7 +1869,7 @@ def api_detalle_recurso(request, slug, periodo_id, recurso_id):
     if error:
         return error
 
-    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    periodo = repositories.get_periodo_de_nave(nave, periodo_id)
     if periodo is None:
         return _json_error("Período no encontrado.", 404)
 
@@ -2629,7 +1945,7 @@ def api_crear_ficha(request, slug, periodo_id, recurso_id):
     if error:
         return error
 
-    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    periodo = repositories.get_periodo_de_nave(nave, periodo_id)
     if periodo is None:
         return _json_error("Período no encontrado.", 404)
 
@@ -2670,7 +1986,7 @@ def api_modificar_ficha(request, slug, periodo_id, recurso_id):
     if error:
         return error
 
-    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    periodo = repositories.get_periodo_de_nave(nave, periodo_id)
     if periodo is None:
         return _json_error("Período no encontrado.", 404)
 
@@ -2711,7 +2027,7 @@ def api_guardar_fichas_periodo(request, slug, periodo_id):
     if error:
         return error
 
-    periodo = _obtener_periodo_de_nave(nave, periodo_id)
+    periodo = repositories.get_periodo_de_nave(nave, periodo_id)
     if periodo is None or periodo.estado not in TenantQueryService.ESTADOS_ABIERTOS:
         return _json_error("Período no encontrado.", 404)
 

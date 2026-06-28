@@ -23,6 +23,21 @@ logger = logging.getLogger(__name__)
 CHECKLIST_CANTIDAD_KEY = "__cantidad__"
 
 
+def contar_fichas_completas_por_periodo(periodo_ids):
+    """
+    Retorna {periodo_id: int} con la cantidad de fichas completas por período.
+    Combina una query DB con la regla de negocio _es_ficha_completa.
+    """
+    conteos = {periodo_id: 0 for periodo_id in periodo_ids}
+    if not periodo_ids:
+        return conteos
+
+    for ficha in FichaRegistro.objects.filter(periodo_id__in=periodo_ids).select_related("recurso"):
+        if MotorPeriodos._es_ficha_completa(ficha):
+            conteos[ficha.periodo_id] += 1
+    return conteos
+
+
 class TenantQueryService:
     ESTADOS_ABIERTOS = {"pendiente", "en_proceso"}
 

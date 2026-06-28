@@ -1464,7 +1464,7 @@ class TestIntegracionMotorReglas(TestCase):
         no debe aparecer en el historial de ese período.
         """
         from datetime import timedelta
-        from inventory.views import _construir_recursos_lista_periodo
+        from inventory.presenters import construir_recursos_lista_periodo as _construir_recursos_lista_periodo
 
         nave = self._crear_nave("Nave Historial Fantasma", "INT-040", 15)
         periodo = self._get_periodo(nave)
@@ -1485,7 +1485,7 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertNotIn("Recurso Fantasma", nombres)
 
     def test_recursos_se_ordenan_por_segundo_tramo_del_codigo_dentro_del_area(self):
-        from inventory.views import _construir_recursos_lista_periodo
+        from inventory.presenters import construir_recursos_lista_periodo as _construir_recursos_lista_periodo
 
         area_salvamento = Area.objects.create(nombre="Salvamento")
         area_incendio = Area.objects.create(nombre="Incendio")
@@ -1549,7 +1549,7 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertEqual(codigos_incendio, ["2.3-Q", "2.10-Q"])
 
     def test_grupos_de_areas_se_ordenan_por_orden_y_no_por_nombre(self):
-        from inventory.views import _agrupar_recursos_por_area, _construir_recursos_lista_periodo
+        from inventory.presenters import agrupar_recursos_por_area as _agrupar_recursos_por_area, construir_recursos_lista_periodo as _construir_recursos_lista_periodo
 
         area_zeta = Area.objects.create(nombre="Zeta", orden=1)
         area_alfa = Area.objects.create(nombre="Alfa", orden=2)
@@ -1578,7 +1578,7 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertEqual([grupo["area"].id for grupo in grupos], [area_zeta.id, area_alfa.id])
 
     def test_registros_se_ordenan_por_codigo_dentro_del_area(self):
-        from inventory.views import _agrupar_registros_por_area
+        from inventory.presenters import agrupar_registros_por_area as _agrupar_registros_por_area
 
         area_salvamento = Area.objects.create(nombre="Salvamento")
         recurso_15 = self._crear_recurso(
@@ -1625,7 +1625,7 @@ class TestIntegracionMotorReglas(TestCase):
         )
 
     def test_numero_periodo_se_calcula_con_reset_anual_desde_agregado_en(self):
-        from inventory.views import _numero_periodo
+        from inventory.presenters import numero_periodo as _numero_periodo
 
         nave = self._crear_nave("Nave Periodos", "INT-043", 15)
         nave.agregado_en = timezone.make_aware(datetime(2026, 1, 1, 9, 0, 0))
@@ -1661,7 +1661,7 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertIsNone(_numero_periodo(periodo_anterior, nave))
 
     def test_construir_recursos_lista_periodo_expone_estado_ficha_pendiente(self):
-        from inventory.views import _construir_recursos_lista_periodo
+        from inventory.presenters import construir_recursos_lista_periodo as _construir_recursos_lista_periodo
 
         recurso = self._crear_recurso(
             nombre="Recurso Pendiente Persistido",
