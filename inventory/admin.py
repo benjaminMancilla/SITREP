@@ -3,15 +3,12 @@ from django.contrib import admin
 from accounts.models import Naviera
 from .models import (
     Area,
-    Dispositivo,
     FichaRegistro,
     MatrizNaveRecurso,
-    Nave,
     Periodicidad,
     PeriodoRevision,
     Proposito,
     Recurso,
-    Tripulacion,
 )
 from .services import MotorReglasSITREP
 
@@ -81,20 +78,6 @@ class MatrizNaveRecursoAdmin(admin.ModelAdmin):
     marcar_como_automatico.short_description = "Resetear bandera de modificación manual"
 
 
-@admin.register(Nave)
-class NaveAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "matricula", "naviera", "eslora", "is_active")
-    list_filter = ("naviera", "is_active")
-    actions = ["sincronizar_matriz"]
-
-    def sincronizar_matriz(self, request, queryset):
-        for nave in queryset:
-            MotorReglasSITREP.sincronizar_matriz_nave(nave)
-        self.message_user(request, f"Matriz sincronizada para {queryset.count()} nave(s).")
-
-    sincronizar_matriz.short_description = "Sincronizar MatrizNaveRecurso"
-
-
 @admin.register(FichaRegistro)
 class FichaRegistroAdmin(admin.ModelAdmin):
     list_display = ("recurso", "periodo", "usuario", "estado_operativo", "fecha_revision", "fue_modificada")
@@ -130,7 +113,7 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
  
     def importar_view(self, request):
         from inventory.management.commands.load_recursos import ejecutar_carga
-        from inventory.models import Naviera
+        from accounts.models import Naviera
  
         if not request.user.is_superuser:
             return HttpResponseForbidden("Solo superusuarios pueden importar recursos.")
@@ -203,8 +186,6 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
         return super().changelist_view(request, extra_context=extra_context)
 
 
-admin.site.register(Tripulacion)
-admin.site.register(Dispositivo)
 admin.site.register(Proposito, ImportarRecursosAdmin)
 admin.site.register(Periodicidad)
 admin.site.register(PeriodoRevision)

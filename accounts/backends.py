@@ -1,8 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
-# ponytail: Dispositivo se importa desde inventory hasta el split de fleet
-from inventory.models import Dispositivo
+from fleet.models import Dispositivo
 
 Usuario = get_user_model()
 

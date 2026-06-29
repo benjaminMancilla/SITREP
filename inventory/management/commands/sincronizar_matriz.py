@@ -4,7 +4,7 @@ import time
 from django.core.management.base import BaseCommand
 from django.db import OperationalError, connections
 
-from inventory.models import Nave
+from fleet.models import Nave
 from inventory.services import MotorReglasSITREP
 
 logger = logging.getLogger(__name__)

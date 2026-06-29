@@ -8,15 +8,13 @@ from django.utils import timezone
 
 from django.contrib.auth import get_user_model
 
+from fleet.models import Dispositivo, Nave, Tripulacion
 from .models import (
-    Dispositivo,
     FichaRegistro,
     MatrizNaveRecurso,
-    Nave,
     Periodicidad,
     PeriodoRevision,
     Recurso,
-    Tripulacion,
 )
 
 Usuario = get_user_model()

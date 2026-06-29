@@ -131,7 +131,8 @@ def get_brutos_urgencia(naviera):
     """
     from django.db.models import Count
 
-    from .models import MatrizNaveRecurso, Nave, PeriodoRevision
+    from fleet.models import Nave
+    from .models import MatrizNaveRecurso, PeriodoRevision
     from .services import TenantQueryService
 
     estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}

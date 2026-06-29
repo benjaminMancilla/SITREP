@@ -7,12 +7,11 @@ from django.utils import timezone
 from unittest.mock import patch
 
 from accounts.models import Naviera, Usuario
+from fleet.models import Dispositivo, Nave, Tripulacion
 from .models import (
     Area,
-    Dispositivo,
     FichaRegistro,
     MatrizNaveRecurso,
-    Nave,
     Periodicidad,
     PeriodoRevision,
     Proposito,
