@@ -37,7 +37,7 @@ def ejecutar_carga(json_data: list, naviera=None, dry_run: bool = False) -> dict
     Retorna estadísticas: {areas_creadas, recursos_creados, recursos_omitidos, errores, log}.
     naviera=None → recursos globales.
     """
-    from inventory.models import Area, Naviera, Periodicidad, Proposito, Recurso
+    from catalog.models import Area, Periodicidad, Proposito, Recurso
 
     stats = {
         "areas_creadas": 0,
@@ -68,7 +68,7 @@ def ejecutar_carga(json_data: list, naviera=None, dry_run: bool = False) -> dict
 
 
 def _procesar_entrada(entrada, naviera, dry_run, stats, log):
-    from inventory.models import Area, Periodicidad, Proposito, Recurso
+    from catalog.models import Area, Periodicidad, Proposito, Recurso
 
     nombre_area = entrada["area"]
     nombre_periodicidad = entrada["periodicidad"]
@@ -155,7 +155,7 @@ def _procesar_recurso(
     recurso_data, area, nombre_area, periodicidad,
     proposito_obj, naviera, dry_run, stats, log,
 ):
-    from inventory.models import Recurso
+    from catalog.models import Recurso
 
     nombre = recurso_data["nombre"]
     requerimientos = recurso_data["requerimientos"]

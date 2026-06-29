@@ -8,14 +8,11 @@ from unittest.mock import patch
 
 from accounts.models import Naviera, Usuario
 from fleet.models import Dispositivo, Nave, Tripulacion
+from catalog.models import Area, Periodicidad, Proposito, Recurso
 from .models import (
-    Area,
     FichaRegistro,
     MatrizNaveRecurso,
-    Periodicidad,
     PeriodoRevision,
-    Proposito,
-    Recurso,
 )
 from .services import MotorFichas, MotorPeriodos, MotorReglasSITREP, TenantQueryService
 

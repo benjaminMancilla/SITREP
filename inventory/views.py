@@ -18,14 +18,12 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from accounts.decorators import requiere_rol, tenant_member_required
+from catalog.models import Area, Periodicidad, Recurso
 from fleet.models import Dispositivo, Nave, Tripulacion
 from .models import (
-    Area,
     FichaRegistro,
     MatrizNaveRecurso,
-    Periodicidad,
     PeriodoRevision,
-    Recurso,
 )
 
 Usuario = get_user_model()
