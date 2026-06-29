@@ -22,5 +22,5 @@ from . import views as views_core
 urlpatterns = [
     path("", views_core.homepage, name="homepage"),
     path("admin/", admin.site.urls),
-    path("<slug:slug>/", include("inventory.urls", namespace="inventory")),
+    path("<slug:slug>/", include("sitrep.inventory.urls", namespace="inventory")),
 ]

@@ -1,11 +1,11 @@
-from django.contrib import admin
+﻿from django.contrib import admin
 from django.db.models import F
 from django.http import HttpResponseForbidden
 from django.template.response import TemplateResponse
 from django.urls import path
 import json
 
-from accounts.models import Naviera
+from sitrep.accounts.models import Naviera
 from .models import Area, Periodicidad, Proposito, Recurso
 
 
@@ -52,7 +52,7 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
         return custom + urls
 
     def importar_view(self, request):
-        from inventory.management.commands.load_recursos import ejecutar_carga
+        from sitrep.inventory.management.commands.load_recursos import ejecutar_carga
 
         if not request.user.is_superuser:
             return HttpResponseForbidden("Solo superusuarios pueden importar recursos.")

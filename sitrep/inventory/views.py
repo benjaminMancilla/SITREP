@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import re
 from datetime import date, timedelta
@@ -17,9 +17,9 @@ from django.utils import timezone
 
 from django.contrib.auth import get_user_model
 
-from accounts.decorators import requiere_rol, tenant_member_required
-from catalog.models import Area, Periodicidad, Recurso
-from fleet.models import Dispositivo, Nave, Tripulacion
+from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from sitrep.catalog.models import Area, Periodicidad, Recurso
+from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
 from .models import (
     FichaRegistro,
     MatrizNaveRecurso,

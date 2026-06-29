@@ -1,6 +1,6 @@
-from django.shortcuts import render
+﻿from django.shortcuts import render
 
-from accounts.models import Naviera
+from sitrep.accounts.models import Naviera
 
 
 def homepage(request):

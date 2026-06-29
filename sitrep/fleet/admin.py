@@ -1,7 +1,7 @@
-from django.contrib import admin
+﻿from django.contrib import admin
 
 from .models import Dispositivo, Nave, Tripulacion
-from inventory.services import MotorReglasSITREP
+from sitrep.inventory.services import MotorReglasSITREP
 
 
 @admin.register(Nave)

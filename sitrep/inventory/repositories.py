@@ -1,4 +1,4 @@
-"""
+﻿"""
 Capa de acceso a DB.
 
 Regla: cada función requiere naviera (o un objeto ya validado como nave/periodo
@@ -131,7 +131,7 @@ def get_brutos_urgencia(naviera):
     """
     from django.db.models import Count
 
-    from fleet.models import Nave
+    from sitrep.fleet.models import Nave
     from .models import MatrizNaveRecurso, PeriodoRevision
     from .services import TenantQueryService
 

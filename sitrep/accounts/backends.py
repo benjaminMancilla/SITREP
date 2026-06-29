@@ -1,7 +1,7 @@
-from django.contrib.auth import get_user_model
+﻿from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
-from fleet.models import Dispositivo
+from sitrep.fleet.models import Dispositivo
 
 Usuario = get_user_model()
 

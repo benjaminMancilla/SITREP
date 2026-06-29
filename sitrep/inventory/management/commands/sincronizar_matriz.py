@@ -1,11 +1,11 @@
-import logging
+﻿import logging
 import time
 
 from django.core.management.base import BaseCommand
 from django.db import OperationalError, connections
 
-from fleet.models import Nave
-from inventory.services import MotorReglasSITREP
+from sitrep.fleet.models import Nave
+from sitrep.inventory.services import MotorReglasSITREP
 
 logger = logging.getLogger(__name__)
 

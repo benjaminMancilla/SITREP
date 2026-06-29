@@ -1,4 +1,4 @@
-"""
+﻿"""
 inventory/management/commands/load_recursos.py
 
 Carga recursos y requerimientos desde el JSON generado por extract_recursos.py.
@@ -37,7 +37,7 @@ def ejecutar_carga(json_data: list, naviera=None, dry_run: bool = False) -> dict
     Retorna estadísticas: {areas_creadas, recursos_creados, recursos_omitidos, errores, log}.
     naviera=None → recursos globales.
     """
-    from catalog.models import Area, Periodicidad, Proposito, Recurso
+    from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
 
     stats = {
         "areas_creadas": 0,
@@ -68,7 +68,7 @@ def ejecutar_carga(json_data: list, naviera=None, dry_run: bool = False) -> dict
 
 
 def _procesar_entrada(entrada, naviera, dry_run, stats, log):
-    from catalog.models import Area, Periodicidad, Proposito, Recurso
+    from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
 
     nombre_area = entrada["area"]
     nombre_periodicidad = entrada["periodicidad"]
@@ -155,7 +155,7 @@ def _procesar_recurso(
     recurso_data, area, nombre_area, periodicidad,
     proposito_obj, naviera, dry_run, stats, log,
 ):
-    from catalog.models import Recurso
+    from sitrep.catalog.models import Recurso
 
     nombre = recurso_data["nombre"]
     requerimientos = recurso_data["requerimientos"]
@@ -216,7 +216,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from inventory.models import Naviera
+        from sitrep.inventory.models import Naviera
 
         json_path = Path(options["json_file"])
         if not json_path.exists():

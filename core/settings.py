@@ -54,17 +54,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'accounts',
-    'fleet',
-    'catalog',
-    'inventory',
+    'sitrep.accounts',
+    'sitrep.fleet',
+    'sitrep.catalog',
+    'sitrep.inventory',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'accounts.middleware.TenantMiddleware',
+    'sitrep.accounts.middleware.TenantMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -146,8 +146,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 AUTH_USER_MODEL = 'accounts.Usuario'
 
 AUTHENTICATION_BACKENDS = [
-    'accounts.backends.WebTenantBackend',
-    'accounts.backends.KioscoTenantBackend',
+    'sitrep.accounts.backends.WebTenantBackend',
+    'sitrep.accounts.backends.KioscoTenantBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
