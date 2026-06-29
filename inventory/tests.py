@@ -6,18 +6,17 @@ from django.urls import reverse
 from django.utils import timezone
 from unittest.mock import patch
 
+from accounts.models import Naviera, Usuario
 from .models import (
     Area,
     Dispositivo,
     FichaRegistro,
     MatrizNaveRecurso,
     Nave,
-    Naviera,
     Periodicidad,
     PeriodoRevision,
     Proposito,
     Recurso,
-    Usuario,
 )
 from .services import MotorFichas, MotorPeriodos, MotorReglasSITREP, TenantQueryService
 

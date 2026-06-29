@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'accounts',
     'inventory',
 ]
 
@@ -61,7 +62,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'inventory.middleware.TenantMiddleware',
+    'accounts.middleware.TenantMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -140,12 +141,11 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Inyección del Custom User Model para soporte Multi-Tenant
-AUTH_USER_MODEL = 'inventory.Usuario'
+AUTH_USER_MODEL = 'accounts.Usuario'
 
-# Auntenticación personalizada para cada vector (Tierra y Mar) y admin
 AUTHENTICATION_BACKENDS = [
-    'inventory.backends.WebTenantBackend',
-    'inventory.backends.KioscoTenantBackend',
+    'accounts.backends.WebTenantBackend',
+    'accounts.backends.KioscoTenantBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 

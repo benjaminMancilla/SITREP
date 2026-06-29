@@ -1,108 +1,11 @@
-import uuid
 import secrets
 
+from django.conf import settings
 from django.db import models
 from django.db.models import Q, UniqueConstraint
-from django.contrib.auth.models import AbstractUser
-
 from django.contrib.auth.hashers import make_password, check_password
 
 from core.tenant import TenantManager
-
-# ==========================================
-# CORE & AISLAMIENTO MULTI-TENANT
-# ==========================================
-
-class Naviera(models.Model):
-    """
-    TENANT Naviera. Empresa que opera naves y utiliza el sistema para gestionar 
-    su material y documentacion portuarias. Cada naviera es un tenant independiente, 
-    comparten base de datos pero se hace la distincion por ID de naviera.
-    """
-    nombre = models.CharField(max_length=255)
-    rut = models.CharField(max_length=10, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    slug = models.SlugField(
-        max_length=50, 
-        unique=True, 
-        null=True, 
-        blank=True, 
-        help_text="Identificador único para la URL (ej. transmarko)"
-    )
-
-    def __str__(self):
-        return self.nombre
-
-
-class Usuario(AbstractUser):
-    """
-    TENANT Usuario. Cada usuario pertenece a una naviera y tiene un rol (admin, mar, tierra, etc).
-    """
-    # Relacion con Naviera para identificar a que tenant pertenece cada usuario
-    # Se permite null/blank para facilitar la creación de superusuarios sin asignar naviera
-    naviera = models.ForeignKey(Naviera, on_delete=models.CASCADE, null=True, blank=True)
-    # Identificador basado en RUT para usuarios, con email opcional
-    # Rut admite XXX.XXX.XXX-X max_length=11 (sin contar puntos) para cubrir todos los formatos
-    rut = models.CharField(max_length=11, help_text="RUT del tripulante o administrador")
-    email = models.EmailField(null=True, blank=True)
-    rol = models.CharField(
-        max_length=20,
-        choices=[
-            ('admin_sitrep', 'Admin SITREP'),
-            ('admin_naviera', 'Admin Naviera'),
-            ('capitan', 'Admin Nave'),
-            ('tierra', 'Tierra'),
-            ('mar', 'Mar'),
-        ],
-        default='mar'
-    )
-    
-    pin_kiosco = models.CharField(
-        max_length=128, 
-        null=True, 
-        blank=True, 
-        help_text="PIN cifrado para acceso en Kiosco"
-    )
-    
-    class Meta:
-        # Permite que una persona pueda ser usuario en varias navieras.
-        unique_together = ('naviera', 'rut')  # Asegura que el RUT sea único dentro de cada naviera
-        
-    def save(self, *args, **kwargs):
-        """
-        Inyección de Username Sintético. Django exige un username único global.
-        Lo fabricamos silenciosamente combinando RUT y Naviera ID.
-        """
-        if not self.username:
-            nav_id = self.naviera.id if self.naviera else 'global'
-            self.username = f"{self.rut}_{nav_id}"
-            
-        super().save(*args, **kwargs)
-        
-    # Blindaje Soft Delete
-    def delete(self, *args, **kwargs):
-        """
-        Intercepta la orden de eliminación de la base de datos.
-        En lugar de borrar la fila (DELETE), la apaga lógicamente (UPDATE).
-        """
-        self.is_active = False
-        self.save()
-        
-    def set_pin(self, raw_pin):
-        """
-        Método para establecer el PIN del kiosco, cifrándolo antes de guardarlo.
-        """
-        self.pin_kiosco = make_password(raw_pin)
-        
-    def check_pin(self, raw_pin):
-        """Devuelve True si el PIN ingresado coincide con el hash guardado."""
-        if not self.pin_kiosco:
-            return False
-        return check_password(raw_pin, self.pin_kiosco)
-    
-    def __str__(self):
-        nombre_tenant = self.naviera.nombre if self.naviera else "SITREP Global"
-        return f"{self.rut} - {nombre_tenant} [{self.rol}]"
 
 
 class Nave(models.Model):
@@ -111,8 +14,7 @@ class Nave(models.Model):
     Las propiedades fisicas de la nave se almacenan en este modelo, y son vitales para la generacion
     automatica de la ficha de recursos de la nave.
     """
-    # Cada nave pertenece a solo una naviera
-    naviera = models.ForeignKey(Naviera, on_delete=models.CASCADE)
+    naviera = models.ForeignKey('accounts.Naviera', on_delete=models.CASCADE)
     nombre = models.CharField(max_length=255)
     matricula = models.CharField(max_length=30)
     
@@ -155,7 +57,7 @@ class Tripulacion(models.Model):
     están asignados a qué naves, y cuándo se hizo la asignación. Vital para 
     auditar que marineros pueden acceder a los recursos de cada nave.
     """
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='asignaciones_naves')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='asignaciones_naves')
     nave = models.ForeignKey(Nave, on_delete=models.CASCADE, related_name='tripulantes')
     asignado_en = models.DateTimeField(auto_now_add=True)
 
@@ -174,7 +76,7 @@ class Dispositivo(models.Model):
     HARDWARE BINDING: Representa un equipo físico autorizado (Tablet, PC) 
     instalado en una nave o instalación de la naviera.
     """
-    naviera = models.ForeignKey(Naviera, on_delete=models.CASCADE, related_name='dispositivos')
+    naviera = models.ForeignKey('accounts.Naviera', on_delete=models.CASCADE, related_name='dispositivos')
     nave = models.ForeignKey(Nave, on_delete=models.CASCADE, related_name='dispositivos')
     
     nombre = models.CharField(max_length=100, help_text="Ej: Tablet Puente Mando, PC Sala Máquinas")
@@ -395,8 +297,7 @@ class Recurso(models.Model):
     Los recursos poseen características que dependen de la nave (ej: eslora, arqueo, etc), 
     Estas características (cantidad, es_visible, etc) dependen de regla_aplicacion.
     """
-    # Aislamiento Híbrido: Null = Global (SITREP), ID = Privado (Naviera)
-    naviera = models.ForeignKey(Naviera, on_delete=models.CASCADE, null=True, blank=True, related_name='recursos_privados')
+    naviera = models.ForeignKey('accounts.Naviera', on_delete=models.CASCADE, null=True, blank=True, related_name='recursos_privados')
     
     # PROTECT: No permitimos borrar un propósito si hay recursos usándolo.
     proposito = models.ForeignKey(Proposito, on_delete=models.PROTECT)
@@ -561,7 +462,7 @@ class FichaRegistro(models.Model):
     periodo = models.ForeignKey(PeriodoRevision, on_delete=models.CASCADE, related_name='fichas')
     recurso = models.ForeignKey(Recurso, on_delete=models.PROTECT)
     # PROTECT al usuario: Mantiene el historial aunque el marinero se vaya (se complementa con el Soft Delete)
-    usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT) 
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_revision = models.DateTimeField(auto_now_add=True)
 
     # Datos de la ficha
@@ -587,7 +488,7 @@ class FichaRegistro(models.Model):
     # DETALLE DINÁMICO
     payload_checklist = models.JSONField(default=dict)
     modificado_por = models.ForeignKey(
-        Usuario,
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         null=True,
         blank=True,

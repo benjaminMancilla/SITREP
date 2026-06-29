@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-from inventory.models import Naviera
+from accounts.models import Naviera
 
 
 def homepage(request):

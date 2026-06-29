@@ -6,6 +6,8 @@ from django.db.models import Exists, F, OuterRef
 from django.http import Http404
 from django.utils import timezone
 
+from django.contrib.auth import get_user_model
+
 from .models import (
     Dispositivo,
     FichaRegistro,
@@ -15,8 +17,9 @@ from .models import (
     PeriodoRevision,
     Recurso,
     Tripulacion,
-    Usuario,
 )
+
+Usuario = get_user_model()
 
 logger = logging.getLogger(__name__)
 

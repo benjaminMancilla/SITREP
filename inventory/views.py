@@ -15,7 +15,9 @@ from django.template.loader import render_to_string
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from .decorators import requiere_rol, tenant_member_required
+from django.contrib.auth import get_user_model
+
+from accounts.decorators import requiere_rol, tenant_member_required
 from .models import (
     Area,
     Dispositivo,
@@ -26,8 +28,9 @@ from .models import (
     PeriodoRevision,
     Recurso,
     Tripulacion,
-    Usuario,
 )
+
+Usuario = get_user_model()
 from . import presenters, repositories
 from .permissions import tiene_rol_api_kiosco
 from .services import MotorFichas, MotorPeriodos, TenantQueryService, contar_fichas_completas_por_periodo
