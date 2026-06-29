@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     'sitrep.accounts',
     'sitrep.fleet',
     'sitrep.catalog',
-    'sitrep.inventory',
+    'sitrep.inspection',
 ]
 
 MIDDLEWARE = [

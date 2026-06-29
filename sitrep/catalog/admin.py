@@ -52,7 +52,7 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
         return custom + urls
 
     def importar_view(self, request):
-        from sitrep.inventory.management.commands.load_recursos import ejecutar_carga
+        from sitrep.inspection.management.commands.load_recursos import ejecutar_carga
 
         if not request.user.is_superuser:
             return HttpResponseForbidden("Solo superusuarios pueden importar recursos.")

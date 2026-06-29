@@ -216,7 +216,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from sitrep.inventory.models import Naviera
+        from sitrep.inspection.models import Naviera
 
         json_path = Path(options["json_file"])
         if not json_path.exists():

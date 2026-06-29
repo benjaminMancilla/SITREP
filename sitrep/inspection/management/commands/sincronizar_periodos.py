@@ -3,7 +3,7 @@ from django.db import connections
 from django.db import OperationalError
 import time
 
-from sitrep.inventory.services import MotorPeriodos
+from sitrep.inspection.services import MotorPeriodos
 
 class Command(BaseCommand):
     help = "Sincroniza periodos de revision para todas las naves activas."

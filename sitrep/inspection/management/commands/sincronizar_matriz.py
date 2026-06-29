@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db import OperationalError, connections
 
 from sitrep.fleet.models import Nave
-from sitrep.inventory.services import MotorReglasSITREP
+from sitrep.inspection.services import MotorReglasSITREP
 
 logger = logging.getLogger(__name__)
 
