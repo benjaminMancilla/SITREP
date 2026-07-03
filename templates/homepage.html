@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}SITREP — Seguridad operacional marítima{% endblock %}
 
@@ -16,7 +17,10 @@
 <div class="sticky top-0 z-50 border-b border-surface-border bg-surface">
   <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
     <div class="flex h-14 items-center justify-between">
-      <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+      <a href="#" class="flex items-center gap-2.5">
+        <img src="{% static 'img/logo_color.svg' %}" class="h-7 w-7 shrink-0" alt="">
+        <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+      </a>
       <nav class="hidden items-center gap-6 sm:flex">
         <a href="#que-hace" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Plataforma</a>
         <a href="#privacidad" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Privacidad</a>
@@ -63,6 +67,7 @@
 
     {# Contexto de producto — segundo en DOM (mobile), columna izquierda en desktop #}
     <div class="order-2 lg:order-1 lg:pt-2">
+      <img src="{% static 'img/logo_color.svg' %}" class="mb-6 h-14 w-14 shrink-0" alt="SITREP">
       <h1 class="text-[28px] font-bold leading-[1.2] text-navy sm:text-[32px]" style="text-wrap: balance">
         Seguridad operacional para flotas marítimas.
       </h1>
