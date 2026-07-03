@@ -141,6 +141,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Inyección del Custom User Model para soporte Multi-Tenant
 AUTH_USER_MODEL = 'accounts.Usuario'
