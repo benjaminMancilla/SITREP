@@ -824,7 +824,7 @@ class MotorFichas:
                     periodo=periodo,
                     recurso=recurso,
                     usuario=usuario,
-                    estado_ficha="en_progreso",
+                    estado_ficha=cls.calcular_estado_ficha(recurso, estado_operativo, payload_checklist, cantidad=matriz.cantidad),
                     estado_operativo=estado_operativo,
                     observacion_general=observacion_general,
                     payload_checklist=payload_checklist,
