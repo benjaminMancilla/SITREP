@@ -633,9 +633,10 @@ class MotorFichas:
         ).first()
 
     @classmethod
-    def validar_payload_checklist(cls, recurso, payload_checklist, cantidad=0):
+    def validar_payload_checklist(cls, recurso, payload_checklist, cantidad=0, require_cumple=False):
         """
         Evalúa si el payload incluye todos los requerimientos del recurso.
+        Con require_cumple=True verifica además que cada item tenga el campo 'cumple'.
         Retorna (esta_completo, faltantes).
         """
         definicion = cls.construir_definicion_checklist(recurso, cantidad)
@@ -644,31 +645,20 @@ class MotorFichas:
 
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
 
-        faltantes = [
-            item["label"]
-            for item in definicion
-            if item["key"] not in payload_checklist
-        ]
-        if faltantes:
-            return False, faltantes
-        return True, []
-
-    @classmethod
-    def validar_payload_checklist_completo(cls, recurso, payload_checklist, cantidad=0):
-        definicion = cls.construir_definicion_checklist(recurso, cantidad)
-        if not definicion:
-            return True, []
-
-        payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-        faltantes = []
-        for item_def in definicion:
-            item = payload_checklist.get(item_def["key"])
-            if not isinstance(item, dict) or "cumple" not in item:
-                faltantes.append(item_def["label"])
-
-        if faltantes:
-            return False, faltantes
-        return True, []
+        if require_cumple:
+            faltantes = [
+                item["label"]
+                for item in definicion
+                if not isinstance(payload_checklist.get(item["key"]), dict)
+                or "cumple" not in payload_checklist.get(item["key"], {})
+            ]
+        else:
+            faltantes = [
+                item["label"]
+                for item in definicion
+                if item["key"] not in payload_checklist
+            ]
+        return not bool(faltantes), faltantes
 
     @classmethod
     def validar_observaciones_requerimientos(cls, recurso, payload_checklist, cantidad=0):
@@ -740,10 +730,8 @@ class MotorFichas:
         ):
             return False
 
-        checklist_completo, _faltantes = cls.validar_payload_checklist_completo(
-            recurso,
-            payload_checklist,
-            cantidad=cantidad,
+        checklist_completo, _faltantes = cls.validar_payload_checklist(
+            recurso, payload_checklist, cantidad=cantidad, require_cumple=True,
         )
         if not checklist_completo:
             return None
@@ -759,10 +747,8 @@ class MotorFichas:
     @classmethod
     def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist, cantidad=0):
         payload = cls.normalizar_payload_checklist(payload_checklist)
-        checklist_completo, _faltantes = cls.validar_payload_checklist_completo(
-            recurso,
-            payload,
-            cantidad=cantidad,
+        checklist_completo, _faltantes = cls.validar_payload_checklist(
+            recurso, payload, cantidad=cantidad, require_cumple=True,
         )
         if estado_operativo is not None and checklist_completo:
             return "completa"
@@ -785,7 +771,7 @@ class MotorFichas:
         es_valido, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad)
         if estado_operativo is not None and not es_valido:
             raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
-        checklist_completo, faltantes = cls.validar_payload_checklist_completo(recurso, payload, cantidad=cantidad)
+        checklist_completo, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad, require_cumple=True)
         if estado_operativo is not None and not checklist_completo:
             raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
         obs_valido, sin_obs = cls.validar_observaciones_requerimientos(recurso, payload_checklist_raw, cantidad=cantidad)
