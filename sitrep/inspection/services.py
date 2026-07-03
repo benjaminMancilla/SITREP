@@ -726,13 +726,19 @@ class MotorFichas:
         """
         Deriva el estado operativo desde el checklist:
         - True si no hay requerimientos o si todos están cumplidos
-        - False si el checklist está completo y al menos uno falló
-        - None si aún faltan requerimientos por registrar
+        - False si al menos uno falló (aunque haya items sin responder)
+        - None si aún faltan requerimientos por registrar y ninguno falló
         """
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
         definicion = cls.construir_definicion_checklist(recurso, cantidad)
         if not definicion:
             return True
+
+        if any(
+            payload_checklist.get(item["key"], {}).get("cumple") is False
+            for item in definicion
+        ):
+            return False
 
         checklist_completo, _faltantes = cls.validar_payload_checklist_completo(
             recurso,
@@ -741,12 +747,6 @@ class MotorFichas:
         )
         if not checklist_completo:
             return None
-
-        if any(
-            payload_checklist.get(item["key"], {}).get("cumple") is False
-            for item in definicion
-        ):
-            return False
 
         if all(
             payload_checklist.get(item["key"], {}).get("cumple") is True
@@ -851,7 +851,8 @@ class MotorFichas:
                     "Ya existe una ficha para este recurso en este período. Use modificar_ficha()."
                 ) from exc
 
-            if estado_operativo is not None:
+            # NULL + prev FALLO -> stays FALLO; all other combinations update
+            if estado_operativo is not None or matriz.ultimo_estado_operativo is not False:
                 matriz.es_fallo_nuevo = (
                     estado_operativo is False
                     and matriz.ultimo_estado_operativo_anterior is not False
@@ -943,7 +944,8 @@ class MotorFichas:
                 ]
             )
 
-            if estado_operativo is not None:
+            # NULL + prev FALLO -> stays FALLO; all other combinations update
+            if estado_operativo is not None or matriz.ultimo_estado_operativo is not False:
                 matriz.es_fallo_nuevo = (
                     estado_operativo is False
                     and matriz.ultimo_estado_operativo_anterior is not False
