@@ -636,7 +636,7 @@ class MotorFichas:
     def validar_payload_checklist(cls, recurso, payload_checklist, cantidad=0, require_cumple=False):
         """
         Evalúa si el payload incluye todos los requerimientos del recurso.
-        Con require_cumple=True verifica además que cada item tenga el campo 'cumple'.
+        Con require_cumple=True verifica además que cada item tenga 'cumple' con valor no nulo.
         Retorna (esta_completo, faltantes).
         """
         definicion = cls.construir_definicion_checklist(recurso, cantidad)
@@ -649,8 +649,7 @@ class MotorFichas:
             faltantes = [
                 item["label"]
                 for item in definicion
-                if not isinstance(payload_checklist.get(item["key"]), dict)
-                or "cumple" not in payload_checklist.get(item["key"], {})
+                if payload_checklist.get(item["key"], {}).get("cumple") is None
             ]
         else:
             faltantes = [
