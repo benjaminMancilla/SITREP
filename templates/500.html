@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITREP — Error</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: { DEFAULT: '#0f2d4a' },
+                        brand: { DEFAULT: '#1d4ed8' },
+                        surface: { DEFAULT: '#f0f4f8' },
+                        ink: { DEFAULT: '#1e293b', secondary: '#475569', muted: '#94a3b8' },
+                    },
+                    fontFamily: { sans: ['IBM Plex Sans', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-surface font-sans text-ink antialiased flex flex-col">
+
+    <div class="sticky top-0 border-b border-slate-200 bg-surface">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-14 items-center">
+                <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-1 items-center justify-center px-4 py-20">
+        <div class="max-w-md text-center">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-ink-muted mb-4">Error 500</p>
+            <h1 class="text-[26px] font-bold leading-snug text-navy">Ups, algo salió mal.</h1>
+            <p class="mt-4 text-[15px] leading-6 text-ink-secondary">
+                Intenta recargar la página. Si el problema persiste luego de varios intentos, contacta al administrador del sistema.
+            </p>
+            <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                    onclick="location.reload()"
+                    class="rounded-lg bg-navy px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-navy/85"
+                >
+                    Recargar página
+                </button>
+                <a
+                    href="/"
+                    class="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-[13px] font-semibold text-ink-secondary transition-colors hover:text-ink"
+                >
+                    Ir al inicio
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="border-t border-slate-200 py-6">
+        <div class="mx-auto max-w-6xl px-4 text-center">
+            <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+        </div>
+    </footer>
+
+</body>
+</html>
