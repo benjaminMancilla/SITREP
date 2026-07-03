@@ -9,3 +9,7 @@ db.sqlite3
 .codex
 /docs
 /scripts
+.claude
+CLAUDE.md
+.agents
+graphify-out
