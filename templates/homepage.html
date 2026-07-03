@@ -1,83 +1,228 @@
 {% extends 'base.html' %}
 
-{% block title %}SITREP{% endblock %}
+{% block title %}SITREP — Seguridad operacional marítima{% endblock %}
 
-{% block body_class %}min-h-screen bg-[#edf3f8] font-sans text-ink antialiased{% endblock %}
+{% block extra_head %}
+<style>
+  html { scroll-behavior: smooth; }
+</style>
+{% endblock %}
+
+{% block body_class %}min-h-screen bg-surface font-sans text-ink antialiased{% endblock %}
 
 {% block layout %}
-    <div class="relative overflow-hidden">
-        <div class="absolute inset-x-0 top-0 h-[340px] bg-[radial-gradient(circle_at_top_left,_rgba(29,78,216,0.14),_transparent_40%),radial-gradient(circle_at_top_right,_rgba(15,45,74,0.14),_transparent_38%)]"></div>
 
-        <main class="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-            <header class="mb-8 flex flex-col gap-4 border-b border-white/70 pb-6 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <p class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</p>
-                    <h1 class="mt-3 max-w-3xl text-4xl font-bold leading-tight text-navy sm:text-5xl">
-                        Seguridad operacional para flotas marítimas.
-                    </h1>
-                </div>
-                <div class="rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm text-ink-secondary shadow-sm backdrop-blur">
-                    {{ navieras|length }} naviera{{ navieras|length|pluralize }} disponible{{ navieras|length|pluralize }}
-                </div>
-            </header>
-
-            <section class="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-                <div class="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-[0_20px_70px_rgba(15,45,74,0.08)] backdrop-blur">
-                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand">Acceso centralizado</p>
-                    <p class="mt-5 max-w-2xl text-lg leading-8 text-ink-secondary">
-                        SITREP reúne navegación, tripulación, terminales de bitácora y trazabilidad de revisiones en un punto de acceso por naviera.
-                    </p>
-
-                    <div class="mt-8 grid gap-4 sm:grid-cols-3">
-                        <div class="rounded-2xl border border-surface-border bg-[#f8fbfd] p-4">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Operación</p>
-                            <p class="mt-2 text-lg font-semibold text-navy">Períodos y recursos</p>
-                        </div>
-                        <div class="rounded-2xl border border-surface-border bg-[#f8fbfd] p-4">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Tierra</p>
-                            <p class="mt-2 text-lg font-semibold text-navy">Usuarios y naves</p>
-                        </div>
-                        <div class="rounded-2xl border border-surface-border bg-[#f8fbfd] p-4">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Bitácora</p>
-                            <p class="mt-2 text-lg font-semibold text-navy">Registro en terreno</p>
-                        </div>
-                    </div>
-                </div>
-
-                <aside class="rounded-[28px] border border-navy/10 bg-navy p-8 text-white shadow-[0_20px_70px_rgba(15,45,74,0.18)]">
-                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-200">Ingresar</p>
-                    <p class="mt-4 text-base leading-7 text-white/72">
-                        Selecciona una naviera para entrar al tenant correspondiente.
-                    </p>
-
-                    {% if navieras %}
-                        <div class="mt-6 space-y-3">
-                            {% for naviera in navieras %}
-                                <a
-                                    href="{% url 'inventory:login_tierra' slug=naviera.slug %}"
-                                    class="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 transition hover:border-blue-200/50 hover:bg-white/[0.1]"
-                                >
-                                    <div class="min-w-0">
-                                        <p class="truncate text-base font-semibold text-white">{{ naviera.nombre }}</p>
-                                        <p class="mt-1 font-mono text-[12px] text-blue-200/80">{{ naviera.slug }}</p>
-                                    </div>
-                                    <span class="inline-flex shrink-0 items-center rounded-full border border-blue-200/35 bg-blue-300/10 px-3 py-1 text-xs font-semibold text-blue-100">
-                                        Ingresar
-                                    </span>
-                                </a>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="mt-6 rounded-2xl border border-blue-200/20 bg-white/[0.06] px-5 py-4 text-sm text-blue-100/90">
-                            No hay navieras disponibles en este momento.
-                        </div>
-                    {% endif %}
-                </aside>
-            </section>
-
-            <footer class="mt-8 border-t border-white/70 pt-5 text-sm text-ink-muted">
-                Plataforma pública de entrada para tenants SITREP.
-            </footer>
-        </main>
+{# ── Topbar ─────────────────────────────────────────────────────────────────── #}
+<div class="sticky top-0 z-50 border-b border-surface-border bg-surface">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="flex h-14 items-center justify-between">
+      <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+      <nav class="hidden items-center gap-6 sm:flex">
+        <a href="#que-hace" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Plataforma</a>
+        <a href="#privacidad" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Privacidad</a>
+        <a href="#contacto" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Contacto</a>
+      </nav>
     </div>
+  </div>
+</div>
+
+{# ── Hero ────────────────────────────────────────────────────────────────────── #}
+<section class="mx-auto max-w-6xl px-4 pb-20 pt-14 sm:px-6 lg:px-8">
+  <div class="grid gap-8 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-14">
+
+    {# Naviera selector — primero en el DOM (mobile), columna derecha en desktop #}
+    <aside class="order-1 rounded-2xl border border-navy/15 bg-navy p-6 lg:order-2">
+      <p class="text-[12px] font-medium text-white/50">Selecciona tu naviera</p>
+
+      {% if navieras %}
+        <div class="mt-3 space-y-2">
+          {% for naviera in navieras %}
+            <a
+              href="{% url 'inventory:login_tierra' slug=naviera.slug %}"
+              class="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 transition-colors hover:border-brand-light/35 hover:bg-white/[0.10]"
+            >
+              <div class="min-w-0">
+                <p class="truncate text-[15px] font-semibold text-white">{{ naviera.nombre }}</p>
+                <p class="mt-0.5 font-mono text-[11px] leading-none text-blue-200/65">{{ naviera.slug }}</p>
+              </div>
+              <svg class="h-4 w-4 shrink-0 text-white/30" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M5 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="mt-4 text-[13px] text-white/45">Aún no hay accesos configurados.</p>
+      {% endif %}
+
+      <p class="mt-5 border-t border-white/10 pt-4 text-[12px] text-white/35">
+        ¿No encuentras tu naviera?
+        <a href="#contacto" class="text-blue-200/60 transition-colors hover:text-blue-200">Contacta al administrador →</a>
+      </p>
+    </aside>
+
+    {# Contexto de producto — segundo en DOM (mobile), columna izquierda en desktop #}
+    <div class="order-2 lg:order-1 lg:pt-2">
+      <h1 class="text-[28px] font-bold leading-[1.2] text-navy sm:text-[32px]" style="text-wrap: balance">
+        Seguridad operacional para flotas marítimas.
+      </h1>
+      <p class="mt-4 text-[16px] leading-7 text-ink-secondary" style="max-width: 52ch">
+        SITREP permite a las navieras registrar y trazabilizar las inspecciones periódicas de seguridad a bordo, desde la administración en tierra hasta la bitácora de cada nave.
+      </p>
+      <a href="#que-hace" class="mt-6 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink">
+        Conoce la plataforma
+        <svg class="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 2v10M2 7l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<hr class="border-surface-border">
+
+{# ── Qué hace ────────────────────────────────────────────────────────────────── #}
+<section id="que-hace" class="scroll-mt-14 bg-white py-20">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div style="max-width: 56ch">
+      <h2 class="text-[22px] font-bold text-navy">¿Qué gestiona SITREP?</h2>
+      <p class="mt-3 text-[16px] leading-7 text-ink-secondary">
+        Una plataforma multi-tenant para la gestión de inspecciones de seguridad en flota marítima. Cada naviera opera en su propio espacio aislado dentro del sistema.
+      </p>
+    </div>
+    <div class="mt-12 grid gap-y-10 sm:grid-cols-3 sm:gap-x-12">
+      <div>
+        <h3 class="text-[15px] font-bold text-navy">Recursos e inspecciones</h3>
+        <p class="mt-2 text-[15px] leading-6 text-ink-secondary">
+          Define el catálogo de recursos de seguridad por nave y registra su estado en períodos activos. Cada inspección queda trazada con quién revisó y cuándo.
+        </p>
+      </div>
+      <div>
+        <h3 class="text-[15px] font-bold text-navy">Administración desde tierra</h3>
+        <p class="mt-2 text-[15px] leading-6 text-ink-secondary">
+          El equipo administrativo gestiona la flota, configura naves y usuarios, abre períodos y monitorea el cumplimiento en tiempo real desde cualquier navegador.
+        </p>
+      </div>
+      <div>
+        <h3 class="text-[15px] font-bold text-navy">Registro a bordo</h3>
+        <p class="mt-2 text-[15px] leading-6 text-ink-secondary">
+          Los tripulantes acceden desde la bitácora digital de la nave. Interfaz diseñada para cubierta: flujo directo, sin fricción, sin capacitación extensa.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── Cómo funciona ───────────────────────────────────────────────────────────── #}
+<section class="bg-surface py-20">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <h2 class="text-[22px] font-bold text-navy">¿Cómo funciona?</h2>
+    <div class="mt-8 grid gap-4 lg:grid-cols-2">
+
+      <div class="rounded-xl border border-surface-border bg-white p-8">
+        <span class="inline-block rounded-full bg-navy px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">Tierra</span>
+        <h3 class="mt-5 text-[18px] font-bold leading-tight text-navy">El equipo administrativo configura y monitorea</h3>
+        <p class="mt-3 text-[15px] leading-6 text-ink-secondary">
+          Desde su panel, tierra abre períodos de inspección, asigna recursos al catálogo de cada nave, gestiona tripulación y visualiza el estado de cumplimiento en tiempo real.
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-surface-border bg-white p-8">
+        <span class="inline-block rounded-full bg-navy px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">Bitácora</span>
+        <h3 class="mt-5 text-[18px] font-bold leading-tight text-navy">El tripulante registra desde la nave</h3>
+        <p class="mt-3 text-[15px] leading-6 text-ink-secondary">
+          Accede con su RUT y PIN desde la tablet fija a bordo. Marca el estado de cada recurso — operativo, con falla o en proceso — y el sistema registra la trazabilidad automáticamente.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{# ── Privacidad y datos ──────────────────────────────────────────────────────── #}
+<section id="privacidad" class="scroll-mt-14 bg-navy py-20">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="grid gap-10 lg:grid-cols-2 lg:items-start">
+
+      <div>
+        <h2 class="text-[22px] font-bold text-white">Tus datos, solo tuyos</h2>
+        <p class="mt-4 text-[16px] leading-7 text-white/65">
+          SITREP opera con arquitectura multi-tenant estricta. Cada naviera accede únicamente a sus propios datos: no hay cruce de información entre clientes, y ningún usuario puede ver las operaciones de otra organización.
+        </p>
+        {# TODO: reemplazar href con URL real de política de privacidad #}
+        <a href="#" class="mt-6 inline-block text-[13px] font-medium text-blue-200/70 transition-colors hover:text-blue-200">
+          Política de privacidad →
+        </a>
+      </div>
+
+      <ul class="space-y-4 lg:pt-1" role="list">
+        <li class="flex items-start gap-3">
+          <span class="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-ok" aria-hidden="true"></span>
+          <span class="text-[15px] leading-6 text-white/65">Espacio de datos completamente aislado por naviera.</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-ok" aria-hidden="true"></span>
+          <span class="text-[15px] leading-6 text-white/65">Acceso autenticado por tenant: sin cruce entre organizaciones.</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-ok" aria-hidden="true"></span>
+          <span class="text-[15px] leading-6 text-white/65">Los registros de inspección son accesibles únicamente por la naviera que los generó.</span>
+        </li>
+      </ul>
+
+    </div>
+  </div>
+</section>
+
+{# ── Contacto ────────────────────────────────────────────────────────────────── #}
+<section id="contacto" class="scroll-mt-14 bg-white py-20">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="grid gap-12 lg:grid-cols-2">
+
+      <div>
+        <h2 class="text-[22px] font-bold text-navy">¿Quiénes somos?</h2>
+        <p class="mt-4 text-[16px] leading-7 text-ink-secondary" style="max-width: 50ch">
+          {# TODO: reemplazar con descripción real de la empresa cliente #}
+          [EMPRESA] desarrolló SITREP como plataforma especializada en trazabilidad de seguridad para la industria marítima.
+        </p>
+        <div class="mt-6 flex h-12 w-36 items-center justify-center rounded-lg border border-surface-border bg-surface">
+          <span class="font-mono text-[11px] text-ink-muted">[LOGO]</span>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-[22px] font-bold text-navy">Contacto</h2>
+        <div class="mt-5 space-y-5">
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-muted">Empresa</p>
+            <p class="mt-1 text-[15px] text-ink">[EMPRESA]</p>{# TODO: nombre real de la empresa #}
+          </div>
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-muted">Email</p>
+            {# TODO: reemplazar [EMAIL] con el email real de contacto #}
+            <a href="mailto:[EMAIL]" class="mt-1 block text-[15px] font-medium text-brand transition-colors hover:text-brand-dark">[EMAIL]</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{# ── Footer ──────────────────────────────────────────────────────────────────── #}
+<footer class="border-t border-surface-border bg-surface py-8">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+      <div class="flex flex-wrap items-center gap-4 text-[12px] text-ink-muted">
+        {# TODO: reemplazar href con URL real de política de privacidad #}
+        <a href="#" class="transition-colors hover:text-ink">Política de privacidad</a>
+        <span aria-hidden="true">·</span>
+        <span>© {% now "Y" %} [EMPRESA]. Todos los derechos reservados.</span>{# TODO: nombre real de la empresa #}
+      </div>
+    </div>
+  </div>
+</footer>
+
 {% endblock %}
