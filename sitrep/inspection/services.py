@@ -777,6 +777,42 @@ class MotorFichas:
         return "en_progreso"
 
     @classmethod
+    def _validar_payload_o_raise(cls, recurso, estado_operativo, payload_checklist_raw, cantidad):
+        """Normaliza y valida el payload; retorna el payload normalizado o lanza ValueError."""
+        payload = cls.normalizar_payload_checklist(payload_checklist_raw)
+        # construir_definicion_checklist ya incluye __cantidad__ cuando cantidad > 1.
+        # La validación de presencia aplica solo cuando estado_operativo is not None.
+        es_valido, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad)
+        if estado_operativo is not None and not es_valido:
+            raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
+        checklist_completo, faltantes = cls.validar_payload_checklist_completo(recurso, payload, cantidad=cantidad)
+        if estado_operativo is not None and not checklist_completo:
+            raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
+        obs_valido, sin_obs = cls.validar_observaciones_requerimientos(recurso, payload_checklist_raw, cantidad=cantidad)
+        if not obs_valido:
+            raise ValueError(f"Los siguientes requerimientos fallados requieren observación: {sin_obs}")
+        if not cls.validar_estado_operativo(recurso, estado_operativo, payload, cantidad=cantidad):
+            raise ValueError("No se puede marcar el recurso como operativo si faltan requerimientos por cumplir.")
+        return payload
+
+    @classmethod
+    def _actualizar_estado_matriz(cls, matriz, estado_operativo):
+        """Aplica las reglas de transición de estado en ultimo_estado_operativo."""
+        # NULL + prev FALLO → stays FALLO; all other combinations update
+        if estado_operativo is not None or matriz.ultimo_estado_operativo is not False:
+            matriz.es_fallo_nuevo = (
+                estado_operativo is False
+                and matriz.ultimo_estado_operativo_anterior is not False
+            )
+            matriz.ultimo_estado_operativo = estado_operativo
+            matriz.ultimo_estado_operativo_en = timezone.now()
+            matriz.save(update_fields=[
+                "ultimo_estado_operativo",
+                "ultimo_estado_operativo_en",
+                "es_fallo_nuevo",
+            ])
+
+    @classmethod
     def crear_ficha(
         cls,
         periodo,
@@ -794,47 +830,9 @@ class MotorFichas:
             if matriz is None:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
-            payload_checklist_original = payload_checklist
-            payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-            es_valido, faltantes = cls.validar_payload_checklist(
-                recurso,
-                payload_checklist,
-                cantidad=matriz.cantidad,
+            payload_checklist = cls._validar_payload_o_raise(
+                recurso, estado_operativo, payload_checklist, matriz.cantidad
             )
-            # construir_definicion_checklist ya incluye __cantidad__ cuando cantidad > 1.
-            # La validación de presencia aplica solo cuando estado_operativo is not None.
-            if estado_operativo is not None and not es_valido:
-                raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
-            checklist_completo, faltantes = cls.validar_payload_checklist_completo(
-                recurso,
-                payload_checklist,
-                cantidad=matriz.cantidad,
-            )
-            if estado_operativo is not None and not checklist_completo:
-                raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
-            obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
-                recurso,
-                payload_checklist_original,
-                cantidad=matriz.cantidad,
-            )
-            if not obs_valido:
-                raise ValueError(
-                    f"Los siguientes requerimientos fallados requieren observación: {sin_obs}"
-                )
-            if not cls.validar_estado_operativo(
-                recurso,
-                estado_operativo,
-                payload_checklist,
-                cantidad=matriz.cantidad,
-            ):
-                raise ValueError(
-                    "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
-                )
-
-            if FichaRegistro.objects.filter(periodo=periodo, recurso=recurso).exists():
-                raise ValueError(
-                    "Ya existe una ficha para este recurso en este período. Use modificar_ficha()."
-                )
 
             try:
                 ficha = FichaRegistro.objects.create(
@@ -851,20 +849,7 @@ class MotorFichas:
                     "Ya existe una ficha para este recurso en este período. Use modificar_ficha()."
                 ) from exc
 
-            # NULL + prev FALLO -> stays FALLO; all other combinations update
-            if estado_operativo is not None or matriz.ultimo_estado_operativo is not False:
-                matriz.es_fallo_nuevo = (
-                    estado_operativo is False
-                    and matriz.ultimo_estado_operativo_anterior is not False
-                )
-                matriz.ultimo_estado_operativo = estado_operativo
-                matriz.ultimo_estado_operativo_en = timezone.now()
-                matriz.save(update_fields=[
-                    "ultimo_estado_operativo",
-                    "ultimo_estado_operativo_en",
-                    "es_fallo_nuevo",
-                ])
-
+            cls._actualizar_estado_matriz(matriz, estado_operativo)
             MotorPeriodos.sincronizar_estado_periodo_abierto(periodo)
             return ficha
 
@@ -885,42 +870,9 @@ class MotorFichas:
             if matriz is None:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
-            payload_checklist_original = payload_checklist
-            payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-            es_valido, faltantes = cls.validar_payload_checklist(
-                ficha.recurso,
-                payload_checklist,
-                cantidad=matriz.cantidad,
+            payload_checklist = cls._validar_payload_o_raise(
+                ficha.recurso, estado_operativo, payload_checklist, matriz.cantidad
             )
-            # construir_definicion_checklist ya incluye __cantidad__ cuando cantidad > 1.
-            # La validación de presencia aplica solo cuando estado_operativo is not None.
-            if estado_operativo is not None and not es_valido:
-                raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
-            checklist_completo, faltantes = cls.validar_payload_checklist_completo(
-                ficha.recurso,
-                payload_checklist,
-                cantidad=matriz.cantidad,
-            )
-            if estado_operativo is not None and not checklist_completo:
-                raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
-            obs_valido, sin_obs = cls.validar_observaciones_requerimientos(
-                ficha.recurso,
-                payload_checklist_original,
-                cantidad=matriz.cantidad,
-            )
-            if not obs_valido:
-                raise ValueError(
-                    f"Los siguientes requerimientos fallados requieren observación: {sin_obs}"
-                )
-            if not cls.validar_estado_operativo(
-                ficha.recurso,
-                estado_operativo,
-                payload_checklist,
-                cantidad=matriz.cantidad,
-            ):
-                raise ValueError(
-                    "No se puede marcar el recurso como operativo si faltan requerimientos por cumplir."
-                )
 
             ficha.estado_ficha = cls.calcular_estado_ficha(
                 recurso=ficha.recurso,
@@ -944,19 +896,6 @@ class MotorFichas:
                 ]
             )
 
-            # NULL + prev FALLO -> stays FALLO; all other combinations update
-            if estado_operativo is not None or matriz.ultimo_estado_operativo is not False:
-                matriz.es_fallo_nuevo = (
-                    estado_operativo is False
-                    and matriz.ultimo_estado_operativo_anterior is not False
-                )
-                matriz.ultimo_estado_operativo = estado_operativo
-                matriz.ultimo_estado_operativo_en = timezone.now()
-                matriz.save(update_fields=[
-                    "ultimo_estado_operativo",
-                    "ultimo_estado_operativo_en",
-                    "es_fallo_nuevo",
-                ])
-
+            cls._actualizar_estado_matriz(matriz, estado_operativo)
             MotorPeriodos.sincronizar_estado_periodo_abierto(ficha.periodo)
             return ficha
