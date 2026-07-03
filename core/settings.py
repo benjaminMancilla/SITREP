@@ -38,6 +38,7 @@ ALLOWED_HOSTS = [
     railway_domain,
     'localhost',
     '127.0.0.1',
+    '.railway.internal',
 ] + extra_hosts
 
 CSRF_TRUSTED_ORIGINS = [
