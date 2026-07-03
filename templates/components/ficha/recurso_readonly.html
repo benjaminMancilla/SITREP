@@ -138,11 +138,9 @@
         <span
             class="mt-1 h-8 w-1 shrink-0 rounded-sm {% if has_record %}{% if item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"
         ></span>
+        <span class="w-16 shrink-0 font-mono text-[10px] tracking-wide text-ink-muted">{{ item.recurso.codigo }}</span>
         <div class="min-w-0 flex-1">
             <h2 class="text-[15px] font-bold text-navy">{{ item.recurso.nombre }}</h2>
-            {% if item.recurso.codigo %}
-                <p class="mt-0.5 font-mono text-[10px] tracking-wide text-ink-muted">{{ item.recurso.codigo }}</p>
-            {% endif %}
             {% if has_record %}
                 <p class="mt-0.5 text-[11px] text-ink-muted">
                     {% if item.ficha.usuario.first_name or item.ficha.usuario.last_name %}
