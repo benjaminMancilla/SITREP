@@ -181,8 +181,6 @@ def _extraer_payload_ficha_desde_json(request):
 
     data, mensaje_error = _validar_payload_ficha_dict(payload)
     if mensaje_error:
-        if not isinstance(payload, dict):
-            return None, _json_error("El body debe ser un objeto JSON.", 400)
         return None, _json_error(mensaje_error, 400)
 
     return data, None
