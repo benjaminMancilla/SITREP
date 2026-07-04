@@ -97,6 +97,7 @@
                     <span>Naves</span>
                 </a>
 
+                {% if request.user.rol != "capitan" %}
                 <a
                     href="{% url 'inventory:listar_usuarios' slug=tenant_slug %}"
                     class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
@@ -110,6 +111,7 @@
                     </svg>
                     <span>Usuarios</span>
                 </a>
+                {% endif %}
 
                 <a
                     href="{% url 'inventory:listar_dispositivos' slug=tenant_slug %}"

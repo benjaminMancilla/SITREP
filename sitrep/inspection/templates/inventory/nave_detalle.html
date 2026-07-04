@@ -37,13 +37,15 @@
                 >
                     Volver
                 </a>
-                {% if es_admin %}
+                {% if puede_gestionar_tripulacion %}
                 <a
                     href="{% url 'inventory:listar_tripulacion' slug=slug nave_id=nave.id %}"
                     class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary hover:bg-surface"
                 >
                     Tripulación
                 </a>
+                {% endif %}
+                {% if puede_editar_nave %}
                 <a
                     href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
                     class="rounded-md border border-warn-border bg-warn-bg px-3 py-1.5 text-[13px] font-semibold text-warn hover:bg-amber-100"

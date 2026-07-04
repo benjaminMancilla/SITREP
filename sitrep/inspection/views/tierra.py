@@ -51,7 +51,13 @@ def dashboard_tierra(request, slug):
     if request.user.rol == "capitan":
         naves_capitan = FleetQueryService.get_naves_capitan(request.user, request.naviera)
 
-    total_usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera).count()
+    if request.user.rol == "capitan":
+        from django.contrib.auth import get_user_model
+        total_usuarios = get_user_model().objects.filter(
+            asignaciones_naves__nave__in=naves_capitan
+        ).distinct().count()
+    else:
+        total_usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera).count()
 
     dispositivos_qs = Dispositivo.objects.filter(naviera=request.naviera, is_active=True)
     if request.user.rol == "capitan":
@@ -165,7 +171,10 @@ def dashboard_tierra(request, slug):
         )
         .order_by("-fecha_revision")[:10]
     )
-    tabla_urgencia = presenters.construir_tabla_urgencia(request.naviera)
+    tabla_urgencia = presenters.construir_tabla_urgencia(
+        request.naviera,
+        naves=naves_capitan if request.user.rol == "capitan" else None,
+    )
 
     return render(
         request,
@@ -553,7 +562,8 @@ def nave_detalle(request, slug, nave_id):
     ).count()
     total_recursos_nave = sum(item["total_recursos"] for item in periodos_abiertos_detalle)
 
-    es_admin = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
+    puede_gestionar_tripulacion = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
+    puede_editar_nave = request.user.rol in {"admin_sitrep", "admin_naviera"}
 
     return render(
         request,
@@ -567,7 +577,8 @@ def nave_detalle(request, slug, nave_id):
             "fallos_nuevos_nave": fallos_nuevos_nave,
             "total_recursos_nave": total_recursos_nave,
             "slug": slug,
-            "es_admin": es_admin,
+            "puede_gestionar_tripulacion": puede_gestionar_tripulacion,
+            "puede_editar_nave": puede_editar_nave,
             "fecha_desde_str": filtros_historial["fecha_desde_str"],
             "fecha_hasta_str": filtros_historial["fecha_hasta_str"],
             "estado_filtro": filtros_historial["estado_filtro"],

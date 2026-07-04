@@ -113,11 +113,13 @@ def get_fichas_de_periodos_raw(periodo_ids):
     )
 
 
-def get_brutos_urgencia(naviera):
+def get_brutos_urgencia(naviera, naves=None):
     """
     Retorna los datos crudos necesarios para construir la tabla de urgencia.
     Todos los queries están scoped a naviera — garantía de aislamiento tenant.
     Retorna None si no hay naves activas.
+
+    naves: queryset opcional para restringir a un subconjunto de naves (ej. naves del capitán).
 
     Estructura retornada:
     {
@@ -138,7 +140,10 @@ def get_brutos_urgencia(naviera):
     estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}
     estados_relevantes = TenantQueryService.ESTADOS_ABIERTOS | estados_cerrados
 
-    naves = list(Nave.objects.for_naviera(naviera).filter(is_active=True).order_by("nombre"))
+    naves_qs = Nave.objects.for_naviera(naviera).filter(is_active=True)
+    if naves is not None:
+        naves_qs = naves_qs.filter(id__in=naves)
+    naves = list(naves_qs.order_by("nombre"))
     if not naves:
         return None
 

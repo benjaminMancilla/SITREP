@@ -328,15 +328,16 @@ def construir_periodos_detalle(nave, periodos, for_history=False):
 # Tabla de urgencia
 # ---------------------------------------------------------------------------
 
-def construir_tabla_urgencia(naviera):
+def construir_tabla_urgencia(naviera, naves=None):
     """
     Construye la estructura {columns, naves} para la tabla de urgencia del dashboard.
     Delega los queries al repositorio y aplica la lógica de presentación aquí.
+    naves: queryset opcional para filtrar (ej. naves del capitán).
     """
     from django.utils.text import slugify
     from datetime import date as date_
 
-    brutos = get_brutos_urgencia(naviera)
+    brutos = get_brutos_urgencia(naviera, naves=naves)
     if brutos is None:
         return {"columns": [], "naves": []}
 

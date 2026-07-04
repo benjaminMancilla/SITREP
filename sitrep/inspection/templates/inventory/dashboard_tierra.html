@@ -483,7 +483,9 @@
         </div>
 
         <div class="grid gap-3 sm:grid-cols-3">
+            {% if request.user.rol != "capitan" %}
             {% include 'components/quick_card.html' with titulo="Gestión de Usuarios" subtitulo="Agregar, editar o desactivar cuentas" url=usuarios_url %}
+            {% endif %}
             {% include 'components/quick_card.html' with titulo="Gestión de Naves" subtitulo="Registrar o modificar embarcaciones" url=naves_url %}
             {% include 'components/quick_card.html' with titulo="Hardware Bitácora" subtitulo="Dispositivos registrados en naves" url=dispositivos_url %}
         </div>

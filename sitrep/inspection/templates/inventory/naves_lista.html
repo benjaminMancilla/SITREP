@@ -64,6 +64,7 @@
             <h1 class="text-[20px] font-bold text-navy">Gestión de Naves</h1>
             <p class="mt-0.5 text-[12px] text-ink-muted">Flota activa de la naviera</p>
         </div>
+        {% if request.user.rol != "capitan" %}
         <a
             href="{% url 'inventory:crear_nave' slug=slug %}"
             class="inline-flex items-center gap-1.5 rounded-md bg-navy px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
@@ -74,6 +75,7 @@
             </svg>
             Crear nave
         </a>
+        {% endif %}
     </div>
 
     <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
@@ -166,6 +168,7 @@
                                 >
                                     Ver detalle
                                 </a>
+                                {% if request.user.rol != "capitan" %}
                                 <a
                                     href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
                                     class="btn-ghost-warn inline-flex items-center rounded-md border border-warn-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-warn transition"
@@ -179,6 +182,7 @@
                                 >
                                     Desactivar
                                 </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
