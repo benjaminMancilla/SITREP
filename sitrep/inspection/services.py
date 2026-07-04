@@ -1,5 +1,4 @@
 ﻿import bisect
-import operator
 import logging
 from datetime import timedelta
 from django.db import IntegrityError, transaction
@@ -8,6 +7,7 @@ from django.utils import timezone
 
 from sitrep.accounts.services import AccountsQueryService
 from sitrep.catalog.models import Periodicidad, Recurso
+from sitrep.catalog.services import CatalogRuleEngine
 from sitrep.fleet.models import Nave
 from sitrep.fleet.services import FleetQueryService
 from .models import (
@@ -192,50 +192,9 @@ class TenantQueryService:
 
 
 class MotorReglasSITREP:
-    """
-    Motor determinista para evaluar atributos físicos de naves contra contratos JSONB.
-    """
-    
-    OPERADORES = {
-        '<': operator.lt,
-        '<=': operator.le,
-        '==': operator.eq,
-        '>=': operator.ge,
-        '>': operator.gt,
-    }
-    
-    @classmethod
-    def evaluar_regla(cls, nave, regla_json):
-        """
-        Evalúa una regla JSON contra los atributos físicos de una nave.
-        Retorna (cantidad_calculada, es_visible_calculado)
-        """
-        if not regla_json:
-            return 0, True  # Fallback default
+    # ponytail: evaluar_regla delegated to CatalogRuleEngine after catalog segregation
+    evaluar_regla = CatalogRuleEngine.evaluar_regla
 
-        atributo = regla_json.get('atributo')
-        valor_nave = getattr(nave, atributo, None)
-        
-        if valor_nave is None: # Fallback definido en la regla si no hay valor
-            return (regla_json.get('fallback_cantidad', 0), regla_json.get('fallback_visible', False))
-        
-        # Evaluamos cada condición en orden
-        for condicion in regla_json.get('condiciones', []): 
-            func_op = cls.OPERADORES.get(condicion.get('operador'))
-            valor_regla = condicion.get('valor')
-            
-            try:
-                valor_nave_casteado = type(valor_regla)(valor_nave)
-            except (ValueError, TypeError):
-                continue
-            
-            # Si la condición se cumple, retornamos el resultado definido en esa condición
-            if func_op and func_op(valor_nave_casteado, valor_regla):
-                return (condicion.get('resultado_cantidad', 0), condicion.get('resultado_visible', False))
-            
-        # Fallback si ninguna condición se cumple
-        return (regla_json.get('fallback_cantidad', 0), regla_json.get('fallback_visible', False))
-    
     @classmethod
     def sincronizar_matriz_nave(cls, nave, crear_nuevos=True):
         """
