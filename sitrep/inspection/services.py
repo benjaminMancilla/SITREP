@@ -303,13 +303,10 @@ class MotorReglasSITREP:
                     matriz_obj.es_visible = visible_calc
                     matriz_obj.save(update_fields=['cantidad', 'es_visible'])
                     stats['recursos_actualizados'] += 1
-            except Exception as e:
+            except Exception:
                 logger.error(
-                    (
-                        f"Error processing recurso {recurso.id} for nave {nave.id} "
-                        f"(Naviera: {nave.naviera_id}): {str(e)}"
-                    ),
-                    exc_info=True
+                    f"Error processing recurso {recurso.id} for nave {nave.id} (Naviera: {nave.naviera_id})",
+                    exc_info=True,
                 )
                 stats['recursos_con_error'] += 1
 
@@ -479,12 +476,9 @@ class MotorPeriodos:
                     if periodo_abierto.estado != estado_actual:
                         periodo_abierto.estado = estado_actual
                         periodo_abierto.save(update_fields=["estado"])
-            except Exception as e:
+            except Exception:
                 logger.error(
-                    (
-                        f"Error processing periodicidad {periodicidad.id} for nave {nave.id} "
-                        f"(Naviera: {nave.naviera_id}): {str(e)}"
-                    ),
+                    f"Error processing periodicidad {periodicidad.id} for nave {nave.id} (Naviera: {nave.naviera_id})",
                     exc_info=True,
                 )
                 stats['periodos_con_error'] += 1
@@ -510,10 +504,10 @@ class MotorPeriodos:
                 stats['periodos_vencidos'] += nave_stats['periodos_vencidos']
                 stats['periodos_con_error'] += nave_stats['periodos_con_error']
 
-            except Exception as e:
+            except Exception:
                 logger.error(
-                    f"Error processing nave {nave.id} (Naviera: {nave.naviera_id}): {str(e)}",
-                    exc_info=True
+                    f"Error processing nave {nave.id} (Naviera: {nave.naviera_id})",
+                    exc_info=True,
                 )
                 stats['naves_con_error'] += 1
 
@@ -721,13 +715,7 @@ class MotorFichas:
         if not checklist_completo:
             return None
 
-        if all(
-            payload_checklist.get(item["key"], {}).get("cumple") is True
-            for item in definicion
-        ):
-            return True
-
-        return None
+        return True
 
     @classmethod
     def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist, cantidad=0):
