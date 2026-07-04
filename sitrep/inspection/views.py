@@ -1173,8 +1173,7 @@ def logout_kiosco(request, slug):
         return HttpResponseNotAllowed(["POST"])
 
     logout(request)
-    request.session.flush()
-    return redirect(f"/{slug}/login/?modo=mar")  # ← antes era /{slug}/kiosco/login/
+    return redirect(f"/{slug}/login/?modo=mar")
 
 
 def redirect_kiosco_login(request, slug):
@@ -1193,7 +1192,6 @@ def logout_tierra(request, slug):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan")
 def setup_kiosco(request, slug):
-    # 2. PROCESAMIENTO DEL PAYLOAD (POST)
     if request.method == "POST":
         nombre_dispositivo = request.POST.get("nombre_dispositivo")
         nave_id = request.POST.get("nave_id")
@@ -1201,19 +1199,15 @@ def setup_kiosco(request, slug):
         if not nave_id:
             return HttpResponseForbidden("Debe asignar el dispositivo a una nave.")
 
-        # Validación de Jurisdicción (Previene IDOR)
         nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
 
-        # Fabricación del Hardware Binding
         dispositivo = Dispositivo(naviera=request.naviera, nave=nave, nombre=nombre_dispositivo)
         token_plano = dispositivo.generar_nuevo_token()
         dispositivo.save()
 
-        # Renderizamos la vista de éxito inyectando el token secreto
         contexto = {"token_plano": token_plano, "dispositivo": dispositivo}
         return render(request, "inventory/kiosco_tatuado.html", contexto)
 
-    # 3. RENDERIZADO DEL FORMULARIO (GET)
     naves = TenantQueryService.get_naves_activas(request.naviera)
     return render(request, "inventory/kiosco_setup.html", {"naves": naves})
 
