@@ -1391,8 +1391,8 @@ class TestIntegracionMotorReglas(TestCase):
         matriz = self._get_matriz(nave, recurso)
         self.assertFalse(matriz.ultimo_estado_operativo)
 
-    def test_guardado_parcial_no_altera_ultimo_estado(self):
-        """Un guardado parcial (estado_operativo=None) no debe modificar ultimo_estado_operativo."""
+    def test_guardado_parcial_desde_null_no_cambia_valor_pero_actualiza_timestamp(self):
+        """NULL + prev NULL: el valor queda None, pero el timestamp se actualiza."""
         recurso = self._crear_recurso(
             nombre="Recurso Sin Alterar",
             regla_aplicacion=self.REGLA_POR_ESLORA,
@@ -1412,7 +1412,7 @@ class TestIntegracionMotorReglas(TestCase):
 
         matriz = self._get_matriz(nave, recurso)
         self.assertIsNone(matriz.ultimo_estado_operativo)
-        self.assertIsNone(matriz.ultimo_estado_operativo_en)
+        self.assertIsNotNone(matriz.ultimo_estado_operativo_en)
 
     def test_fallo_a_fallo_actualiza_timestamp(self):
         """fallo → fallo debe actualizar ultimo_estado_operativo_en aunque el valor no cambie."""
@@ -1889,3 +1889,116 @@ class TestIntegracionMotorReglas(TestCase):
         matriz.refresh_from_db()
         self.assertFalse(matriz.ultimo_estado_operativo_anterior)
         self.assertFalse(matriz.es_fallo_nuevo)
+
+    def test_derivar_fallo_con_checklist_parcial(self):
+        """Fallo >= 1 → FALLO aunque haya items sin responder."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Fallo Parcial",
+            regla_aplicacion=None,
+            requerimientos=["vigencia", "presion"],
+        )
+        payload = {"vigencia": {"cumple": False, "observacion": "vencida"}}
+        resultado = MotorFichas.derivar_estado_operativo_desde_checklist(recurso, payload)
+        self.assertIs(resultado, False)
+
+    def test_require_cumple_rechaza_cumple_null(self):
+        """cumple:null debe contar como item faltante en require_cumple=True."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Cumple Null",
+            regla_aplicacion=None,
+            requerimientos=["vigencia"],
+        )
+        payload = {"vigencia": {"cumple": None, "observacion": ""}}
+        es_valido, faltantes = MotorFichas.validar_payload_checklist(
+            recurso, payload, require_cumple=True
+        )
+        self.assertFalse(es_valido)
+        self.assertTrue(len(faltantes) > 0)
+
+    def test_crear_ficha_completa_tiene_estado_ficha_completa(self):
+        """crear_ficha con payload completo y estado_operativo definido → estado_ficha='completa'."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Ficha Completa",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Ficha Completa", "INT-063", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist=self._payload_con_cantidad(
+                True, vigencia={"cumple": True, "observacion": ""}
+            ),
+        )
+        self.assertEqual(ficha.estado_ficha, "completa")
+
+    def test_operativo_mas_null_resetea_matriz_a_null(self):
+        """OPERATIVO + NULL = NULL: la matriz debe quedar en None."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Reset NULL",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Reset NULL", "INT-064", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist=self._payload_con_cantidad(
+                True, vigencia={"cumple": True, "observacion": ""}
+            ),
+        )
+        matriz = self._get_matriz(nave, recurso)
+        self.assertTrue(matriz.ultimo_estado_operativo)
+
+        MotorFichas.modificar_ficha(
+            ficha=ficha,
+            usuario_modificador=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={},
+        )
+        matriz.refresh_from_db()
+        self.assertIsNone(matriz.ultimo_estado_operativo)
+
+    def test_fallo_mas_null_mantiene_fallo_en_matriz(self):
+        """FALLO + NULL = FALLO: la matriz debe permanecer en False."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Fallo Persistente",
+            regla_aplicacion=self.REGLA_POR_ESLORA,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Fallo Persistente", "INT-065", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=False,
+            observacion_general="roto",
+            payload_checklist=self._payload_con_cantidad(
+                True, vigencia={"cumple": False, "observacion": "roto"}
+            ),
+        )
+        matriz = self._get_matriz(nave, recurso)
+        self.assertFalse(matriz.ultimo_estado_operativo)
+
+        MotorFichas.modificar_ficha(
+            ficha=ficha,
+            usuario_modificador=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={},
+        )
+        matriz.refresh_from_db()
+        self.assertFalse(matriz.ultimo_estado_operativo)
