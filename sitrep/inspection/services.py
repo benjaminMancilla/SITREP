@@ -1,4 +1,5 @@
-﻿import operator
+﻿import bisect
+import operator
 import logging
 from datetime import timedelta
 from django.db import IntegrityError, transaction
@@ -198,6 +199,48 @@ class TenantQueryService:
             periodo=periodo,
             recurso=recurso,
         ).first()
+
+    @staticmethod
+    def calcular_confiabilidad_por_periodicidad(naviera, hoy):
+        _umbrales = [1, 7, 30, 90, 365]
+        _ventanas = [30, 30, 90, 365, 730, 1825]
+        estados_vencidos = {"omitido", "caduco"}
+        periodicidad_ids = (
+            PeriodoRevision.objects.filter(nave__naviera=naviera, nave__is_active=True)
+            .values_list("periodicidad_id", flat=True)
+            .distinct()
+        )
+        resultado = []
+        for periodicidad in Periodicidad.objects.filter(id__in=periodicidad_ids).order_by(
+            "duracion_dias", "nombre"
+        ):
+            ventana = _ventanas[bisect.bisect_left(_umbrales, periodicidad.duracion_dias)]
+            desde = hoy - timedelta(days=ventana)
+            total_cerrados = PeriodoRevision.objects.filter(
+                nave__naviera=naviera,
+                nave__is_active=True,
+                periodicidad=periodicidad,
+                estado__in=TenantQueryService.ESTADOS_CERRADOS,
+                fecha_termino__gte=desde,
+            ).count()
+            vencidos_ventana = PeriodoRevision.objects.filter(
+                nave__naviera=naviera,
+                nave__is_active=True,
+                periodicidad=periodicidad,
+                estado__in=estados_vencidos,
+                fecha_termino__gte=desde,
+            ).count()
+            if total_cerrados > 0:
+                resultado.append({
+                    "periodicidad": periodicidad,
+                    "ventana_dias": ventana,
+                    "total": total_cerrados,
+                    "vencidos": vencidos_ventana,
+                    "pct_cumplimiento": round(
+                        100 * (total_cerrados - vencidos_ventana) / total_cerrados
+                    ),
+                })
+        return resultado
 
 
 class MotorReglasSITREP:

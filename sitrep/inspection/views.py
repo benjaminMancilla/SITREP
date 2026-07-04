@@ -1,7 +1,7 @@
 ﻿import json
 import logging
 import re
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 
@@ -599,46 +599,9 @@ def periodos_vencidos(request, slug):
         estado__in=estados_vencidos,
     ).count()
 
-    periodicidad_ids_con_historial = (
-        PeriodoRevision.objects.filter(
-            nave__naviera=naviera,
-            nave__is_active=True,
-        )
-        .values_list("periodicidad_id", flat=True)
-        .distinct()
+    confiabilidad_por_periodicidad = TenantQueryService.calcular_confiabilidad_por_periodicidad(
+        naviera, hoy
     )
-    confiabilidad_por_periodicidad = []
-    for periodicidad in Periodicidad.objects.filter(id__in=periodicidad_ids_con_historial).order_by(
-        "duracion_dias", "nombre"
-    ):
-        ventana = presenters.ventana_confiabilidad(periodicidad.duracion_dias)
-        desde = hoy - timedelta(days=ventana)
-        total_cerrados = PeriodoRevision.objects.filter(
-            nave__naviera=naviera,
-            nave__is_active=True,
-            periodicidad=periodicidad,
-            estado__in=TenantQueryService.ESTADOS_CERRADOS,
-            fecha_termino__gte=desde,
-        ).count()
-        vencidos_ventana = PeriodoRevision.objects.filter(
-            nave__naviera=naviera,
-            nave__is_active=True,
-            periodicidad=periodicidad,
-            estado__in=estados_vencidos,
-            fecha_termino__gte=desde,
-        ).count()
-        if total_cerrados > 0:
-            confiabilidad_por_periodicidad.append(
-                {
-                    "periodicidad": periodicidad,
-                    "ventana_dias": ventana,
-                    "total": total_cerrados,
-                    "vencidos": vencidos_ventana,
-                    "pct_cumplimiento": round(
-                        100 * (total_cerrados - vencidos_ventana) / total_cerrados
-                    ),
-                }
-            )
 
     if agrupar_por == "nave":
         agrupado = {}
