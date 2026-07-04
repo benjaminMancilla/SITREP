@@ -57,6 +57,7 @@
             <h1 class="text-[20px] font-bold text-navy">Gestión de Usuarios</h1>
             <p class="mt-0.5 text-[12px] text-ink-muted">Usuarios activos de la naviera</p>
         </div>
+        {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
         <a
             href="{% url 'inventory:crear_usuario' slug=slug %}"
             class="inline-flex items-center gap-1.5 rounded-md bg-navy px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
@@ -67,6 +68,7 @@
             </svg>
             Crear usuario
         </a>
+        {% endif %}
     </div>
 
     <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
@@ -154,7 +156,7 @@
                         </td>
                         <td class="px-4 py-3.5">
                             <div class="flex flex-wrap justify-end gap-1.5">
-                                {% if usuario.rol == "mar" or usuario.rol == "capitan" %}
+                                {% if request.user.rol != "tierra" and (usuario.rol == "mar" or usuario.rol == "capitan") %}
                                 <a
                                     href="{% url 'inventory:cambiar_pin' slug=slug id=usuario.id %}"
                                     class="btn-ghost-warn inline-flex items-center rounded-md border border-warn-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-warn transition"
@@ -162,6 +164,7 @@
                                     Cambiar PIN
                                 </a>
                                 {% endif %}
+                                {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
                                 <button
                                     type="button"
                                     @click="abrirModal(('{{ usuario.first_name|default_if_none:""|escapejs }} {{ usuario.last_name|default_if_none:""|escapejs }}').trim() || '{{ usuario.rut|escapejs }}', {{ usuario.id }})"
@@ -169,6 +172,7 @@
                                 >
                                     Desactivar
                                 </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

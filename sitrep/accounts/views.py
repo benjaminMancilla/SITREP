@@ -114,7 +114,7 @@ def logout_tierra(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_rol("admin_sitrep", "admin_naviera", "tierra")
 def listar_usuarios(request, slug):
     usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera)
     return render(

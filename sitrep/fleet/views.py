@@ -12,7 +12,7 @@ from sitrep.inspection.services import TenantQueryService  # ponytail: migrate t
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
 def listar_naves(request, slug):
     naves = TenantQueryService.get_naves_activas(request.naviera).annotate(
         periodos_abiertos=Count(
@@ -180,7 +180,7 @@ def desactivar_nave(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
 def listar_dispositivos(request, slug):
     dispositivos = TenantQueryService.get_dispositivos(request.naviera).order_by("nave__nombre", "nombre")
     if request.user.rol == "capitan":
@@ -242,7 +242,7 @@ def revocar_dispositivo(request, slug, id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
 def listar_tripulacion(request, slug, nave_id):
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
     if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():

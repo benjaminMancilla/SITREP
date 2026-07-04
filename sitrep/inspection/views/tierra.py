@@ -562,7 +562,7 @@ def nave_detalle(request, slug, nave_id):
     ).count()
     total_recursos_nave = sum(item["total_recursos"] for item in periodos_abiertos_detalle)
 
-    puede_gestionar_tripulacion = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan"}
+    puede_ver_tripulacion = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan", "tierra"}
     puede_editar_nave = request.user.rol in {"admin_sitrep", "admin_naviera"}
 
     return render(
@@ -577,7 +577,7 @@ def nave_detalle(request, slug, nave_id):
             "fallos_nuevos_nave": fallos_nuevos_nave,
             "total_recursos_nave": total_recursos_nave,
             "slug": slug,
-            "puede_gestionar_tripulacion": puede_gestionar_tripulacion,
+            "puede_ver_tripulacion": puede_ver_tripulacion,
             "puede_editar_nave": puede_editar_nave,
             "fecha_desde_str": filtros_historial["fecha_desde_str"],
             "fecha_hasta_str": filtros_historial["fecha_hasta_str"],
