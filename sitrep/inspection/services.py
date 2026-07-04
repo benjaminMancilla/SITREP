@@ -4,20 +4,17 @@ import logging
 from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, F, OuterRef
-from django.http import Http404
 from django.utils import timezone
 
-from django.contrib.auth import get_user_model
-
+from sitrep.accounts.services import AccountsQueryService
 from sitrep.catalog.models import Periodicidad, Recurso
-from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
+from sitrep.fleet.models import Nave
+from sitrep.fleet.services import FleetQueryService
 from .models import (
     FichaRegistro,
     MatrizNaveRecurso,
     PeriodoRevision,
 )
-
-Usuario = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -43,67 +40,18 @@ class TenantQueryService:
     ESTADOS_ABIERTOS = {"pendiente", "en_proceso"}
     ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
 
-    @staticmethod
-    def _get_or_404(model, **kwargs):
-        try:
-            return model.objects.get(**kwargs)
-        except model.DoesNotExist as exc:
-            raise Http404("Recurso no encontrado.") from exc
-
-    @staticmethod
-    def get_nave(naviera, nave_id):
-        return TenantQueryService._get_or_404(Nave, id=nave_id, naviera=naviera)
-
-    @staticmethod
-    def get_nave_activa(naviera, nave_id):
-        return TenantQueryService._get_or_404(Nave, id=nave_id, naviera=naviera, is_active=True)
-
-    @staticmethod
-    def get_dispositivo(naviera, dispositivo_id):
-        return TenantQueryService._get_or_404(Dispositivo, id=dispositivo_id, naviera=naviera)
-
-    @staticmethod
-    def get_naves_activas(naviera):
-        """Retorna queryset de naves activas del tenant."""
-        return Nave.objects.filter(naviera=naviera, is_active=True)
-
-    @staticmethod
-    def get_naves_del_tenant(naviera):
-        """Retorna queryset de todas las naves del tenant (activas e inactivas)."""
-        return Nave.objects.filter(naviera=naviera).order_by("is_active", "nombre")
-
-    @staticmethod
-    def get_dispositivos(naviera):
-        """Retorna queryset de dispositivos del tenant con select_related('nave')."""
-        return Dispositivo.objects.filter(naviera=naviera).select_related("nave")
-
-    @staticmethod
-    def get_usuario_del_tenant(naviera, usuario_id):
-        return TenantQueryService._get_or_404(Usuario, id=usuario_id, naviera=naviera)
-
-    @staticmethod
-    def get_usuario_activo_del_tenant(naviera, usuario_id):
-        return TenantQueryService._get_or_404(Usuario, id=usuario_id, naviera=naviera, is_active=True)
-
-    @staticmethod
-    def get_usuarios_del_tenant(naviera):
-        """Retorna queryset de usuarios activos del tenant, excluyendo superusuarios."""
-        return Usuario.objects.filter(naviera=naviera, is_active=True, is_superuser=False)
-
-    @staticmethod
-    def get_tripulacion_de_nave(naviera, nave_id):
-        """Retorna queryset de tripulantes de una nave, validando que la nave sea del tenant."""
-        nave = TenantQueryService.get_nave_activa(naviera, nave_id)
-        return Tripulacion.objects.filter(nave=nave)
-
-    @staticmethod
-    def get_tripulacion_activa_de_nave(naviera, nave_id):
-        """Retorna queryset de Tripulacion de una nave del tenant, con select_related('usuario')."""
-        nave = TenantQueryService.get_nave_activa(naviera, nave_id)
-        return Tripulacion.objects.filter(
-            nave=nave,
-            usuario__is_active=True,
-        ).select_related("usuario")
+    # ponytail: fleet/accounts queries delegated — callers migrate to FleetQueryService/AccountsQueryService in full segregation
+    get_nave = FleetQueryService.get_nave
+    get_nave_activa = FleetQueryService.get_nave_activa
+    get_naves_activas = FleetQueryService.get_naves_activas
+    get_naves_del_tenant = FleetQueryService.get_naves_del_tenant
+    get_dispositivo = FleetQueryService.get_dispositivo
+    get_dispositivos = FleetQueryService.get_dispositivos
+    get_tripulacion_de_nave = FleetQueryService.get_tripulacion_de_nave
+    get_tripulacion_activa_de_nave = FleetQueryService.get_tripulacion_activa_de_nave
+    get_usuario_del_tenant = AccountsQueryService.get_usuario_del_tenant
+    get_usuario_activo_del_tenant = AccountsQueryService.get_usuario_activo_del_tenant
+    get_usuarios_del_tenant = AccountsQueryService.get_usuarios_del_tenant
 
     @staticmethod
     def get_periodos_abiertos_de_nave(nave):
@@ -348,7 +296,8 @@ class MotorReglasSITREP:
                     stats['recursos_actualizados'] += 1
             except Exception:
                 logger.error(
-                    f"Error processing recurso {recurso.id} for nave {nave.id} (Naviera: {nave.naviera_id})",
+                    "Error processing recurso %s for nave %s (Naviera: %s)",
+                    recurso.id, nave.id, nave.naviera_id,
                     exc_info=True,
                 )
                 stats['recursos_con_error'] += 1
@@ -521,7 +470,8 @@ class MotorPeriodos:
                         periodo_abierto.save(update_fields=["estado"])
             except Exception:
                 logger.error(
-                    f"Error processing periodicidad {periodicidad.id} for nave {nave.id} (Naviera: {nave.naviera_id})",
+                    "Error processing periodicidad %s for nave %s (Naviera: %s)",
+                    periodicidad.id, nave.id, nave.naviera_id,
                     exc_info=True,
                 )
                 stats['periodos_con_error'] += 1
@@ -549,7 +499,8 @@ class MotorPeriodos:
 
             except Exception:
                 logger.error(
-                    f"Error processing nave {nave.id} (Naviera: {nave.naviera_id})",
+                    "Error processing nave %s (Naviera: %s)",
+                    nave.id, nave.naviera_id,
                     exc_info=True,
                 )
                 stats['naves_con_error'] += 1
