@@ -40,6 +40,7 @@ def contar_fichas_completas_por_periodo(periodo_ids):
 
 class TenantQueryService:
     ESTADOS_ABIERTOS = {"pendiente", "en_proceso"}
+    ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
 
     @staticmethod
     def _get_or_404(model, **kwargs):
@@ -124,10 +125,9 @@ class TenantQueryService:
         Estados cerrados: operativo, observado, fallido, omitido, caduco.
         Ordenados por fecha_inicio descendente.
         """
-        ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
         qs = PeriodoRevision.objects.filter(
             nave=nave,
-            estado__in=ESTADOS_CERRADOS,
+            estado__in=TenantQueryService.ESTADOS_CERRADOS,
         ).select_related("periodicidad")
 
         if fecha_desde:

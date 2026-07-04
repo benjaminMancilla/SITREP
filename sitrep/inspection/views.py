@@ -224,13 +224,12 @@ def dashboard_tierra(request, slug):
         es_visible=True,
         es_fallo_nuevo=True,
     ).count()
-    estados_cerrados = {"operativo", "observado", "fallido", "omitido", "caduco"}
     estados_vencidos = {"omitido", "caduco"}
     todos_periodos_cerrados = (
         PeriodoRevision.objects.filter(
             nave__naviera=request.naviera,
             nave__is_active=True,
-            estado__in=estados_cerrados,
+            estado__in=TenantQueryService.ESTADOS_CERRADOS,
         )
         .order_by("nave_id", "periodicidad_id", "-fecha_inicio", "-id")
         .values("nave_id", "periodicidad_id", "estado")
@@ -497,7 +496,6 @@ def periodos_vencidos(request, slug):
     naviera = request.naviera
     hoy = timezone.localdate()
     estados_vencidos = {"omitido", "caduco"}
-    estados_cerrados = estados_vencidos | {"operativo", "observado", "fallido"}
 
     qs = (
         PeriodoRevision.objects.filter(
@@ -578,7 +576,7 @@ def periodos_vencidos(request, slug):
         PeriodoRevision.objects.filter(
             nave__naviera=naviera,
             nave__is_active=True,
-            estado__in=estados_cerrados,
+            estado__in=TenantQueryService.ESTADOS_CERRADOS,
         )
         .select_related("nave", "periodicidad")
         .order_by("nave_id", "periodicidad_id", "-fecha_termino", "-id")
@@ -619,7 +617,7 @@ def periodos_vencidos(request, slug):
             nave__naviera=naviera,
             nave__is_active=True,
             periodicidad=periodicidad,
-            estado__in=estados_cerrados,
+            estado__in=TenantQueryService.ESTADOS_CERRADOS,
             fecha_termino__gte=desde,
         ).count()
         vencidos_ventana = PeriodoRevision.objects.filter(
@@ -958,12 +956,11 @@ def kiosco_periodo_historial(request, slug, periodo_id):
     if redir:
         return redir
 
-    ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
     try:
         periodo = PeriodoRevision.objects.select_related("periodicidad").get(
             id=periodo_id,
             nave=nave,
-            estado__in=ESTADOS_CERRADOS,
+            estado__in=TenantQueryService.ESTADOS_CERRADOS,
         )
     except PeriodoRevision.DoesNotExist:
         logger.info(
