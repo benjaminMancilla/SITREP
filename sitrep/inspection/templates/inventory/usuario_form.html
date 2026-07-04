@@ -58,23 +58,25 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">
-                            Nombre <span class="font-normal normal-case text-ink-muted">(opcional)</span>
+                            Nombre <template x-if="rol === 'mar'"><span class="font-normal normal-case text-ink-muted">(opcional)</span></template>
                         </label>
                         <input
                             name="first_name"
                             type="text"
                             value="{{ form_data.first_name }}"
+                            :required="rol !== 'mar'"
                             class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
                         >
                     </div>
                     <div>
                         <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">
-                            Apellido <span class="font-normal normal-case text-ink-muted">(opcional)</span>
+                            Apellido <template x-if="rol === 'mar'"><span class="font-normal normal-case text-ink-muted">(opcional)</span></template>
                         </label>
                         <input
                             name="last_name"
                             type="text"
                             value="{{ form_data.last_name }}"
+                            :required="rol !== 'mar'"
                             class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
                         >
                     </div>
@@ -82,12 +84,13 @@
 
                 <div>
                     <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">
-                        Email <span class="font-normal normal-case text-ink-muted">(opcional)</span>
+                        Email <template x-if="rol === 'mar'"><span class="font-normal normal-case text-ink-muted">(opcional)</span></template>
                     </label>
                     <input
                         name="email"
                         type="email"
                         value="{{ form_data.email }}"
+                        :required="rol !== 'mar'"
                         class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
                     >
                 </div>
