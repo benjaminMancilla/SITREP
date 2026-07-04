@@ -246,10 +246,11 @@ class MotorReglasSITREP:
         return (regla_json.get('fallback_cantidad', 0), regla_json.get('fallback_visible', False))
     
     @classmethod
-    def sincronizar_matriz_nave(cls, nave, solo_actualizar=False):
+    def sincronizar_matriz_nave(cls, nave, crear_nuevos=True):
         """
         Genera o actualiza la matriz de la nave.
         RESPETA LA BANDERA DE AUDITORÍA (modificado_manualmente).
+        Con crear_nuevos=False solo actualiza entradas existentes (útil en señales reactivas).
         """
         stats = {
             'recursos_creados': 0,
@@ -268,8 +269,7 @@ class MotorReglasSITREP:
                 with transaction.atomic():
                     cantidad_calc, visible_calc = cls.evaluar_regla(nave, recurso.regla_aplicacion)
 
-                    if solo_actualizar:
-                        # Solo actualiza entradas existentes, no crea nuevas
+                    if not crear_nuevos:
                         updated = MatrizNaveRecurso.objects.filter(
                             nave=nave,
                             recurso=recurso,
@@ -440,6 +440,7 @@ class MotorPeriodos:
             'periodos_con_error': 0,
         }
         hoy = timezone.localdate()
+        MotorReglasSITREP.sincronizar_matriz_nave(nave)
 
         for periodicidad in Periodicidad.objects.all():
             try:
@@ -457,7 +458,6 @@ class MotorPeriodos:
                     )
 
                     if periodo_abierto is None:
-                        MotorReglasSITREP.sincronizar_matriz_nave(nave)
                         cls._crear_periodo_abierto(nave, periodicidad, hoy)
                         stats['periodos_creados'] += 1
                         continue
@@ -471,7 +471,6 @@ class MotorPeriodos:
                         cls._cerrar_periodo(periodo_abierto)
                         stats['periodos_vencidos'] += 1
 
-                        MotorReglasSITREP.sincronizar_matriz_nave(nave)
                         cls._crear_periodo_abierto(nave, periodicidad, hoy)
                         stats['periodos_creados'] += 1
                         continue
