@@ -71,6 +71,27 @@ def _obtener_nave_activa_desde_sesion(request):
     return nave, None
 
 
+def _get_nave_kiosco_o_redirect(request, slug):
+    nave_id = request.session.get("nave_id")
+    if not nave_id:
+        logger.info(
+            "kiosco redirect login: no nave_id in session (user_id=%s, naviera_id=%s)",
+            request.user.id,
+            request.naviera.id,
+        )
+        return None, redirect(f"/{slug}/kiosco/login/")
+    try:
+        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    except Http404:
+        logger.info(
+            "kiosco redirect login: nave not found/active (nave_id=%s, naviera_id=%s)",
+            nave_id,
+            request.naviera.id,
+        )
+        return None, redirect(f"/{slug}/kiosco/login/")
+    return nave, None
+
+
 
 
 
@@ -736,14 +757,9 @@ def nave_detalle(request, slug, nave_id):
 @tenant_member_required
 @requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
 def dashboard_kiosco(request, slug):
-    nave_id = request.session.get("nave_id")
-    if not nave_id:
-        return redirect(f"/{slug}/kiosco/login/")
-
-    try:
-        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    except Http404:
-        return redirect(f"/{slug}/kiosco/login/")
+    nave, redir = _get_nave_kiosco_o_redirect(request, slug)
+    if redir:
+        return redir
 
     filtros_historial = _obtener_filtros_historial_desde_request(request)
 
@@ -817,24 +833,9 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
 
-    nave_id = request.session.get("nave_id")
-    if not nave_id:
-        logger.info(
-            "kiosco_periodo_detalle redirect login: session without nave_id (user_id=%s, naviera_id=%s)",
-            getattr(request.user, "id", None),
-            getattr(request.naviera, "id", None),
-        )
-        return redirect(f"/{slug}/kiosco/login/")
-
-    try:
-        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    except Http404:
-        logger.info(
-            "kiosco_periodo_detalle redirect login: nave not found/active (nave_id=%s, naviera_id=%s)",
-            nave_id,
-            getattr(request.naviera, "id", None),
-        )
-        return redirect(f"/{slug}/kiosco/login/")
+    nave, redir = _get_nave_kiosco_o_redirect(request, slug)
+    if redir:
+        return redir
 
     try:
         periodo = PeriodoRevision.objects.select_related("periodicidad").get(
@@ -893,13 +894,9 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     import io
     from weasyprint import HTML
 
-    nave_id = request.session.get("nave_id")
-    if not nave_id:
-        return redirect(f"/{slug}/kiosco/login/")
-    try:
-        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    except Http404:
-        return redirect(f"/{slug}/kiosco/login/")
+    nave, redir = _get_nave_kiosco_o_redirect(request, slug)
+    if redir:
+        return redir
 
     try:
         periodo = PeriodoRevision.objects.select_related("periodicidad").get(
@@ -957,24 +954,9 @@ def kiosco_periodo_historial(request, slug, periodo_id):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
 
-    nave_id = request.session.get("nave_id")
-    if not nave_id:
-        logger.info(
-            "kiosco_periodo_historial redirect login: session without nave_id (user_id=%s, naviera_id=%s)",
-            getattr(request.user, "id", None),
-            getattr(request.naviera, "id", None),
-        )
-        return redirect(f"/{slug}/kiosco/login/")
-
-    try:
-        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    except Http404:
-        logger.info(
-            "kiosco_periodo_historial redirect login: nave not found/active (nave_id=%s, naviera_id=%s)",
-            nave_id,
-            getattr(request.naviera, "id", None),
-        )
-        return redirect(f"/{slug}/kiosco/login/")
+    nave, redir = _get_nave_kiosco_o_redirect(request, slug)
+    if redir:
+        return redir
 
     ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
     try:
@@ -1017,24 +999,9 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
     if request.method not in ["GET", "POST"]:
         return HttpResponseNotAllowed(["GET", "POST"])
 
-    nave_id = request.session.get("nave_id")
-    if not nave_id:
-        logger.info(
-            "kiosco_recurso_ficha redirect login: session without nave_id (user_id=%s, naviera_id=%s)",
-            getattr(request.user, "id", None),
-            getattr(request.naviera, "id", None),
-        )
-        return redirect(f"/{slug}/kiosco/login/")
-
-    try:
-        nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    except Http404:
-        logger.info(
-            "kiosco_recurso_ficha redirect login: nave not found/active (nave_id=%s, naviera_id=%s)",
-            nave_id,
-            getattr(request.naviera, "id", None),
-        )
-        return redirect(f"/{slug}/kiosco/login/")
+    nave, redir = _get_nave_kiosco_o_redirect(request, slug)
+    if redir:
+        return redir
 
     try:
         periodo = PeriodoRevision.objects.select_related("periodicidad").get(
