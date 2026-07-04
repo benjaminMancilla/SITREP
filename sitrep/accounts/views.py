@@ -181,6 +181,8 @@ def crear_usuario(request, slug):
         )
 
     requiere_pin = rol in {"mar", "capitan"}
+    requiere_password = rol != "mar"
+
     if requiere_pin and not raw_pin:
         return render(
             request,
@@ -203,6 +205,18 @@ def crear_usuario(request, slug):
             },
         )
 
+    raw_password = (request.POST.get("password") or "").strip()
+    if requiere_password and not raw_password:
+        return render(
+            request,
+            "inventory/usuario_form.html",
+            {
+                "error": "La contraseña es obligatoria para este rol.",
+                "slug": slug,
+                "form_data": form_data,
+            },
+        )
+
     usuario = Usuario(
         naviera=request.naviera,
         rut=rut,
@@ -214,20 +228,10 @@ def crear_usuario(request, slug):
 
     if requiere_pin:
         usuario.set_pin(raw_pin)
-        usuario.set_unusable_password()
-    else:
-        raw_password = (request.POST.get("password") or "").strip()
-        if not raw_password:
-            return render(
-                request,
-                "inventory/usuario_form.html",
-                {
-                    "error": "La contraseña es obligatoria para este rol.",
-                    "slug": slug,
-                    "form_data": form_data,
-                },
-            )
+    if requiere_password:
         usuario.set_password(raw_password)
+    else:
+        usuario.set_unusable_password()
 
     usuario.save()
     return redirect(f"/{slug}/usuarios/")

@@ -107,12 +107,12 @@
                     </select>
                 </div>
 
-                <div x-show="rol !== 'mar' && rol !== 'capitan'" x-cloak>
+                <div x-show="rol !== 'mar'" x-cloak>
                     <label class="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Contraseña</label>
                     <input
                         name="password"
                         type="password"
-                        :required="rol !== 'mar' && rol !== 'capitan'"
+                        :required="rol !== 'mar'"
                         class="w-full rounded-md border border-surface-border px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
                     >
                 </div>
