@@ -42,28 +42,23 @@ class TenantQueryService:
     ESTADOS_ABIERTOS = {"pendiente", "en_proceso"}
 
     @staticmethod
-    def get_nave(naviera, nave_id):
-        """Retorna la nave si pertenece al tenant. Http404 si no existe o es de otro tenant."""
+    def _get_or_404(model, **kwargs):
         try:
-            return Nave.objects.get(id=nave_id, naviera=naviera)
-        except Nave.DoesNotExist as exc:
+            return model.objects.get(**kwargs)
+        except model.DoesNotExist as exc:
             raise Http404("Recurso no encontrado.") from exc
+
+    @staticmethod
+    def get_nave(naviera, nave_id):
+        return TenantQueryService._get_or_404(Nave, id=nave_id, naviera=naviera)
 
     @staticmethod
     def get_nave_activa(naviera, nave_id):
-        """Retorna la nave activa si pertenece al tenant. Http404 si está inactiva o no existe."""
-        nave = TenantQueryService.get_nave(naviera, nave_id)
-        if not nave.is_active:
-            raise Http404("Recurso no encontrado.")
-        return nave
+        return TenantQueryService._get_or_404(Nave, id=nave_id, naviera=naviera, is_active=True)
 
     @staticmethod
     def get_dispositivo(naviera, dispositivo_id):
-        """Retorna el dispositivo si pertenece al tenant. Http404 si no."""
-        try:
-            return Dispositivo.objects.get(id=dispositivo_id, naviera=naviera)
-        except Dispositivo.DoesNotExist as exc:
-            raise Http404("Recurso no encontrado.") from exc
+        return TenantQueryService._get_or_404(Dispositivo, id=dispositivo_id, naviera=naviera)
 
     @staticmethod
     def get_naves_activas(naviera):
@@ -82,19 +77,11 @@ class TenantQueryService:
 
     @staticmethod
     def get_usuario_del_tenant(naviera, usuario_id):
-        """Retorna el usuario si pertenece al tenant. Http404 si no."""
-        try:
-            return Usuario.objects.get(id=usuario_id, naviera=naviera)
-        except Usuario.DoesNotExist as exc:
-            raise Http404("Recurso no encontrado.") from exc
+        return TenantQueryService._get_or_404(Usuario, id=usuario_id, naviera=naviera)
 
     @staticmethod
     def get_usuario_activo_del_tenant(naviera, usuario_id):
-        """Retorna usuario activo del tenant. Http404 si está inactivo o no existe."""
-        usuario = TenantQueryService.get_usuario_del_tenant(naviera, usuario_id)
-        if not usuario.is_active:
-            raise Http404("Recurso no encontrado.")
-        return usuario
+        return TenantQueryService._get_or_404(Usuario, id=usuario_id, naviera=naviera, is_active=True)
 
     @staticmethod
     def get_usuarios_del_tenant(naviera):
