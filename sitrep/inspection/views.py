@@ -1157,10 +1157,6 @@ def _render_login_unificado(request, slug, modo, **contexto):
     return render(request, "inventory/login_unificado.html", payload)
 
 
-def redirect_kiosco_login(request, slug):
-    return redirect(f"/{slug}/login/?modo=mar")
-
-
 def login_unificado(request, slug, modo_default="tierra"):
     tenant = getattr(request, "naviera", None)
     modo = _normalizar_modo_login(
