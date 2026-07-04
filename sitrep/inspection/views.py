@@ -1364,17 +1364,6 @@ def crear_nave(request, slug):
         "capacidad_personas": capacidad_personas,
     }
 
-    if Nave.objects.filter(naviera=request.naviera, matricula=matricula, is_active=True).exists():
-        return render(
-            request,
-            "inventory/nave_form.html",
-            {
-                "error": "La matrícula ya existe en esta naviera.",
-                "slug": slug,
-                "form_data": form_data,
-            },
-        )
-
     try:
         Nave.objects.create(
             naviera=request.naviera,
