@@ -908,22 +908,7 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     recursos_lista = presenters.construir_recursos_lista_periodo(nave, periodo, slug=slug)
     areas_grupos = presenters.agrupar_recursos_por_area(recursos_lista)
 
-    _AREA_COLORS = {
-        "salvamento":    {"bg": "#854d0e", "text": "#ffffff", "bg_light": "#fef9c3"},
-        "incendio":      {"bg": "#be123c", "text": "#ffffff", "bg_light": "#fff1f2"},
-        "inundacion":    {"bg": "#a21caf", "text": "#ffffff", "bg_light": "#fdf4ff"},
-        "gobierno":      {"bg": "#b45309", "text": "#ffffff", "bg_light": "#fffbeb"},
-        "contaminacion": {"bg": "#475569", "text": "#ffffff", "bg_light": "#f8fafc"},
-        "navegacion":    {"bg": "#0369a1", "text": "#ffffff", "bg_light": "#f0f9ff"},
-        "maquinas":      {"bg": "#c2410c", "text": "#ffffff", "bg_light": "#fff7ed"},
-        "telecom":       {"bg": "#047857", "text": "#ffffff", "bg_light": "#f0fdf4"},
-        "general":       {"bg": "#475569", "text": "#ffffff", "bg_light": "#f8fafc"},
-    }
-    _DEFAULT_COLOR = {"bg": "#0f2d4a", "text": "#ffffff"}
-    for grupo in areas_grupos:
-        area = grupo.get("area")
-        token = area.token_color if area else None
-        grupo["area_color"] = _AREA_COLORS.get(token, _DEFAULT_COLOR)
+    presenters.adjuntar_colores_pdf(areas_grupos)
 
     html_string = render_to_string(
         "inventory/ficha_pdf.html",

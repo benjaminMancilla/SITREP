@@ -576,3 +576,24 @@ def construir_periodo_anterior_json(ficha_anterior, checklist_items):
         },
         ensure_ascii=False,
     ).replace("</", "<\\/")
+
+
+_AREA_COLORS = {
+    "salvamento":    {"bg": "#854d0e", "text": "#ffffff", "bg_light": "#fef9c3"},
+    "incendio":      {"bg": "#be123c", "text": "#ffffff", "bg_light": "#fff1f2"},
+    "inundacion":    {"bg": "#a21caf", "text": "#ffffff", "bg_light": "#fdf4ff"},
+    "gobierno":      {"bg": "#b45309", "text": "#ffffff", "bg_light": "#fffbeb"},
+    "contaminacion": {"bg": "#475569", "text": "#ffffff", "bg_light": "#f8fafc"},
+    "navegacion":    {"bg": "#0369a1", "text": "#ffffff", "bg_light": "#f0f9ff"},
+    "maquinas":      {"bg": "#c2410c", "text": "#ffffff", "bg_light": "#fff7ed"},
+    "telecom":       {"bg": "#047857", "text": "#ffffff", "bg_light": "#f0fdf4"},
+    "general":       {"bg": "#475569", "text": "#ffffff", "bg_light": "#f8fafc"},
+}
+_AREA_COLOR_DEFAULT = {"bg": "#0f2d4a", "text": "#ffffff"}
+
+
+def adjuntar_colores_pdf(areas_grupos):
+    for grupo in areas_grupos:
+        area = grupo.get("area")
+        token = area.token_color if area else None
+        grupo["area_color"] = _AREA_COLORS.get(token, _AREA_COLOR_DEFAULT)
