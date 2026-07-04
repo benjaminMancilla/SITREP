@@ -44,3 +44,9 @@ class FleetQueryService:
     def get_tripulacion_activa_de_nave(naviera, nave_id):
         nave = FleetQueryService.get_nave_activa(naviera, nave_id)
         return Tripulacion.objects.filter(nave=nave, usuario__is_active=True).select_related("usuario")
+
+    @staticmethod
+    def get_naves_capitan(user, naviera):
+        return Nave.objects.filter(
+            naviera=naviera, is_active=True, tripulantes__usuario=user
+        ).distinct()

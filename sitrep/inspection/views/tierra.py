@@ -3,13 +3,14 @@ from datetime import date
 from django.core.paginator import Paginator
 from django.db.models import Count, F, IntegerField, Max, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce, Greatest
-from django.http import HttpResponseNotAllowed
+from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import render
 from django.utils import timezone
 
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.catalog.models import Area, Periodicidad
 from sitrep.fleet.models import Dispositivo, Nave
+from sitrep.fleet.services import FleetQueryService
 
 from ..models import FichaRegistro, MatrizNaveRecurso, PeriodoRevision
 from .. import presenters
@@ -46,31 +47,45 @@ def _obtener_filtros_historial_desde_request(request):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
 def dashboard_tierra(request, slug):
+    naves_capitan = Nave.objects.none()
+    if request.user.rol == "capitan":
+        naves_capitan = FleetQueryService.get_naves_capitan(request.user, request.naviera)
+
     total_usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera).count()
-    total_dispositivos = Dispositivo.objects.filter(naviera=request.naviera, is_active=True).count()
-    fichas_hoy_total = FichaRegistro.objects.filter(
+
+    dispositivos_qs = Dispositivo.objects.filter(naviera=request.naviera, is_active=True)
+    if request.user.rol == "capitan":
+        dispositivos_qs = dispositivos_qs.filter(nave__in=naves_capitan)
+    total_dispositivos = dispositivos_qs.count()
+
+    fichas_hoy_qs = FichaRegistro.objects.filter(
         periodo__nave__naviera=request.naviera,
         fecha_revision__date=timezone.localdate(),
-    ).count()
-    fallos_activos_total = MatrizNaveRecurso.objects.filter(
+    )
+    if request.user.rol == "capitan":
+        fichas_hoy_qs = fichas_hoy_qs.filter(periodo__nave__in=naves_capitan)
+    fichas_hoy_total = fichas_hoy_qs.count()
+
+    fallos_base_qs = MatrizNaveRecurso.objects.filter(
         nave__naviera=request.naviera,
         nave__is_active=True,
         es_visible=True,
-        ultimo_estado_operativo=False,
-    ).count()
-    fallos_nuevos_total = MatrizNaveRecurso.objects.filter(
-        nave__naviera=request.naviera,
-        nave__is_active=True,
-        es_visible=True,
-        es_fallo_nuevo=True,
-    ).count()
+    )
+    if request.user.rol == "capitan":
+        fallos_base_qs = fallos_base_qs.filter(nave__in=naves_capitan)
+    fallos_activos_total = fallos_base_qs.filter(ultimo_estado_operativo=False).count()
+    fallos_nuevos_total = fallos_base_qs.filter(es_fallo_nuevo=True).count()
+
     estados_vencidos = {"omitido", "caduco"}
+    periodos_cerrados_qs = PeriodoRevision.objects.filter(
+        nave__naviera=request.naviera,
+        nave__is_active=True,
+        estado__in=TenantQueryService.ESTADOS_CERRADOS,
+    )
+    if request.user.rol == "capitan":
+        periodos_cerrados_qs = periodos_cerrados_qs.filter(nave__in=naves_capitan)
     todos_periodos_cerrados = (
-        PeriodoRevision.objects.filter(
-            nave__naviera=request.naviera,
-            nave__is_active=True,
-            estado__in=TenantQueryService.ESTADOS_CERRADOS,
-        )
+        periodos_cerrados_qs
         .order_by("nave_id", "periodicidad_id", "-fecha_inicio", "-id")
         .values("nave_id", "periodicidad_id", "estado")
     )
@@ -87,18 +102,6 @@ def dashboard_tierra(request, slug):
     ]
     periodos_vencidos_total = len(periodos_vencidos)
     naves_con_vencidos = len({periodo["nave_id"] for periodo in periodos_vencidos})
-
-    naves_capitan = Nave.objects.none()
-    if request.user.rol == "capitan":
-        naves_capitan = (
-            Nave.objects.filter(
-                naviera=request.naviera,
-                is_active=True,
-                tripulantes__usuario=request.user,
-            )
-            .distinct()
-            .order_by("nombre")
-        )
 
     query_busqueda = request.GET.get("q", "").strip()
     naves_activas = TenantQueryService.get_naves_activas(request.naviera).annotate(
@@ -137,6 +140,9 @@ def dashboard_tierra(request, slug):
         ),
     )
 
+    if request.user.rol == "capitan":
+        naves_activas = naves_activas.filter(id__in=naves_capitan)
+
     if query_busqueda:
         naves_activas = naves_activas.filter(
             Q(nombre__icontains=query_busqueda) | Q(matricula__icontains=query_busqueda)
@@ -146,10 +152,11 @@ def dashboard_tierra(request, slug):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
+    actividad_reciente_qs = FichaRegistro.objects.filter(periodo__nave__naviera=request.naviera)
+    if request.user.rol == "capitan":
+        actividad_reciente_qs = actividad_reciente_qs.filter(periodo__nave__in=naves_capitan)
     actividad_reciente = list(
-        FichaRegistro.objects.filter(
-            periodo__nave__naviera=request.naviera,
-        )
+        actividad_reciente_qs
         .select_related(
             "recurso",
             "usuario",
@@ -194,6 +201,8 @@ def fallos_activos(request, slug):
         nave__is_active=True,
         es_visible=True,
     )
+    if request.user.rol == "capitan":
+        filtros_base = filtros_base.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, naviera))
     fallos_base = filtros_base.filter(ultimo_estado_operativo=False)
     qs = (
         fallos_base.select_related(
@@ -295,6 +304,8 @@ def fallos_activos(request, slug):
         grupos = [{"label": None, "items": fallos}]
 
     naves = Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre")
+    if request.user.rol == "capitan":
+        naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, naviera))
     areas = Area.objects.filter(
         id__in=filtros_base.exclude(recurso__area_id__isnull=True).values_list("recurso__area_id", flat=True)
     ).order_by(F("orden").asc(nulls_last=True), "nombre")
@@ -337,12 +348,15 @@ def periodos_vencidos(request, slug):
     hoy = timezone.localdate()
     estados_vencidos = {"omitido", "caduco"}
 
+    qs = PeriodoRevision.objects.filter(
+        nave__naviera=naviera,
+        nave__is_active=True,
+        estado__in=estados_vencidos,
+    )
+    if request.user.rol == "capitan":
+        qs = qs.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, naviera))
     qs = (
-        PeriodoRevision.objects.filter(
-            nave__naviera=naviera,
-            nave__is_active=True,
-            estado__in=estados_vencidos,
-        )
+        qs
         .select_related("nave", "periodicidad")
         .order_by(F("fecha_termino").desc(nulls_last=True), "nave__nombre")
     )
@@ -411,13 +425,16 @@ def periodos_vencidos(request, slug):
             ahora=hoy,
         )
 
+    ultimos_cerrados_qs = PeriodoRevision.objects.filter(
+        nave__naviera=naviera,
+        nave__is_active=True,
+        estado__in=TenantQueryService.ESTADOS_CERRADOS,
+    )
+    if request.user.rol == "capitan":
+        ultimos_cerrados_qs = ultimos_cerrados_qs.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, naviera))
     ultimos_cerrados = {}
     for periodo in (
-        PeriodoRevision.objects.filter(
-            nave__naviera=naviera,
-            nave__is_active=True,
-            estado__in=TenantQueryService.ESTADOS_CERRADOS,
-        )
+        ultimos_cerrados_qs
         .select_related("nave", "periodicidad")
         .order_by("nave_id", "periodicidad_id", "-fecha_termino", "-id")
     ):
@@ -472,6 +489,8 @@ def periodos_vencidos(request, slug):
         grupo["items"].sort(key=lambda periodo: periodo.fecha_termino, reverse=True)
 
     naves = Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre")
+    if request.user.rol == "capitan":
+        naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, naviera))
     periodicidades = Periodicidad.objects.filter(
         id__in=PeriodoRevision.objects.filter(
             nave__naviera=naviera,
@@ -508,6 +527,8 @@ def nave_detalle(request, slug, nave_id):
         return HttpResponseNotAllowed(["GET"])
 
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
+        return HttpResponseForbidden("Acceso denegado.")
     filtros_historial = _obtener_filtros_historial_desde_request(request)
     periodos_abiertos = TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("-fecha_inicio")
     historial = TenantQueryService.get_periodos_historial_de_nave(
