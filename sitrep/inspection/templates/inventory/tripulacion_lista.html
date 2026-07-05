@@ -160,7 +160,8 @@
                         </td>
                         <td class="px-4 py-3.5">
                             <div class="flex justify-end">
-                                {% if request.user.rol != "tierra" and (request.user.rol != "capitan" or asignacion.usuario != request.user) %}
+                                {% if request.user.rol != "tierra" %}
+                                {% if request.user.rol != "capitan" or asignacion.usuario != request.user %}
                                 <button
                                     type="button"
                                     @click="abrirModal(('{{ asignacion.usuario.first_name|default_if_none:""|escapejs }} {{ asignacion.usuario.last_name|default_if_none:""|escapejs }}').trim() || 'Sin nombre', '{{ asignacion.usuario.rut|escapejs }}', {{ asignacion.id }})"
@@ -168,6 +169,7 @@
                                 >
                                     Remover
                                 </button>
+                                {% endif %}
                                 {% endif %}
                             </div>
                         </td>
