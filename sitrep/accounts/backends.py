@@ -1,7 +1,7 @@
 ﻿from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
-from sitrep.fleet.models import Dispositivo
+from sitrep.fleet.models import Dispositivo, Tripulacion
 
 Usuario = get_user_model()
 
@@ -46,9 +46,11 @@ class KioscoTenantBackend(ModelBackend):
 
         try:
             usuario = Usuario.objects.get(rut=rut, naviera_id=naviera_id)
-            if usuario.check_pin(pin) and self.user_can_authenticate(usuario):
-                usuario._dispositivo_autenticado = dispositivo_autenticado
-                return usuario
+            if not usuario.check_pin(pin) or not self.user_can_authenticate(usuario):
+                return None
+            if not Tripulacion.objects.filter(usuario=usuario, nave_id=dispositivo_autenticado.nave_id).exists():
+                return None
+            usuario._dispositivo_autenticado = dispositivo_autenticado
+            return usuario
         except (Usuario.DoesNotExist, Usuario.MultipleObjectsReturned):
             return None
-        return None
