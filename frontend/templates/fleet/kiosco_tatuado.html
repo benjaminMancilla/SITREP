@@ -34,16 +34,10 @@
 
         <p class="mt-5 text-[13px] leading-relaxed text-ink-muted">Este token ya fue guardado en el navegador. No es necesario copiarlo.</p>
 
-        <div class="mt-7 flex flex-col justify-center gap-2.5 sm:flex-row">
-            <a
-                href="{% url 'inventory:login_kiosco' slug=request.naviera.slug %}"
-                class="inline-flex items-center justify-center rounded-md bg-navy px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-navy-light"
-            >
-                Ir a la bitácora
-            </a>
+        <div class="mt-7 flex justify-center">
             <a
                 href="{% url 'inventory:listar_dispositivos' slug=request.naviera.slug %}"
-                class="inline-flex items-center justify-center rounded-md border border-surface-border px-5 py-2.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                class="inline-flex items-center justify-center rounded-md bg-navy px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-navy-light"
             >
                 Volver al listado
             </a>
