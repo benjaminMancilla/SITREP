@@ -585,6 +585,10 @@ def nave_detalle(request, slug, nave_id):
         es_visible=True,
         es_fallo_nuevo=True,
     ).count()
+    periodos_vencidos_nave = PeriodoRevision.objects.filter(
+        nave=nave,
+        estado__in=PeriodoRevision.ESTADOS_INCOMPLETOS,
+    ).count()
     total_recursos_nave = sum(item["total_recursos"] for item in periodos_abiertos_detalle)
 
     puede_ver_tripulacion = request.user.rol in {"admin_sitrep", "admin_naviera", "capitan", "tierra"}
@@ -603,6 +607,7 @@ def nave_detalle(request, slug, nave_id):
             "periodicidades": periodicidades,
             "fallos_activos_nave": fallos_activos_nave,
             "fallos_nuevos_nave": fallos_nuevos_nave,
+            "periodos_vencidos_nave": periodos_vencidos_nave,
             "total_recursos_nave": total_recursos_nave,
             "slug": slug,
             "puede_ver_tripulacion": puede_ver_tripulacion,

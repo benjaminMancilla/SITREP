@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 divide-x divide-y divide-surface-border overflow-hidden rounded-md border border-surface-border bg-[#f8fafc] sm:grid-cols-5 sm:divide-y-0">
+        <div class="mt-4 grid grid-cols-3 divide-x divide-y divide-surface-border overflow-hidden rounded-md border border-surface-border bg-[#f8fafc] sm:grid-cols-6 sm:divide-y-0">
             <div class="px-4 py-2.5 text-center">
                 <p class="text-[18px] font-bold text-navy">{{ periodos_abiertos_detalle|length }}</p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Períodos abiertos</p>
@@ -65,18 +65,24 @@
                 <p class="text-[18px] font-bold text-navy">{{ historial_total }}</p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">En historial</p>
             </div>
-            <div class="px-4 py-2.5 text-center">
+            <a href="{% url 'inventory:fallos_activos' slug=slug %}?nave={{ nave.id }}" class="block px-4 py-2.5 text-center transition hover:bg-surface-border/40">
                 <p class="text-[18px] font-bold {% if fallos_activos_nave > 0 %}text-fail{% else %}text-navy{% endif %}">
                     {{ fallos_activos_nave }}
                 </p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Fallos activos</p>
-            </div>
-            <div class="px-4 py-2.5 text-center">
+            </a>
+            <a href="{% url 'inventory:fallos_activos' slug=slug %}?nave={{ nave.id }}&solo_nuevos=1" class="block px-4 py-2.5 text-center transition hover:bg-surface-border/40">
                 <p class="text-[18px] font-bold {% if fallos_nuevos_nave > 0 %}text-warn{% else %}text-navy{% endif %}">
                     {{ fallos_nuevos_nave }}
                 </p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Fallos nuevos</p>
-            </div>
+            </a>
+            <a href="{% url 'inventory:periodos_vencidos' slug=slug %}?nave={{ nave.id }}" class="block px-4 py-2.5 text-center transition hover:bg-surface-border/40">
+                <p class="text-[18px] font-bold {% if periodos_vencidos_nave > 0 %}text-warn{% else %}text-navy{% endif %}">
+                    {{ periodos_vencidos_nave }}
+                </p>
+                <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Períodos vencidos</p>
+            </a>
             <div class="px-4 py-2.5 text-center">
                 <p class="text-[18px] font-bold text-navy">{{ total_recursos_nave }}</p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Recursos</p>
