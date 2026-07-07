@@ -386,7 +386,7 @@ class TestMotorPeriodosEstados(TestCase):
             periodicidad=otra_periodicidad,
             fecha_inicio=timezone.localdate(),
             fecha_termino=timezone.localdate(),
-            estado="operativo",
+            estado="cumplido",
         )
 
         periodos_ids = set(
@@ -423,17 +423,17 @@ class TestMotorPeriodosEstados(TestCase):
 
         self.assertEqual(self.periodo.estado, "en_proceso")
 
-    def test_periodo_sin_registros_termina_omitido(self):
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "omitido")
+    def test_periodo_sin_registros_termina_vencido(self):
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "vencido")
 
-    def test_periodo_con_registro_incompleto_termina_caduco(self):
+    def test_periodo_con_registro_incompleto_termina_vencido(self):
         self._crear_ficha(
             recurso=self.recurso_a,
             estado_operativo=None,
             payload_checklist={"vigencia": {"cumple": True}},
         )
 
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "caduco")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "vencido")
 
     def test_periodo_completo_y_operativo_termina_conforme(self):
         self._crear_ficha(
@@ -461,9 +461,9 @@ class TestMotorPeriodosEstados(TestCase):
             payload_checklist={},
         )
 
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "operativo")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "cumplido")
 
-    def test_periodo_completo_con_observacion_termina_observado(self):
+    def test_periodo_completo_con_observacion_termina_cumplido(self):
         self._crear_ficha(
             recurso=self.recurso_a,
             estado_operativo=True,
@@ -490,9 +490,9 @@ class TestMotorPeriodosEstados(TestCase):
             payload_checklist={},
         )
 
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "observado")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "cumplido")
 
-    def test_periodo_completo_con_falla_termina_fallido(self):
+    def test_periodo_completo_con_falla_termina_cumplido(self):
         self._crear_ficha(
             recurso=self.recurso_a,
             estado_operativo=False,
@@ -518,7 +518,7 @@ class TestMotorPeriodosEstados(TestCase):
             payload_checklist={},
         )
 
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "fallido")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(self.periodo), "cumplido")
 
     def test_estado_abierto_sin_fichas_completas_permanece_pendiente(self):
         self.assertEqual(
@@ -848,7 +848,7 @@ class TestIntegracionMotorReglas(TestCase):
 
         self.assertTrue(ficha.estado_operativo)
         self.assertEqual(periodo.estado, "en_proceso")
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "operativo")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "cumplido")
 
     def test_flujo_completo_ficha_con_fallo(self):
         """
@@ -884,9 +884,9 @@ class TestIntegracionMotorReglas(TestCase):
 
         self.assertFalse(ficha.estado_operativo)
         self.assertEqual(periodo.estado, "en_proceso")
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "fallido")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "cumplido")
 
-    def test_flujo_completo_periodo_caduco(self):
+    def test_flujo_completo_periodo_vencido(self):
         """
         Período que expira con ficha incompleta → caduco:
         1. Crear ficha parcial (estado_operativo=None, checklist incompleto)
@@ -913,7 +913,7 @@ class TestIntegracionMotorReglas(TestCase):
         )
 
         self.assertIsNone(ficha.estado_operativo)
-        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "caduco")
+        self.assertEqual(MotorPeriodos._determinar_estado_cierre(periodo), "vencido")
 
     def test_observacion_requerimiento_fallado_es_obligatoria(self):
         """
@@ -1244,7 +1244,7 @@ class TestIntegracionMotorReglas(TestCase):
         periodo = self._get_periodo(nave)
 
         periodo.fecha_termino = timezone.now().date() - timedelta(days=5)
-        periodo.estado = "operativo"
+        periodo.estado = "cumplido"
         periodo.save()
 
         self._crear_recurso(

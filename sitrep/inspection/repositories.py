@@ -32,12 +32,11 @@ def get_datos_periodo_anterior(nave, periodo):
     Solo incluye fichas con estado_operativo confirmado.
     Retorna {} si no hay período anterior.
     """
-    ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
     periodo_anterior = (
         PeriodoRevision.objects.filter(
             nave=nave,
             periodicidad=periodo.periodicidad,
-            estado__in=ESTADOS_CERRADOS,
+            estado__in=PeriodoRevision.ESTADOS_CERRADOS,
             fecha_termino__lt=periodo.fecha_inicio,
         )
         .order_by("-fecha_termino")

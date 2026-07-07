@@ -37,8 +37,8 @@ def contar_fichas_completas_por_periodo(periodo_ids):
 
 
 class TenantQueryService:
-    ESTADOS_ABIERTOS = {"pendiente", "en_proceso"}
-    ESTADOS_CERRADOS = {"operativo", "observado", "fallido", "omitido", "caduco"}
+    ESTADOS_ABIERTOS = PeriodoRevision.ESTADOS_ABIERTOS
+    ESTADOS_CERRADOS = PeriodoRevision.ESTADOS_CERRADOS
 
     # ponytail: fleet/accounts queries delegated — callers migrate to FleetQueryService/AccountsQueryService in full segregation
     get_nave = FleetQueryService.get_nave
@@ -344,19 +344,12 @@ class MotorPeriodos:
         fichas_completas = [ficha for ficha in fichas if cls._es_ficha_completa(ficha)]
 
         if not fichas_completas:
-            return "omitido" if not fichas else "caduco"
+            return "vencido"
 
         if len(fichas_completas) < total_recursos:
-            return "caduco"
+            return "vencido"
 
-        if len(fichas_completas) == total_recursos:
-            if any(ficha.estado_operativo is False for ficha in fichas_completas):
-                return "fallido"
-            if any((ficha.observacion_general or "").strip() for ficha in fichas_completas):
-                return "observado"
-            return "operativo"
-
-        return "caduco"
+        return "cumplido"
 
     @classmethod
     def _cerrar_periodo(cls, periodo):

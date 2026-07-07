@@ -45,9 +45,10 @@ class PeriodoRevision(models.Model):
     fecha_termino = models.DateField()
     ESTADOS = [
         ('pendiente', 'Pendiente'), ('en_proceso', 'En proceso'),
-        ('operativo', 'Operativo'), ('observado', 'Observado'),
-        ('fallido', 'Fallido'), ('omitido', 'Omitido'), ('caduco', 'Caduco'),
+        ('cumplido', 'Cumplido'), ('vencido', 'Vencido'),
     ]
+    ESTADOS_ABIERTOS = {'pendiente', 'en_proceso'}
+    ESTADOS_CERRADOS = {'cumplido', 'vencido'}
     estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
 
     class Meta:

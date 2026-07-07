@@ -256,7 +256,7 @@ class Command(BaseCommand):
         if not mar:
             return
 
-        estados_periodo = ['pendiente', 'en_proceso', 'operativo', 'observado', 'fallido', 'en_proceso']
+        estados_periodo = ['pendiente', 'en_proceso', 'cumplido', 'vencido', 'cumplido', 'en_proceso']
         configs_ficha = [
             ('completa',    True,  ''),
             ('completa',    False, 'Elemento no cumple especificación técnica.'),
