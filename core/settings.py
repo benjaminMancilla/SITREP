@@ -39,7 +39,7 @@ _on_railway = bool(os.getenv('RAILWAY_ENVIRONMENT_ID'))
 ALLOWED_HOSTS = [
     railway_domain,
     'localhost',
-    '127.0.0.1'
+    '127.0.0.1',
     'healthcheck.railway.app'
 ] + extra_hosts
 
