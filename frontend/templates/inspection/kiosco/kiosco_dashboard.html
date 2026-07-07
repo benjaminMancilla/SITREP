@@ -151,11 +151,8 @@
                             class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
                         >
                             <option value="">Todos los estados</option>
-                            <option value="operativo" {% if estado_filtro == 'operativo' %}selected{% endif %}>Operativo</option>
-                            <option value="observado" {% if estado_filtro == 'observado' %}selected{% endif %}>Observado</option>
-                            <option value="fallido" {% if estado_filtro == 'fallido' %}selected{% endif %}>Fallido</option>
-                            <option value="omitido" {% if estado_filtro == 'omitido' %}selected{% endif %}>Omitido</option>
-                            <option value="caduco" {% if estado_filtro == 'caduco' %}selected{% endif %}>Caduco</option>
+                            <option value="cumplido" {% if estado_filtro == 'cumplido' %}selected{% endif %}>Cumplido</option>
+                            <option value="vencido" {% if estado_filtro == 'vencido' %}selected{% endif %}>Vencido</option>
                         </select>
                     </div>
                     <div>

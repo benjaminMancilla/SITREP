@@ -13,8 +13,8 @@
                 {% endif %}
             {% else %}
                 <div class="flex items-center gap-3 border-b border-surface-border px-6 py-3.5 text-[12px] text-ink-muted last:border-b-0">
-                    <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if variant == 'historial' %}{% if periodo_estado == 'omitido' or periodo_estado == 'fallido' %}bg-fail{% else %}bg-surface-border{% endif %}{% else %}bg-surface-border{% endif %}"></span>
-                    <span>{{ registro.recurso.nombre }} · <em>Sin registrar{% if variant == 'historial' %}{% if periodo_estado != 'operativo' and periodo_estado != 'observado' %} (período cerrado){% endif %}{% endif %}</em></span>
+                    <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if variant == 'historial' %}{% if periodo_estado == 'vencido' %}bg-fail{% else %}bg-surface-border{% endif %}{% else %}bg-surface-border{% endif %}"></span>
+                    <span>{{ registro.recurso.nombre }} · <em>Sin registrar{% if variant == 'historial' %} (período cerrado){% endif %}</em></span>
                 </div>
             {% endif %}
         {% endfor %}
