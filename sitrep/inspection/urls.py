@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 from . import views
 
 app_name = 'inventory'
@@ -50,6 +50,8 @@ urlpatterns = [
         views.remover_tripulante,
         name='remover_tripulante',
     ),
+
+    path('api/v1/', include('core.api_urls')),
 
     # API JSON — Kiosco
     path('api/periodos/', views.api_periodos_nave, name='api_periodos_nave'),
