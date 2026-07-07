@@ -8,17 +8,10 @@
 {% block page_content %}
 <div
     x-data="{
-        q: '',
         modalAbierto: false,
         modalSubtitulo: '',
         modalId: null,
-        visibles: {{ tripulacion|length }},
         actionTemplate: '{% url "inventory:remover_tripulante" slug=slug nave_id=nave.id tripulacion_id=987654321 %}'.replace('987654321', '__ID__'),
-        actualizarConteo() {
-            this.$nextTick(() => {
-                this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not(.hidden)').length : 0;
-            });
-        },
         abrirModal(subtitulo, id) {
             this.modalSubtitulo = subtitulo;
             this.modalId = id;
@@ -33,7 +26,6 @@
             return this.actionTemplate.replace('__ID__', String(this.modalId ?? ''));
         }
     }"
-    x-effect="q; actualizarConteo()"
     class="space-y-4"
 >
     <div class="mb-5 flex flex-col gap-4 rounded-lg border border-surface-border bg-white p-5 shadow-sm lg:flex-row lg:items-start lg:justify-between">
@@ -83,14 +75,16 @@
     </div>
     {% endif %}
 
-    <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
-        {% include 'components/search_input.html' with placeholder="Buscar por nombre o RUT…" %}
-        <span class="ml-auto text-[12px] text-ink-muted">
-            <span x-text="visibles"></span> tripulantes
-        </span>
-    </div>
+    <form method="get" class="mb-3.5 flex flex-wrap items-center gap-2.5">
+        {% include 'components/search_input.html' with placeholder="Buscar por nombre o RUT…" value=q %}
+        {% if q %}
+        <a href="?" class="text-[12px] text-ink-muted transition hover:text-ink">Limpiar</a>
+        {% endif %}
+        <span class="ml-auto text-[12px] text-ink-muted">{{ page_obj.paginator.count }} tripulantes</span>
+    </form>
 
     <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
+        {% if page_obj.object_list %}
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="bg-neutral-bg text-ink-muted">
@@ -100,14 +94,9 @@
                         <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
                     </tr>
                 </thead>
-                <tbody x-ref="tbody">
-                    {% for asignacion in tripulacion %}
-                    <tr
-                        :class="{
-                            'hidden': q && !('{{ asignacion.usuario.first_name|default_if_none:""|lower|escapejs }} {{ asignacion.usuario.last_name|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()) || '{{ asignacion.usuario.rut|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()))
-                        }"
-                        class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]"
-                    >
+                <tbody>
+                    {% for asignacion in page_obj %}
+                    <tr class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
                         <td class="px-4 py-3.5">
                             <p class="font-semibold text-navy">
                                 {% if asignacion.usuario.first_name or asignacion.usuario.last_name %}
@@ -141,18 +130,12 @@
                 </tbody>
             </table>
         </div>
-
-        <div
-            x-show="visibles === 0"
-            x-cloak
-            class="px-5 py-8 text-center text-sm text-ink-muted"
-        >
-            {% if tripulacion %}
-                No se encontraron tripulantes con los filtros aplicados.
-            {% else %}
-                No hay tripulantes asignados a esta nave.
-            {% endif %}
+        {% include 'components/pagination.html' with page_obj=page_obj pagination_params=pagination_params item_label="tripulantes" %}
+        {% else %}
+        <div class="px-5 py-8 text-center text-sm text-ink-muted">
+            {% if q %}No se encontraron tripulantes con los filtros aplicados.{% else %}No hay tripulantes asignados a esta nave.{% endif %}
         </div>
+        {% endif %}
     </div>
 
     {% include 'components/confirm_modal.html' with titulo="Remover tripulante" descripcion="El usuario será removido de la tripulación de esta nave, pero seguirá activo en el sistema." confirm_label="Remover" %}

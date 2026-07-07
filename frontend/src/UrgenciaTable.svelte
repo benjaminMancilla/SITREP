@@ -3,14 +3,20 @@
 
   let { slug } = $props()
 
+  const PER_PAGE = 10
+
   let loading = $state(true)
   let error = $state(null)
   let columns = $state([])
   let naves = $state([])
+  let page = $state(1)
   let hoveredRow = $state(null)
   let tooltip = $state(null) // { cell, col, left, bottom }
   let formulaVisible = $state(false)
   let formulaHover = $state(false)
+
+  let pagedNaves = $derived(naves.slice((page - 1) * PER_PAGE, page * PER_PAGE))
+  let totalPages = $derived(Math.ceil(naves.length / PER_PAGE))
 
   onMount(async () => {
     try {
@@ -138,7 +144,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each naves as nave, ni (nave.id)}
+          {#each pagedNaves as nave, ni (nave.id)}
             <tr
               style:background-color={rowBg(ni, hoveredRow === ni)}
               onmouseenter={() => hoveredRow = ni}
@@ -207,9 +213,32 @@
     </div>
 
     <div class="border-t border-surface-border px-4 py-2.5 flex items-center justify-between bg-neutral-bg">
-      <p class="text-[11px] text-ink-muted">
-        {naves.length} naves · {columns.length} periodicidades activas
-      </p>
+      <div class="flex items-center gap-3">
+        <p class="text-[11px] text-ink-muted">
+          {pagedNaves.length} de {naves.length} naves · {columns.length} periodicidades activas
+        </p>
+        {#if totalPages > 1}
+        <div class="flex items-center gap-1">
+          <button
+            onclick={() => page = Math.max(1, page - 1)}
+            disabled={page === 1}
+            class="inline-flex items-center rounded-md border border-surface-border bg-white px-2.5 py-1 text-xs text-ink-secondary transition hover:bg-neutral-bg disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Anterior
+          </button>
+          <span class="inline-flex items-center rounded-md border border-navy bg-navy px-2.5 py-1 text-xs font-semibold text-white">
+            {page}
+          </span>
+          <button
+            onclick={() => page = Math.min(totalPages, page + 1)}
+            disabled={page === totalPages}
+            class="inline-flex items-center rounded-md border border-surface-border bg-white px-2.5 py-1 text-xs text-ink-secondary transition hover:bg-neutral-bg disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Siguiente
+          </button>
+        </div>
+        {/if}
+      </div>
       <div class="flex items-center gap-2">
         {#if formulaVisible}
           <p class="text-[11px] text-ink-muted font-mono">urgencia = (1 − cob.) × (t. transcurrido / duración)</p>
@@ -359,7 +388,7 @@
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10px;
     padding: 5px 8px;
-    border-radius: 5px;
+    border-radius: 8px;
     pointer-events: none;
     box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
   }

@@ -1,12 +1,12 @@
 from datetime import date
 
-from django.core.paginator import Paginator
 from django.db.models import Count, F, IntegerField, Max, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce, Greatest
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import render
 from django.utils import timezone
 
+from core.utils import paginate
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.catalog.models import Area, Periodicidad
 from sitrep.fleet.models import Dispositivo, Nave
@@ -154,9 +154,10 @@ def dashboard_tierra(request, slug):
             Q(nombre__icontains=query_busqueda) | Q(matricula__icontains=query_busqueda)
         )
 
-    paginator = Paginator(naves_activas.order_by("nombre"), 10)
-    page_number = request.GET.get("page", 1)
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginate(naves_activas.order_by("nombre"), request.GET.get("page"), 10)
+    _params = request.GET.copy()
+    _params.pop("page", None)
+    pagination_params = _params.urlencode()
 
     actividad_reciente_qs = FichaRegistro.objects.filter(periodo__nave__naviera=request.naviera)
     if request.user.rol == "capitan":
@@ -176,6 +177,7 @@ def dashboard_tierra(request, slug):
         "inspection/tierra/dashboard_tierra.html",
         {
             "page_obj": page_obj,
+            "pagination_params": pagination_params,
             "query_busqueda": query_busqueda,
             "actividad_reciente": actividad_reciente,
             "total_usuarios": total_usuarios,
@@ -261,7 +263,17 @@ def fallos_activos(request, slug):
         except ValueError:
             fecha_hasta_str = ""
 
-    fallos = list(qs)
+    fallos_filtrados_total = qs.count()
+    _params = request.GET.copy()
+    _params.pop("page", None)
+    if not agrupar_por:
+        page_obj = paginate(qs, request.GET.get("page"), 20)
+        fallos = list(page_obj.object_list)
+        pagination_params = _params.urlencode()
+    else:
+        page_obj = None
+        fallos = list(qs)
+        pagination_params = ""
     presenters.adjuntar_detalle_a_fallos(fallos, naviera)
     grupos = []
     if agrupar_por == "nave":
@@ -337,7 +349,9 @@ def fallos_activos(request, slug):
             "periodicidad_id": periodicidad_id,
             "fecha_desde_str": fecha_desde_str,
             "fecha_hasta_str": fecha_hasta_str,
-            "fallos_filtrados_total": len(fallos),
+            "fallos_filtrados_total": fallos_filtrados_total,
+            "page_obj": page_obj,
+            "pagination_params": pagination_params,
             "solo_nuevos": solo_nuevos,
             "fallos_nuevos_total_sin_filtro": fallos_nuevos_total_sin_filtro,
         },
@@ -421,7 +435,17 @@ def periodos_vencidos(request, slug):
         total_recursos_momento=Subquery(total_recursos_sq, output_field=IntegerField()),
     )
 
-    periodos = list(qs)
+    vencidos_filtrados_total = qs.count()
+    _params = request.GET.copy()
+    _params.pop("page", None)
+    if not agrupar_por:
+        page_obj = paginate(qs, request.GET.get("page"), 20)
+        periodos = list(page_obj.object_list)
+        pagination_params = _params.urlencode()
+    else:
+        page_obj = None
+        periodos = list(qs)
+        pagination_params = ""
     for periodo in periodos:
         periodo.tiempo_desde_vencimiento_display = presenters.formatear_tiempo_transcurrido_es(
             periodo.fecha_termino,
@@ -512,7 +536,9 @@ def periodos_vencidos(request, slug):
             "kpi_naves_afectadas": kpi_naves_afectadas,
             "kpi_total_historico": kpi_total_historico,
             "confiabilidad_por_periodicidad": confiabilidad_por_periodicidad,
-            "vencidos_filtrados_total": len(periodos),
+            "vencidos_filtrados_total": vencidos_filtrados_total,
+            "page_obj": page_obj,
+            "pagination_params": pagination_params,
             "naves": naves,
             "periodicidades": periodicidades,
             "nave_id": nave_id,
@@ -543,7 +569,12 @@ def nave_detalle(request, slug, nave_id):
     )
     periodicidades = Periodicidad.objects.all().order_by("nombre")
     periodos_abiertos_detalle = presenters.construir_periodos_detalle(nave, periodos_abiertos)
-    historial_detalle = presenters.construir_periodos_detalle(nave, historial, for_history=True)
+    historial_total = historial.count()
+    _params = request.GET.copy()
+    _params.pop("page", None)
+    historial_page_obj = paginate(historial, request.GET.get("page"), 10)
+    historial_detalle = presenters.construir_periodos_detalle(nave, historial_page_obj.object_list, for_history=True)
+    historial_pagination_params = _params.urlencode()
     fallos_activos_nave = MatrizNaveRecurso.objects.filter(
         nave=nave,
         es_visible=True,
@@ -566,6 +597,9 @@ def nave_detalle(request, slug, nave_id):
             "nave": nave,
             "periodos_abiertos_detalle": periodos_abiertos_detalle,
             "historial_detalle": historial_detalle,
+            "historial_total": historial_total,
+            "historial_page_obj": historial_page_obj,
+            "historial_pagination_params": historial_pagination_params,
             "periodicidades": periodicidades,
             "fallos_activos_nave": fallos_activos_nave,
             "fallos_nuevos_nave": fallos_nuevos_nave,

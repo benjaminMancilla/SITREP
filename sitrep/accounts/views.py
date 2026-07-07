@@ -1,9 +1,11 @@
 import re
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.db.models import Q
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
+from core.utils import paginate
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
@@ -116,12 +118,25 @@ def logout_tierra(request, slug):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "tierra")
 def listar_usuarios(request, slug):
+    q = request.GET.get("q", "").strip()
+    rol = request.GET.get("rol", "").strip()
     usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera)
+    if q:
+        usuarios = usuarios.filter(
+            Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(rut__icontains=q) | Q(email__icontains=q)
+        )
+    if rol:
+        usuarios = usuarios.filter(rol=rol)
+    _params = request.GET.copy()
+    _params.pop("page", None)
     return render(
         request,
         "accounts/usuarios_lista.html",
         {
-            "usuarios": usuarios,
+            "page_obj": paginate(usuarios.order_by("first_name", "last_name"), request.GET.get("page"), 10),
+            "pagination_params": _params.urlencode(),
+            "q": q,
+            "rol": rol,
             "slug": slug,
         },
     )

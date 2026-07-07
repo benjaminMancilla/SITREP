@@ -5,6 +5,7 @@ from django.db.models import Count, Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
+from core.utils import paginate
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
 from sitrep.fleet.services import FleetQueryService
@@ -14,6 +15,7 @@ from sitrep.inspection.services import TenantQueryService  # ponytail: migrate t
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
 def listar_naves(request, slug):
+    q = request.GET.get("q", "").strip()
     naves = TenantQueryService.get_naves_activas(request.naviera).annotate(
         periodos_abiertos=Count(
             "periodos",
@@ -39,11 +41,17 @@ def listar_naves(request, slug):
     )
     if request.user.rol == "capitan":
         naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
+    if q:
+        naves = naves.filter(Q(nombre__icontains=q) | Q(matricula__icontains=q))
+    _params = request.GET.copy()
+    _params.pop("page", None)
     return render(
         request,
         "fleet/naves_lista.html",
         {
-            "naves": naves.order_by("nombre"),
+            "page_obj": paginate(naves.order_by("nombre"), request.GET.get("page"), 20),
+            "pagination_params": _params.urlencode(),
+            "q": q,
             "slug": slug,
         },
     )
@@ -182,14 +190,21 @@ def desactivar_nave(request, slug, nave_id):
 @tenant_member_required
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
 def listar_dispositivos(request, slug):
-    dispositivos = TenantQueryService.get_dispositivos(request.naviera).order_by("nave__nombre", "nombre")
+    q = request.GET.get("q", "").strip()
+    dispositivos = TenantQueryService.get_dispositivos(request.naviera)
     if request.user.rol == "capitan":
         dispositivos = dispositivos.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
+    if q:
+        dispositivos = dispositivos.filter(Q(nombre__icontains=q) | Q(nave__nombre__icontains=q))
+    _params = request.GET.copy()
+    _params.pop("page", None)
     return render(
         request,
         "fleet/dispositivos_lista.html",
         {
-            "dispositivos": dispositivos,
+            "page_obj": paginate(dispositivos.order_by("nave__nombre", "nombre"), request.GET.get("page"), 10),
+            "pagination_params": _params.urlencode(),
+            "q": q,
             "slug": slug,
         },
     )
@@ -247,18 +262,26 @@ def listar_tripulacion(request, slug, nave_id):
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
     if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
         return HttpResponseForbidden("Acceso denegado.")
+    q = request.GET.get("q", "").strip()
     tripulacion = TenantQueryService.get_tripulacion_activa_de_nave(request.naviera, nave_id)
     usuarios_asignados_ids = tripulacion.values_list("usuario_id", flat=True)
     usuarios_disponibles = TenantQueryService.get_usuarios_del_tenant(request.naviera).exclude(
         id__in=usuarios_asignados_ids
     )
-
+    if q:
+        tripulacion = tripulacion.filter(
+            Q(usuario__first_name__icontains=q) | Q(usuario__last_name__icontains=q) | Q(usuario__rut__icontains=q)
+        )
+    _params = request.GET.copy()
+    _params.pop("page", None)
     return render(
         request,
         "fleet/tripulacion_lista.html",
         {
             "nave": nave,
-            "tripulacion": tripulacion,
+            "page_obj": paginate(tripulacion, request.GET.get("page"), 20),
+            "pagination_params": _params.urlencode(),
+            "q": q,
             "usuarios_disponibles": usuarios_disponibles,
             "slug": slug,
         },

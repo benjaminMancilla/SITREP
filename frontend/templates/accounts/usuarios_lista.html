@@ -8,18 +8,10 @@
 {% block page_content %}
 <div
     x-data="{
-        q: '',
-        rol: '',
         modalAbierto: false,
         modalSubtitulo: '',
         modalId: null,
-        visibles: {{ usuarios|length }},
         actionTemplate: '{% url "inventory:desactivar_usuario" slug=slug id=987654321 %}'.replace('987654321', '__ID__'),
-        actualizarConteo() {
-            this.$nextTick(() => {
-                this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not(.hidden)').length : 0;
-            });
-        },
         abrirModal(subtitulo, id) {
             this.modalSubtitulo = subtitulo;
             this.modalId = id;
@@ -34,7 +26,6 @@
             return this.actionTemplate.replace('__ID__', String(this.modalId ?? ''));
         }
     }"
-    x-effect="q; rol; actualizarConteo()"
     class="space-y-4"
 >
     <div class="mb-5 flex items-center justify-between">
@@ -56,25 +47,27 @@
         {% endif %}
     </div>
 
-    <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
-        {% include 'components/search_input.html' with placeholder="Buscar por nombre, RUT o email…" %}
+    <form method="get" class="mb-3.5 flex flex-wrap items-center gap-2.5">
+        {% include 'components/search_input.html' with placeholder="Buscar por nombre, RUT o email…" value=q %}
         <select
-            x-model="rol"
-            @change="actualizarConteo()"
+            name="rol"
+            onchange="this.form.submit()"
             class="h-9 rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
         >
             <option value="">Todos los roles</option>
-            <option value="admin_naviera">Admin Naviera</option>
-            <option value="tierra">Tierra</option>
-            <option value="capitan">Capitán</option>
-            <option value="mar">Mar</option>
+            <option value="admin_naviera" {% if rol == "admin_naviera" %}selected{% endif %}>Admin Naviera</option>
+            <option value="tierra" {% if rol == "tierra" %}selected{% endif %}>Tierra</option>
+            <option value="capitan" {% if rol == "capitan" %}selected{% endif %}>Capitán</option>
+            <option value="mar" {% if rol == "mar" %}selected{% endif %}>Mar</option>
         </select>
-        <span class="ml-auto text-[12px] text-ink-muted">
-            <span x-text="visibles"></span> usuarios
-        </span>
-    </div>
+        {% if q or rol %}
+        <a href="?" class="text-[12px] text-ink-muted transition hover:text-ink">Limpiar</a>
+        {% endif %}
+        <span class="ml-auto text-[12px] text-ink-muted">{{ page_obj.paginator.count }} usuarios</span>
+    </form>
 
     <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
+        {% if page_obj.object_list %}
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="bg-neutral-bg text-ink-muted">
@@ -86,18 +79,9 @@
                         <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
                     </tr>
                 </thead>
-                <tbody x-ref="tbody">
-                    {% for usuario in usuarios %}
-                    <tr
-                        :class="{
-                            'hidden':
-                            (q && !('{{ usuario.first_name|default_if_none:""|lower|escapejs }} {{ usuario.last_name|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()) ||
-                                     '{{ usuario.rut|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()) ||
-                                     '{{ usuario.email|default_if_none:""|lower|escapejs }}'.includes(q.toLowerCase()))) ||
-                            (rol && rol !== '{{ usuario.rol|escapejs }}')
-                        }"
-                        class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]"
-                    >
+                <tbody>
+                    {% for usuario in page_obj %}
+                    <tr class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
                         <td class="px-4 py-3.5">
                             <p class="font-semibold text-navy">
                                 {% if usuario.first_name or usuario.last_name %}
@@ -143,14 +127,12 @@
                 </tbody>
             </table>
         </div>
-
-        <div
-            x-show="visibles === 0"
-            x-cloak
-            class="px-5 py-8 text-center text-sm text-ink-muted"
-        >
+        {% include 'components/pagination.html' with page_obj=page_obj pagination_params=pagination_params item_label="usuarios" %}
+        {% else %}
+        <div class="px-5 py-8 text-center text-sm text-ink-muted">
             No se encontraron usuarios con los filtros aplicados.
         </div>
+        {% endif %}
     </div>
 
     {% include 'components/confirm_modal.html' with titulo="Desactivar usuario" descripcion="El usuario perderá acceso al sistema de forma inmediata." confirm_label="Desactivar" %}

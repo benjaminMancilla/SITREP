@@ -62,7 +62,7 @@
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">Períodos abiertos</p>
             </div>
             <div class="px-4 py-2.5 text-center">
-                <p class="text-[18px] font-bold text-navy">{{ historial_detalle|length }}</p>
+                <p class="text-[18px] font-bold text-navy">{{ historial_total }}</p>
                 <p class="mt-0.5 text-[10px] uppercase tracking-[0.07em] text-ink-muted">En historial</p>
             </div>
             <div class="px-4 py-2.5 text-center">
@@ -300,6 +300,11 @@
             </div>
             {% endfor %}
         </div>
+        {% if historial_page_obj.has_other_pages or historial_total > 0 %}
+        <div class="rounded-lg border border-surface-border bg-white shadow-sm">
+            {% include 'components/pagination.html' with page_obj=historial_page_obj pagination_params=historial_pagination_params item_label="períodos" %}
+        </div>
+        {% endif %}
     </section>
 </div>
 {% endblock %}

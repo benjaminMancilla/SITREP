@@ -201,6 +201,11 @@
                     {% endfor %}
                 </div>
             {% endfor %}
+            {% if page_obj %}
+            <div class="rounded-lg border border-surface-border bg-white shadow-sm">
+                {% include 'components/pagination.html' with page_obj=page_obj pagination_params=pagination_params item_label="períodos" %}
+            </div>
+            {% endif %}
         </section>
     {% endif %}
 </div>
