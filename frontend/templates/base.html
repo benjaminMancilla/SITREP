@@ -37,6 +37,12 @@
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .btn-ghost-info:hover  { border-color: #2563eb; background: #2563eb; color: #fff; }
+        .btn-ghost-warn:hover  { border-color: #f59e0b; background: #f59e0b; color: #fff; }
+        .btn-ghost-fail:hover  { border-color: #dc2626; background: #dc2626; color: #fff; }
+    </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}min-h-screen bg-surface text-ink font-sans antialiased{% endblock %}">

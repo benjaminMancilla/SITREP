@@ -4,21 +4,6 @@
 {% block page_title %}SITREP | Usuarios{% endblock %}
 {% block topbar_title %}Usuarios{% endblock %}
 
-{% block extra_head %}
-<style>
-    [x-cloak] { display: none !important; }
-    .btn-ghost-warn:hover {
-        border-color: #f59e0b;
-        background: #f59e0b;
-        color: #ffffff;
-    }
-    .btn-ghost-fail:hover {
-        border-color: #dc2626;
-        background: #dc2626;
-        color: #ffffff;
-    }
-</style>
-{% endblock %}
 
 {% block page_content %}
 <div
@@ -26,8 +11,8 @@
         q: '',
         rol: '',
         modalAbierto: false,
-        usuarioNombre: '',
-        usuarioId: null,
+        modalSubtitulo: '',
+        modalId: null,
         visibles: {{ usuarios|length }},
         actionTemplate: '{% url "inventory:desactivar_usuario" slug=slug id=987654321 %}'.replace('987654321', '__ID__'),
         actualizarConteo() {
@@ -35,18 +20,18 @@
                 this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not(.hidden)').length : 0;
             });
         },
-        abrirModal(nombre, id) {
-            this.usuarioNombre = nombre;
-            this.usuarioId = id;
+        abrirModal(subtitulo, id) {
+            this.modalSubtitulo = subtitulo;
+            this.modalId = id;
             this.modalAbierto = true;
         },
         cerrarModal() {
             this.modalAbierto = false;
-            this.usuarioNombre = '';
-            this.usuarioId = null;
+            this.modalSubtitulo = '';
+            this.modalId = null;
         },
-        desactivarAction() {
-            return this.actionTemplate.replace('__ID__', String(this.usuarioId ?? ''));
+        modalAction() {
+            return this.actionTemplate.replace('__ID__', String(this.modalId ?? ''));
         }
     }"
     x-effect="q; rol; actualizarConteo()"
@@ -72,21 +57,7 @@
     </div>
 
     <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
-        <div class="relative">
-            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                    <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/>
-                    <line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                </svg>
-            </span>
-            <input
-                x-model="q"
-                @input="actualizarConteo()"
-                type="text"
-                placeholder="Buscar por nombre, RUT o email…"
-                class="h-9 w-72 rounded-md border border-surface-border bg-white pl-9 pr-3 text-[13px] text-ink outline-none focus:border-brand"
-            >
-        </div>
+        {% include 'components/search_input.html' with placeholder="Buscar por nombre, RUT o email…" %}
         <select
             x-model="rol"
             @change="actualizarConteo()"
@@ -139,17 +110,7 @@
                         </td>
                         <td class="px-4 py-3.5 font-mono text-[12px] text-ink-secondary">{{ usuario.rut }}</td>
                         <td class="px-4 py-3.5">
-                            {% if usuario.rol == "admin_naviera" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">Admin Naviera</span>
-                            {% elif usuario.rol == "capitan" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Capitán</span>
-                            {% elif usuario.rol == "tierra" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">Tierra</span>
-                            {% elif usuario.rol == "mar" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">Mar</span>
-                            {% else %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">{{ usuario.rol }}</span>
-                            {% endif %}
+                            {% include 'components/badge_rol.html' with rol=usuario.rol %}
                         </td>
                         <td class="px-4 py-3.5">
                             <span class="inline-flex items-center rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">Activo</span>
@@ -192,42 +153,6 @@
         </div>
     </div>
 
-    <div
-        x-show="modalAbierto"
-        x-cloak
-        x-transition.opacity
-        class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
-        @click.self="cerrarModal()"
-    >
-        <div class="w-full max-w-[400px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
-            <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
-                <div>
-                    <p class="text-[15px] font-bold text-navy">Desactivar usuario</p>
-                    <p class="mt-0.5 text-[12px] text-ink-muted" x-text="usuarioNombre"></p>
-                </div>
-                <button @click="cerrarModal()" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
-            </div>
-            <div class="px-5 py-4">
-                <p class="text-[13px] leading-relaxed text-ink-muted">El usuario perderá acceso al sistema de forma inmediata.</p>
-            </div>
-            <div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3">
-                <button
-                    @click="cerrarModal()"
-                    class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
-                >
-                    Cancelar
-                </button>
-                <form method="POST" :action="desactivarAction()">
-                    {% csrf_token %}
-                    <button
-                        type="submit"
-                        class="rounded-md border border-fail-border bg-fail-bg px-3 py-1.5 text-[13px] font-semibold text-fail transition hover:bg-red-100"
-                    >
-                        Desactivar
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
+    {% include 'components/confirm_modal.html' with titulo="Desactivar usuario" descripcion="El usuario perderá acceso al sistema de forma inmediata." confirm_label="Desactivar" %}
 </div>
 {% endblock %}

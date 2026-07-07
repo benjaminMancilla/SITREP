@@ -1,0 +1,42 @@
+{% comment %}
+Variables: titulo, descripcion, confirm_label
+Alpine contract: modalAbierto, modalSubtitulo, modalId, cerrarModal(), modalAction()
+{% endcomment %}
+<div
+    x-show="modalAbierto"
+    x-cloak
+    x-transition.opacity
+    class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
+    @click.self="cerrarModal()"
+>
+    <div class="w-full max-w-[400px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
+            <div>
+                <p class="text-[15px] font-bold text-navy">{{ titulo }}</p>
+                <p class="mt-0.5 text-[12px] text-ink-muted" x-text="modalSubtitulo" x-show="modalSubtitulo"></p>
+            </div>
+            <button type="button" @click="cerrarModal()" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="px-5 py-4">
+            <p class="text-[13px] leading-relaxed text-ink-muted">{{ descripcion }}</p>
+        </div>
+        <div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3">
+            <button
+                type="button"
+                @click="cerrarModal()"
+                class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+            >
+                Cancelar
+            </button>
+            <form method="POST" :action="modalAction()">
+                {% csrf_token %}
+                <button
+                    type="submit"
+                    class="rounded-md border border-fail-border bg-fail-bg px-3 py-1.5 text-[13px] font-semibold text-fail transition hover:bg-red-100"
+                >
+                    {{ confirm_label }}
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

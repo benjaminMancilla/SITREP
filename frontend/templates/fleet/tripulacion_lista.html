@@ -4,25 +4,14 @@
 {% block page_title %}SITREP | Tripulación | {{ nave.nombre }}{% endblock %}
 {% block topbar_title %}{{ nave.nombre }}{% endblock %}
 
-{% block extra_head %}
-<style>
-    [x-cloak] { display: none !important; }
-    .btn-ghost-fail:hover {
-        border-color: #dc2626;
-        background: #dc2626;
-        color: #ffffff;
-    }
-</style>
-{% endblock %}
 
 {% block page_content %}
 <div
     x-data="{
         q: '',
         modalAbierto: false,
-        tripulanteNombre: '',
-        tripulanteRut: '',
-        tripulacionId: null,
+        modalSubtitulo: '',
+        modalId: null,
         visibles: {{ tripulacion|length }},
         actionTemplate: '{% url "inventory:remover_tripulante" slug=slug nave_id=nave.id tripulacion_id=987654321 %}'.replace('987654321', '__ID__'),
         actualizarConteo() {
@@ -30,20 +19,18 @@
                 this.visibles = this.$refs.tbody ? this.$refs.tbody.querySelectorAll('tr:not(.hidden)').length : 0;
             });
         },
-        abrirModal(nombre, rut, id) {
-            this.tripulanteNombre = nombre;
-            this.tripulanteRut = rut;
-            this.tripulacionId = id;
+        abrirModal(subtitulo, id) {
+            this.modalSubtitulo = subtitulo;
+            this.modalId = id;
             this.modalAbierto = true;
         },
         cerrarModal() {
             this.modalAbierto = false;
-            this.tripulanteNombre = '';
-            this.tripulanteRut = '';
-            this.tripulacionId = null;
+            this.modalSubtitulo = '';
+            this.modalId = null;
         },
-        removerAction() {
-            return this.actionTemplate.replace('__ID__', String(this.tripulacionId ?? ''));
+        modalAction() {
+            return this.actionTemplate.replace('__ID__', String(this.modalId ?? ''));
         }
     }"
     x-effect="q; actualizarConteo()"
@@ -97,21 +84,7 @@
     {% endif %}
 
     <div class="mb-3.5 flex flex-wrap items-center gap-2.5">
-        <div class="relative">
-            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-muted">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                    <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/>
-                    <line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                </svg>
-            </span>
-            <input
-                x-model="q"
-                @input="actualizarConteo()"
-                type="text"
-                placeholder="Buscar por nombre o RUT…"
-                class="h-9 w-72 rounded-md border border-surface-border bg-white pl-9 pr-3 text-[13px] text-ink outline-none focus:border-brand"
-            >
-        </div>
+        {% include 'components/search_input.html' with placeholder="Buscar por nombre o RUT…" %}
         <span class="ml-auto text-[12px] text-ink-muted">
             <span x-text="visibles"></span> tripulantes
         </span>
@@ -146,17 +119,7 @@
                             <p class="mt-0.5 font-mono text-[12px] text-ink-muted">{{ asignacion.usuario.rut }}</p>
                         </td>
                         <td class="px-4 py-3.5">
-                            {% if asignacion.usuario.rol == "admin_naviera" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">Admin Naviera</span>
-                            {% elif asignacion.usuario.rol == "capitan" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Capitán</span>
-                            {% elif asignacion.usuario.rol == "tierra" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">Tierra</span>
-                            {% elif asignacion.usuario.rol == "mar" %}
-                                <span class="inline-flex items-center rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">Mar</span>
-                            {% else %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">{{ asignacion.usuario.rol }}</span>
-                            {% endif %}
+                            {% include 'components/badge_rol.html' with rol=asignacion.usuario.rol %}
                         </td>
                         <td class="px-4 py-3.5">
                             <div class="flex justify-end">
@@ -164,7 +127,7 @@
                                 {% if request.user.rol != "capitan" or asignacion.usuario != request.user %}
                                 <button
                                     type="button"
-                                    @click="abrirModal(('{{ asignacion.usuario.first_name|default_if_none:""|escapejs }} {{ asignacion.usuario.last_name|default_if_none:""|escapejs }}').trim() || 'Sin nombre', '{{ asignacion.usuario.rut|escapejs }}', {{ asignacion.id }})"
+                                    @click="abrirModal((('{{ asignacion.usuario.first_name|default_if_none:""|escapejs }} {{ asignacion.usuario.last_name|default_if_none:""|escapejs }}').trim() || 'Sin nombre') + ' · ' + '{{ asignacion.usuario.rut|escapejs }}', {{ asignacion.id }})"
                                     class="btn-ghost-fail inline-flex items-center rounded-md border border-fail-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-fail transition"
                                 >
                                     Remover
@@ -192,43 +155,6 @@
         </div>
     </div>
 
-    <div
-        x-show="modalAbierto"
-        x-cloak
-        x-transition.opacity
-        class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
-        @click.self="cerrarModal()"
-    >
-        <div class="w-full max-w-[400px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
-            <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
-                <div>
-                    <p class="text-[15px] font-bold text-navy">Remover tripulante</p>
-                    <p class="mt-0.5 text-[12px] text-ink-muted" x-text="tripulanteNombre ? `${tripulanteNombre} · ${tripulanteRut}` : ''"></p>
-                </div>
-                <button type="button" @click="cerrarModal()" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
-            </div>
-            <div class="px-5 py-4">
-                <p class="text-[13px] leading-relaxed text-ink-muted">El usuario será removido de la tripulación de esta nave, pero seguirá activo en el sistema.</p>
-            </div>
-            <div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3">
-                <button
-                    type="button"
-                    @click="cerrarModal()"
-                    class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
-                >
-                    Cancelar
-                </button>
-                <form method="POST" :action="removerAction()">
-                    {% csrf_token %}
-                    <button
-                        type="submit"
-                        class="rounded-md border border-fail-border bg-fail-bg px-3 py-1.5 text-[13px] font-semibold text-fail transition hover:bg-red-100"
-                    >
-                        Remover
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
+    {% include 'components/confirm_modal.html' with titulo="Remover tripulante" descripcion="El usuario será removido de la tripulación de esta nave, pero seguirá activo en el sistema." confirm_label="Remover" %}
 </div>
 {% endblock %}
