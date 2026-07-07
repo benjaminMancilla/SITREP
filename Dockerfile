@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     shared-mime-info \
     fonts-dejavu-core \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs npm \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
