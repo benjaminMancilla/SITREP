@@ -10,7 +10,9 @@ export default defineConfig(({ command }) => ({
     outDir: '../static/dist',
     emptyOutDir: true,
     rollupOptions: {
-      input: {},
+      input: {
+        urgencia: 'entrypoints/urgencia.js',
+      },
     },
   },
   server: {

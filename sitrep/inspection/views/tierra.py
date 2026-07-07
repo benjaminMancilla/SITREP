@@ -171,11 +171,6 @@ def dashboard_tierra(request, slug):
         )
         .order_by("-fecha_revision")[:10]
     )
-    tabla_urgencia = presenters.construir_tabla_urgencia(
-        request.naviera,
-        naves=naves_capitan if request.user.rol == "capitan" else None,
-    )
-
     return render(
         request,
         "inventory/dashboard_tierra.html",
@@ -183,7 +178,6 @@ def dashboard_tierra(request, slug):
             "page_obj": page_obj,
             "query_busqueda": query_busqueda,
             "actividad_reciente": actividad_reciente,
-            "tabla_urgencia_json": tabla_urgencia,
             "total_usuarios": total_usuarios,
             "total_dispositivos": total_dispositivos,
             "fichas_hoy_total": fichas_hoy_total,
