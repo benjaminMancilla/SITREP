@@ -15,8 +15,7 @@
     <section class="hidden w-[420px] shrink-0 flex-col justify-between bg-navy px-11 py-12 text-white lg:flex">
         <div>
             <div class="mb-12 flex items-center gap-3">
-                <img src="{% static 'img/logo.svg' %}" class="h-10 w-10 shrink-0" alt="SITREP">
-                <span class="text-sm font-bold tracking-[0.14em]">SITREP</span>
+                {% include 'components/brand_logo.html' with brand_href="/" brand_show_name=True brand_logo_size="h-10 w-10" %}
             </div>
 
             <h1 class="text-[1.75rem] font-bold leading-tight text-white">{{ naviera.nombre }}</h1>

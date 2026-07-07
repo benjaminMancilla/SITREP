@@ -1,0 +1,7 @@
+{% load static %}
+<a href="{{ brand_href }}" class="flex items-center gap-2.5 opacity-90 transition hover:opacity-100">
+    <img src="{% static 'img/logo.svg' %}" class="{{ brand_logo_size|default:'h-8 w-8' }} shrink-0" alt="SITREP">
+    {% if brand_show_name %}
+        <span class="text-sm font-bold tracking-[0.14em] text-white">SITREP</span>
+    {% endif %}
+</a>

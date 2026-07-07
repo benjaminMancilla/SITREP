@@ -11,7 +11,8 @@
         <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div class="flex min-w-0 items-center gap-4">
-                    <img src="{% static 'img/logo.svg' %}" class="h-12 w-12 shrink-0" alt="SITREP">
+                    {% url 'inventory:kiosco_home' slug=request.naviera.slug as brand_href %}
+                    {% include 'components/brand_logo.html' with brand_href=brand_href brand_logo_size="h-12 w-12" %}
 
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
