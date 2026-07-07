@@ -21,7 +21,7 @@ from django.urls import include, path
 from . import views as views_core
 
 urlpatterns = [
-    path("health/", lambda r: HttpResponse("ok"), name="health"),
+    path("health/", views_core.health_check),
     path("", views_core.homepage, name="homepage"),
     path("admin/", admin.site.urls),
     path("<slug:slug>/", include("sitrep.inspection.urls", namespace="inventory")),

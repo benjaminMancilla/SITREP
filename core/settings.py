@@ -42,6 +42,10 @@ ALLOWED_HOSTS = [
     '127.0.0.1'
 ] + extra_hosts
 
+railway_private_domain = os.getenv('RAILWAY_PRIVATE_DOMAIN', '')
+if railway_private_domain:
+    ALLOWED_HOSTS.append(railway_private_domain)
+
 CSRF_TRUSTED_ORIGINS = [
     f'https://{railway_domain}',
 ] + [f'https://{h}' for h in extra_hosts]
