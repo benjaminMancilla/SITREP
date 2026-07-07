@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libpangocairo-1.0-0 \
@@ -12,9 +14,8 @@ RUN apt-get update && apt-get install -y \
     libffi8 \
     shared-mime-info \
     fonts-dejavu-core \
-    # Node JS
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
+    && apt-get install -y nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
