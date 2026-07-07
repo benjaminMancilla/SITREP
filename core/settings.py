@@ -40,6 +40,7 @@ ALLOWED_HOSTS = [
     railway_domain,
     'localhost',
     '127.0.0.1'
+    'healthcheck.railway.app'
 ] + extra_hosts
 
 railway_private_domain = os.getenv('RAILWAY_PRIVATE_DOMAIN', '')
