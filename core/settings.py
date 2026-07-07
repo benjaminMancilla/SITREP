@@ -95,7 +95,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR / 'frontend' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -166,7 +166,7 @@ DJANGO_VITE = {
         'dev_mode': DEBUG,
         'dev_server_port': 5173,
         'manifest_path': BASE_DIR / 'static' / 'dist' / '.vite' / 'manifest.json',
-        'static_url_prefix': 'dist',
+        'static_url_prefix': '' if DEBUG else 'dist',
     }
 }
 

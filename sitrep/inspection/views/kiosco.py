@@ -102,7 +102,7 @@ def dashboard_kiosco(request, slug):
 
     return render(
         request,
-        "inventory/kiosco_dashboard.html",
+        "inspection/kiosco/kiosco_dashboard.html",
         {
             "nave": nave,
             "periodos_resumen": periodos_resumen,
@@ -164,7 +164,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
 
     return render(
         request,
-        "inventory/kiosco_periodo_detalle.html",
+        "inspection/kiosco/kiosco_periodo_detalle.html",
         {
             "nave": nave,
             "periodo": periodo,
@@ -205,7 +205,7 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     presenters.adjuntar_colores_pdf(areas_grupos)
 
     html_string = render_to_string(
-        "inventory/ficha_pdf.html",
+        "inspection/kiosco/ficha_pdf.html",
         {
             "nave": nave,
             "periodo": periodo,
@@ -254,7 +254,7 @@ def kiosco_periodo_historial(request, slug, periodo_id):
 
     return render(
         request,
-        "inventory/kiosco_periodo_historial.html",
+        "inspection/kiosco/kiosco_periodo_historial.html",
         {
             "nave": nave,
             "periodo": periodo,
@@ -396,7 +396,7 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
 
     return render(
         request,
-        "inventory/kiosco_recurso_ficha.html",
+        "inspection/kiosco/kiosco_recurso_ficha.html",
         {
             "nave": nave,
             "periodo": periodo,

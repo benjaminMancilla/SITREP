@@ -38,7 +38,7 @@ def _render_login_unificado(request, slug, modo, **contexto):
         "naviera": getattr(request, "naviera", None),
     }
     payload.update(contexto)
-    return render(request, "inventory/login_unificado.html", payload)
+    return render(request, "accounts/login_unificado.html", payload)
 
 
 def login_unificado(request, slug, modo_default="tierra"):
@@ -119,7 +119,7 @@ def listar_usuarios(request, slug):
     usuarios = TenantQueryService.get_usuarios_del_tenant(request.naviera)
     return render(
         request,
-        "inventory/usuarios_lista.html",
+        "accounts/usuarios_lista.html",
         {
             "usuarios": usuarios,
             "slug": slug,
@@ -133,7 +133,7 @@ def crear_usuario(request, slug):
     if request.method == "GET":
         return render(
             request,
-            "inventory/usuario_form.html",
+            "accounts/usuario_form.html",
             {
                 "slug": slug,
                 "form_data": {},
@@ -161,7 +161,7 @@ def crear_usuario(request, slug):
     if not _rut_valido(rut_input):
         return render(
             request,
-            "inventory/usuario_form.html",
+            "accounts/usuario_form.html",
             {
                 "error": "Formato de RUT inválido. Use el formato 12.345.678-9.",
                 "slug": slug,
@@ -172,7 +172,7 @@ def crear_usuario(request, slug):
     if Usuario.objects.filter(naviera=request.naviera, rut=rut).exists():
         return render(
             request,
-            "inventory/usuario_form.html",
+            "accounts/usuario_form.html",
             {
                 "error": "El RUT ya existe en esta naviera.",
                 "slug": slug,
@@ -186,7 +186,7 @@ def crear_usuario(request, slug):
     if requiere_pin and not raw_pin:
         return render(
             request,
-            "inventory/usuario_form.html",
+            "accounts/usuario_form.html",
             {
                 "error": "El PIN es obligatorio para este rol.",
                 "slug": slug,
@@ -197,7 +197,7 @@ def crear_usuario(request, slug):
     if requiere_pin and not _pin_valido_4_digitos(raw_pin):
         return render(
             request,
-            "inventory/usuario_form.html",
+            "accounts/usuario_form.html",
             {
                 "error": "El PIN debe ser de 4 dígitos numéricos.",
                 "slug": slug,
@@ -209,7 +209,7 @@ def crear_usuario(request, slug):
     if requiere_password and not raw_password:
         return render(
             request,
-            "inventory/usuario_form.html",
+            "accounts/usuario_form.html",
             {
                 "error": "La contraseña es obligatoria para este rol.",
                 "slug": slug,
@@ -262,7 +262,7 @@ def cambiar_pin(request, slug, id):
     if request.method == "GET":
         return render(
             request,
-            "inventory/cambiar_pin.html",
+            "accounts/cambiar_pin.html",
             {"usuario": usuario, "slug": slug},
         )
 
@@ -273,7 +273,7 @@ def cambiar_pin(request, slug, id):
     if not _pin_valido_4_digitos(raw_pin):
         return render(
             request,
-            "inventory/cambiar_pin.html",
+            "accounts/cambiar_pin.html",
             {
                 "usuario": usuario,
                 "slug": slug,

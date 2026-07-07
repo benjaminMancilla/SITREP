@@ -41,7 +41,7 @@ def listar_naves(request, slug):
         naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
     return render(
         request,
-        "inventory/naves_lista.html",
+        "fleet/naves_lista.html",
         {
             "naves": naves.order_by("nombre"),
             "slug": slug,
@@ -55,7 +55,7 @@ def crear_nave(request, slug):
     if request.method == "GET":
         return render(
             request,
-            "inventory/nave_form.html",
+            "fleet/nave_form.html",
             {
                 "slug": slug,
                 "form_data": {},
@@ -90,7 +90,7 @@ def crear_nave(request, slug):
     except IntegrityError:
         return render(
             request,
-            "inventory/nave_form.html",
+            "fleet/nave_form.html",
             {
                 "error": "La matrícula ya existe en esta naviera.",
                 "slug": slug,
@@ -109,7 +109,7 @@ def editar_nave(request, slug, nave_id):
     if request.method == "GET":
         return render(
             request,
-            "inventory/nave_form.html",
+            "fleet/nave_form.html",
             {
                 "slug": slug,
                 "nave": nave,
@@ -146,7 +146,7 @@ def editar_nave(request, slug, nave_id):
     except (InvalidOperation, TypeError, ValueError):
         return render(
             request,
-            "inventory/nave_form.html",
+            "fleet/nave_form.html",
             {
                 "error": "Eslora, arqueo bruto y capacidad deben ser numéricos válidos.",
                 "slug": slug,
@@ -187,7 +187,7 @@ def listar_dispositivos(request, slug):
         dispositivos = dispositivos.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
     return render(
         request,
-        "inventory/dispositivos_lista.html",
+        "fleet/dispositivos_lista.html",
         {
             "dispositivos": dispositivos,
             "slug": slug,
@@ -214,12 +214,12 @@ def setup_kiosco(request, slug):
         dispositivo.save()
 
         contexto = {"token_plano": token_plano, "dispositivo": dispositivo}
-        return render(request, "inventory/kiosco_tatuado.html", contexto)
+        return render(request, "fleet/kiosco_tatuado.html", contexto)
 
     naves = TenantQueryService.get_naves_activas(request.naviera)
     if request.user.rol == "capitan":
         naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
-    return render(request, "inventory/kiosco_setup.html", {"naves": naves})
+    return render(request, "fleet/kiosco_setup.html", {"naves": naves})
 
 
 @tenant_member_required
@@ -255,7 +255,7 @@ def listar_tripulacion(request, slug, nave_id):
 
     return render(
         request,
-        "inventory/tripulacion_lista.html",
+        "fleet/tripulacion_lista.html",
         {
             "nave": nave,
             "tripulacion": tripulacion,

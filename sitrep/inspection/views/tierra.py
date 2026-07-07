@@ -173,7 +173,7 @@ def dashboard_tierra(request, slug):
     )
     return render(
         request,
-        "inventory/dashboard_tierra.html",
+        "inspection/tierra/dashboard_tierra.html",
         {
             "page_obj": page_obj,
             "query_busqueda": query_busqueda,
@@ -322,7 +322,7 @@ def fallos_activos(request, slug):
 
     return render(
         request,
-        "inventory/fallos_activos.html",
+        "inspection/tierra/fallos_activos.html",
         {
             "slug": slug,
             "grupos": grupos,
@@ -503,7 +503,7 @@ def periodos_vencidos(request, slug):
 
     return render(
         request,
-        "inventory/periodos_vencidos.html",
+        "inspection/tierra/periodos_vencidos.html",
         {
             "slug": slug,
             "grupos": grupos,
@@ -561,7 +561,7 @@ def nave_detalle(request, slug, nave_id):
 
     return render(
         request,
-        "inventory/nave_detalle.html",
+        "inspection/tierra/nave_detalle.html",
         {
             "nave": nave,
             "periodos_abiertos_detalle": periodos_abiertos_detalle,
