@@ -36,10 +36,11 @@ extra_hosts = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
 
 _on_railway = bool(os.getenv('RAILWAY_ENVIRONMENT_ID'))
 
-ALLOWED_HOSTS = (
-    ['*'] if _on_railway
-    else ['localhost', '127.0.0.1'] + extra_hosts
-)
+ALLOWED_HOSTS = [
+    railway_domain,
+    'localhost',
+    '127.0.0.1'
+] + extra_hosts
 
 CSRF_TRUSTED_ORIGINS = [
     f'https://{railway_domain}',
