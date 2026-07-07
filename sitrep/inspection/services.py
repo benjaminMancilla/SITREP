@@ -368,6 +368,7 @@ class MotorPeriodos:
         matrices.filter(es_fallo_nuevo=True).exclude(
             Exists(tiene_ficha_en_periodo)
         ).update(es_fallo_nuevo=False)
+        FichaRegistro.objects.filter(periodo=periodo, estado_ficha='en_progreso').update(estado_ficha='pendiente')
 
     @classmethod
     def sincronizar_periodos_nave(cls, nave):
