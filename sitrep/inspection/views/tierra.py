@@ -82,7 +82,7 @@ def dashboard_tierra(request, slug):
     fallos_activos_total = fallos_base_qs.filter(ultimo_estado_operativo=False).count()
     fallos_nuevos_total = fallos_base_qs.filter(es_fallo_nuevo=True).count()
 
-    estados_vencidos = {"omitido", "caduco"}
+    estados_vencidos = PeriodoRevision.ESTADOS_INCOMPLETOS
     periodos_cerrados_qs = PeriodoRevision.objects.filter(
         nave__naviera=request.naviera,
         nave__is_active=True,
@@ -349,7 +349,7 @@ def fallos_activos(request, slug):
 def periodos_vencidos(request, slug):
     naviera = request.naviera
     hoy = timezone.localdate()
-    estados_vencidos = {"omitido", "caduco"}
+    estados_vencidos = PeriodoRevision.ESTADOS_INCOMPLETOS
 
     qs = PeriodoRevision.objects.filter(
         nave__naviera=naviera,

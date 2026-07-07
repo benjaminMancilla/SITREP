@@ -152,7 +152,7 @@ class TenantQueryService:
     def calcular_confiabilidad_por_periodicidad(naviera, hoy):
         _umbrales = [1, 7, 30, 90, 365]
         _ventanas = [30, 30, 90, 365, 730, 1825]
-        estados_vencidos = {"omitido", "caduco"}
+        estados_vencidos = PeriodoRevision.ESTADOS_INCOMPLETOS
         periodicidad_ids = (
             PeriodoRevision.objects.filter(nave__naviera=naviera, nave__is_active=True)
             .values_list("periodicidad_id", flat=True)

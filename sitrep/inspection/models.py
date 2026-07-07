@@ -47,8 +47,10 @@ class PeriodoRevision(models.Model):
         ('pendiente', 'Pendiente'), ('en_proceso', 'En proceso'),
         ('cumplido', 'Cumplido'), ('vencido', 'Vencido'),
     ]
-    ESTADOS_ABIERTOS = {'pendiente', 'en_proceso'}
-    ESTADOS_CERRADOS = {'cumplido', 'vencido'}
+    ESTADOS_ABIERTOS    = {'pendiente', 'en_proceso'}
+    ESTADOS_CERRADOS    = {'cumplido', 'vencido'}
+    ESTADOS_COMPLETOS   = {'cumplido'}
+    ESTADOS_INCOMPLETOS = {'vencido'}
     estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
 
     class Meta:
