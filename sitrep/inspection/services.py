@@ -689,10 +689,10 @@ class MotorFichas:
         # construir_definicion_checklist ya incluye __cantidad__ cuando cantidad > 1.
         # La validación de presencia aplica solo cuando estado_operativo is not None.
         es_valido, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad)
-        if estado_operativo is not None and not es_valido:
+        if estado_operativo is True and not es_valido:
             raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
         checklist_completo, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad, require_cumple=True)
-        if estado_operativo is not None and not checklist_completo:
+        if estado_operativo is True and not checklist_completo:
             raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
         obs_valido, sin_obs = cls.validar_observaciones_requerimientos(recurso, payload_checklist_raw, cantidad=cantidad)
         if not obs_valido:
