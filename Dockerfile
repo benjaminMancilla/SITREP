@@ -12,14 +12,25 @@ RUN apt-get update && apt-get install -y \
     libffi8 \
     shared-mime-info \
     fonts-dejavu-core \
+    # Node JS
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# python-django
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# node js (vite-svelte)
+COPY package.json package-lock.json* ./
+RUN npm install
+
 COPY . .
+
+#frontend
+RUN npm run build
 
 RUN SECRET_KEY=dummy-build-key python manage.py collectstatic --noinput
 
