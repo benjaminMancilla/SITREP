@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_vite',
     'sitrep.accounts',
     'sitrep.fleet',
     'sitrep.catalog',
@@ -159,6 +160,14 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+DJANGO_VITE = {
+    'default': {
+        'dev_mode': DEBUG,
+        'dev_server_port': 5173,
+        'manifest_path': BASE_DIR / 'static' / 'dist' / '.vite' / 'manifest.json',
+    }
+}
 
 # Inyección del Custom User Model para soporte Multi-Tenant
 AUTH_USER_MODEL = 'accounts.Usuario'
