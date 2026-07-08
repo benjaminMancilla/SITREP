@@ -16,8 +16,14 @@ import dj_database_url
 from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
 
 load_dotenv()
+
+# Compartido con una Cloudflare Transform Rule que agrega X-CF-Secret a cada
+# request que pasa por el CDN. Sin esto, CF-Connecting-IP no es confiable
+# (ver core.utils.get_client_ip).
+CLOUDFLARE_SHARED_SECRET = os.getenv('CLOUDFLARE_SHARED_SECRET', '')
 
 SENTRY_DSN = os.getenv('SENTRY_DSN', '')
 if SENTRY_DSN:
@@ -28,6 +34,10 @@ if SENTRY_DSN:
         environment=os.getenv('SENTRY_ENVIRONMENT', _default_sentry_env),
         traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
         send_default_pii=True,
+        # send_default_pii adjunta IP/usuario a cada evento (lo queremos, para
+        # forense). El denylist por defecto ya tapa password/token/etc; se
+        # extiende con los campos propios del proyecto que igual son PII.
+        event_scrubber=EventScrubber(denylist=DEFAULT_DENYLIST + ['rut', 'pin_kiosco', 'pin']),
     )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
