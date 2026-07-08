@@ -22,6 +22,7 @@ from . import views as views_core
 
 urlpatterns = [
     path("health/", views_core.health_check),
+    path("health/db/", views_core.health_check_db),
     path("", views_core.homepage, name="homepage"),
     path("admin/", admin.site.urls),
     path("<slug:slug>/", include("sitrep.inspection.urls", namespace="inventory")),
