@@ -20,7 +20,7 @@ from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
 
 load_dotenv()
 
-# Compartido con una Cloudflare Transform Rule que agrega X-CF-Secret a cada
+# Compartido con una Cloudflare Transform Rule que agrega X-Origin-Secret a cada
 # request que pasa por el CDN. Sin esto, CF-Connecting-IP no es confiable
 # (ver core.utils.get_client_ip).
 CLOUDFLARE_SHARED_SECRET = os.getenv('CLOUDFLARE_SHARED_SECRET', '')

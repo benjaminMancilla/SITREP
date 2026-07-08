@@ -23,7 +23,7 @@ def get_client_ip(request):
     """
     global _warned_no_secret
     secret = getattr(settings, "CLOUDFLARE_SHARED_SECRET", "")
-    if secret and request.META.get("HTTP_X_CF_SECRET") == secret:
+    if secret and request.META.get("HTTP_X_ORIGIN_SECRET") == secret:
         cf_ip = request.META.get("HTTP_CF_CONNECTING_IP")
         if cf_ip:
             return cf_ip
