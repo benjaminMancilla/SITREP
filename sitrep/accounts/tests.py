@@ -1,3 +1,6 @@
+from io import StringIO
+
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -358,3 +361,39 @@ class TestAuditTrail(TestCase):
         request.user = AnonymousUser()
         registrar_acceso(request, "read", "usuarios")
         self.assertFalse(AuditEvent.objects.exists())
+
+
+class TestDetectAnomalies(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(
+            nombre="Naviera Anom", rut="88888888-8", slug="anom-test"
+        )
+        self.usuario = Usuario.objects.create_user(
+            username="lector_masivo",
+            password="pass-seguro-123",
+            naviera=self.naviera,
+            rut="88888888-8",
+            email="lector@anom.com",
+            rol="tierra",
+        )
+
+    def _crear_eventos(self, cantidad):
+        AuditEvent.objects.bulk_create([
+            AuditEvent(
+                usuario=self.usuario, naviera=self.naviera, rol="tierra",
+                accion="read", recurso="usuarios",
+            )
+            for _ in range(cantidad)
+        ])
+
+    def test_bajo_umbral_no_reporta(self):
+        self._crear_eventos(5)
+        out = StringIO()
+        call_command("detect_anomalies", "--threshold=50", stdout=out)
+        self.assertIn("Sin anomalías", out.getvalue())
+
+    def test_sobre_umbral_reporta(self):
+        self._crear_eventos(51)
+        out = StringIO()
+        call_command("detect_anomalies", "--threshold=50", stdout=out)
+        self.assertIn(f"usuario={self.usuario.id}", out.getvalue())
