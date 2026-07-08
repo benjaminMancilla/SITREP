@@ -4,7 +4,7 @@ from .models import Naviera
 
 
 class TenantMiddleware:
-    GLOBAL_PREFIXES = {"admin", "static", "media", "health"}
+    GLOBAL_PREFIXES = {"admin", "static", "media", "health", "legal"}
 
     def __init__(self, get_response):
         self.get_response = get_response

@@ -1,0 +1,340 @@
+{% extends 'legal/_base.html' %}
+
+{% block title %}Acuerdo de procesamiento de datos — SITREP{% endblock %}
+
+{% block nav_dpa %}bg-navy/5 font-semibold text-navy{% endblock %}
+
+{% block doc_version %}1.0{% endblock %}
+{% block doc_date %}8 de julio de 2026{% endblock %}
+{% block doc_title %}Acuerdo de procesamiento de datos (DPA){% endblock %}
+{% block doc_intro %}
+<p class="mt-3 text-[14px] leading-6 text-ink-secondary">
+  Regula el tratamiento de datos personales que SITREP realiza por cuenta de cada naviera cliente. Forma parte
+  integrante de los <a href="{% url 'legal_terminos' %}" class="text-brand hover:text-brand-dark">Términos y
+  condiciones</a> y prevalece sobre ellos en materia de datos personales.
+</p>
+{% endblock %}
+{% block doc_contact_email %}privacidad@sitrep.cl{% endblock %}
+{% block doc_contact_email_display %}privacidad@sitrep.cl{% endblock %}
+
+{% block legal_content %}
+
+<h2>1. Marco y definiciones</h2>
+<p><strong>1.1.</strong> El presente Acuerdo de Procesamiento de Datos (el <strong>"DPA"</strong>) regula el
+  tratamiento de datos personales que el Proveedor realiza por cuenta del Cliente en el marco de la prestación del
+  Servicio, conforme a la Ley N° 19.628 sobre protección de la vida privada, en su versión reformada por la Ley N°
+  21.719 (la <strong>"Ley de Datos"</strong>).</p>
+<p><strong>1.2.</strong> Los términos definidos en los Términos y Condiciones conservan aquí su significado.
+  Adicionalmente:</p>
+<ul>
+  <li><strong>"Responsable":</strong> el Cliente (Naviera), quien determina los fines y medios del tratamiento de los
+    datos personales de sus Usuarios Autorizados.</li>
+  <li><strong>"Encargado":</strong> el Proveedor (SITREP), quien trata los datos personales por cuenta y según
+    instrucciones del Responsable.</li>
+  <li><strong>"Titular":</strong> la persona natural a quien se refieren los datos personales, esto es, cada Usuario
+    Autorizado.</li>
+  <li><strong>"Subencargado":</strong> el tercero contratado por el Encargado para ejecutar total o parcialmente el
+    tratamiento por cuenta del Responsable.</li>
+  <li><strong>"Vulneración de Seguridad" o "Brecha":</strong> toda pérdida, destrucción, filtración, alteración,
+    acceso o tratamiento no autorizado de Datos Personales.</li>
+  <li><strong>"Agencia":</strong> la Agencia de Protección de Datos Personales.</li>
+</ul>
+<p><strong>1.3. Prevalencia.</strong> En caso de contradicción entre este DPA y cualquier otra parte del contrato,
+  prevalece este DPA en todo lo relativo a Datos Personales.</p>
+<p><strong>1.4. Régimen transitorio.</strong> Hasta el 30 de noviembre de 2026 rige la Ley N° 19.628 en su texto
+  vigente. Desde el 1 de diciembre de 2026 rige plenamente su versión reformada por la Ley N° 21.719.</p>
+
+<h2>2. Roles y ámbito</h2>
+<p><strong>2.1.</strong> Respecto de los Datos Personales de los Usuarios Autorizados, el Cliente actúa como
+  Responsable y el Proveedor como Encargado.</p>
+<p><strong>2.2. Objeto, naturaleza y finalidad del tratamiento.</strong> El Proveedor tratará los Datos Personales
+  con el único fin de prestar el Servicio: permitir la autenticación de los Usuarios Autorizados, registrar y dar
+  seguimiento al estado de los recursos de las naves, y mantener la trazabilidad de las acciones realizadas en la
+  Plataforma.</p>
+<p><strong>2.3. Categorías de Titulares.</strong> Usuarios Autorizados del Cliente: tripulantes, capitanes y
+  personal administrativo en tierra.</p>
+<p><strong>2.4. Categorías de Datos Personales tratados:</strong></p>
+<table>
+  <thead><tr><th>Categoría</th><th>Datos</th><th>Titulares</th></tr></thead>
+  <tbody>
+    <tr><td>Identificación</td><td>RUT, nombre y apellidos</td><td>Todos los Usuarios Autorizados</td></tr>
+    <tr><td>Contacto</td><td>Correo electrónico</td><td>Usuarios de tierra</td></tr>
+    <tr><td>Credenciales</td><td>Contraseña y PIN (almacenados exclusivamente mediante función de resumen
+      criptográfico)</td><td>Todos</td></tr>
+    <tr><td>Actividad</td><td>Registros de acceso, autoría de fichas de registro, marcas de tiempo, dirección
+      IP</td><td>Todos</td></tr>
+  </tbody>
+</table>
+<p><strong>2.5.</strong> Las Partes dejan constancia de que la Plataforma no trata datos sensibles en el sentido de
+  la Ley de Datos (salud, origen étnico, afiliación sindical, situación socioeconómica, datos biométricos, entre
+  otros). El Cliente se obliga a no cargar datos sensibles en campos no destinados a ello.</p>
+<p><strong>2.6. Datos del Proveedor como Responsable.</strong> Respecto del Catálogo Base, de los datos de
+  facturación y de los Datos Anonimizados, el Proveedor actúa como Responsable y su tratamiento queda fuera del
+  ámbito de este DPA, rigiéndose por la <a href="{% url 'legal_privacidad' %}">Política de Privacidad</a>.</p>
+
+<h2>3. Instrucciones del Responsable</h2>
+<p><strong>3.1.</strong> El Proveedor tratará los Datos Personales únicamente conforme a las instrucciones
+  documentadas del Cliente. Constituyen instrucciones documentadas: el contrato, este DPA, la Matriz de Retención y
+  las configuraciones que el Cliente realice a través de la Plataforma.</p>
+<p><strong>3.2.</strong> El Proveedor no tratará los Datos Personales para fines propios ni distintos de la
+  prestación del Servicio, salvo que una norma legal se lo exija, caso en el cual informará al Cliente antes del
+  tratamiento, a menos que la ley lo prohíba.</p>
+<p><strong>3.3.</strong> El Proveedor informará al Cliente, sin demora, si a su juicio una instrucción infringe la
+  Ley de Datos, y podrá suspender su ejecución hasta que el Cliente la confirme, modifique o retire.</p>
+<p><strong>3.4.</strong> El uso de Datos Anonimizados conforme a la cláusula 4 de los Términos no constituye
+  tratamiento por cuenta del Cliente.</p>
+
+<h2>4. Obligaciones del Encargado</h2>
+<p>El Proveedor se obliga a:</p>
+<ul>
+  <li>Tratar los Datos Personales conforme a las instrucciones del Cliente y a la Ley de Datos;</li>
+  <li>Garantizar que las personas autorizadas a tratar los Datos Personales estén sujetas a un deber de
+    confidencialidad;</li>
+  <li>Implementar y mantener las medidas de seguridad técnicas y organizativas descritas en la cláusula 6;</li>
+  <li>Asistir al Cliente en el cumplimiento de sus obligaciones de responder a las solicitudes de ejercicio de
+    derechos de los Titulares;</li>
+  <li>Asistir al Cliente en la seguridad del tratamiento, la notificación de Brechas y, cuando corresponda, la
+    evaluación de impacto;</li>
+  <li>Poner a disposición del Cliente la información necesaria para demostrar el cumplimiento de este DPA;</li>
+  <li>A elección del Cliente, suprimir o devolver los Datos Personales al término de la prestación;</li>
+  <li>No comunicar ni ceder los Datos Personales a terceros, salvo a los Subencargados autorizados o por mandato
+    legal.</li>
+</ul>
+
+<h2>5. Subencargados</h2>
+<p><strong>5.1. Autorización general.</strong> El Cliente autoriza al Proveedor a recurrir a Subencargados para la
+  prestación del Servicio. Los Subencargados vigentes se individualizan en el Apéndice I.</p>
+<p><strong>5.2.</strong> El Proveedor impondrá a cada Subencargado obligaciones de protección de datos no menos
+  rigurosas que las de este DPA, y responderá ante el Cliente por sus actos y omisiones como si fueran propios.</p>
+<p><strong>5.3. Nuevos Subencargados.</strong> El Proveedor informará al Cliente de la incorporación o sustitución
+  de cualquier Subencargado con al menos 30 días corridos de anticipación. El Cliente podrá objetar por motivos
+  razonables y fundados en protección de datos dentro de dicho plazo.</p>
+<p><strong>5.4.</strong> El silencio del Cliente transcurrido el plazo anterior importa aceptación del nuevo
+  Subencargado.</p>
+
+<h2>6. Medidas de seguridad</h2>
+<p><strong>6.1.</strong> El Proveedor implementa y mantiene medidas técnicas y organizativas apropiadas al riesgo,
+  entre ellas:</p>
+<ul>
+  <li><strong>Cifrado en tránsito</strong> mediante TLS en todas las comunicaciones con la Plataforma;</li>
+  <li><strong>Aislamiento lógico entre clientes:</strong> los datos de cada Cliente se segregan lógicamente mediante
+    identificador de organización, de modo que ningún Cliente pueda acceder a los datos de otro;</li>
+  <li><strong>Almacenamiento de credenciales</strong> exclusivamente mediante funciones de resumen criptográfico; el
+    Proveedor no puede acceder a contraseñas ni PIN en texto claro;</li>
+  <li><strong>Vinculación de dispositivos</strong> de kiosco mediante token criptográfico, cuyo valor se almacena
+    bajo función de resumen;</li>
+  <li><strong>Control de acceso</strong> basado en roles, con principio de menor privilegio;</li>
+  <li><strong>Registro de actividad</strong> (logs) de accesos y operaciones relevantes sobre Datos Personales;</li>
+  <li><strong>Monitoreo continuo</strong> de errores y disponibilidad, con alertas de comportamiento anómalo;</li>
+  <li><strong>Copias de respaldo</strong> cifradas, con la periodicidad y retención indicadas en el Apéndice I;</li>
+  <li><strong>Depuración de datos personales</strong> en los sistemas de monitoreo de errores, mediante filtrado de
+    campos que contienen RUT, credenciales, tokens y otros identificadores, antes de su envío al Subencargado
+    respectivo.</li>
+</ul>
+<p><strong>6.2.</strong> El Proveedor revisará periódicamente estas medidas y podrá actualizarlas, siempre que el
+  nivel de seguridad no disminuya.</p>
+<p><strong>6.3.</strong> El Cliente reconoce que el PIN de kiosco es un mecanismo de identificación operativa en
+  entorno controlado y no un factor de autenticación fuerte, y acepta este diseño conforme a las condiciones
+  operativas a bordo.</p>
+
+<h2>7. Notificación de vulneraciones de seguridad</h2>
+<p><strong>7.1.</strong> El Proveedor notificará al Cliente toda Vulneración de Seguridad que afecte Datos
+  Personales tratados por cuenta de éste, dentro de las 24 horas siguientes a que el Proveedor confirme
+  razonablemente la ocurrencia de la Brecha.</p>
+<p><strong>7.2.</strong> La notificación incluirá, en la medida de la información disponible: la naturaleza de la
+  Brecha y las categorías y volumen aproximado de datos y Titulares afectados; las consecuencias probables; las
+  medidas adoptadas o propuestas para mitigarla; y un punto de contacto para obtener más información.</p>
+<p><strong>7.3.</strong> Cuando no sea posible entregar toda la información simultáneamente, el Proveedor la
+  proporcionará de manera escalonada, sin dilación indebida.</p>
+<p><strong>7.4.</strong> El Proveedor asistirá razonablemente al Cliente en el cumplimiento de sus propias
+  obligaciones de notificación a la Agencia y a los Titulares. La obligación de notificar a la Agencia recae en el
+  Cliente en su calidad de Responsable.</p>
+<p><strong>7.5.</strong> La notificación de una Brecha no constituye, por sí sola, reconocimiento de responsabilidad
+  del Proveedor.</p>
+
+<h2>8. Derechos de los Titulares</h2>
+<p><strong>8.1.</strong> La Plataforma provee al Cliente funcionalidades para atender directamente las solicitudes
+  de sus Titulares relativas a los derechos de acceso, rectificación, supresión (cancelación), oposición y
+  portabilidad reconocidos por la Ley de Datos.</p>
+<p><strong>8.2.</strong> Si un Titular dirige una solicitud de derechos directamente al Proveedor, éste la remitirá
+  al Cliente sin demora y se abstendrá de responderla por sí mismo, salvo instrucción en contrario del Cliente.</p>
+<p><strong>8.3.</strong> En la medida en que el Cliente no pueda atender una solicitud mediante las funcionalidades
+  de la Plataforma, el Proveedor le prestará asistencia técnica razonable para localizar, extraer, rectificar,
+  suprimir o bloquear los Datos Personales del Titular.</p>
+<p><strong>8.4.</strong> El ejercicio del derecho de supresión se ejecuta conforme a la cláusula 10.3: la eliminación
+  en los sistemas productivos se realiza sin dilación indebida, y los Datos Personales en copias de respaldo se
+  eliminan conforme al ciclo natural de rotación, durante el cual permanecen cifrados, sin acceso operativo y
+  utilizados exclusivamente para fines de recuperación ante desastres.</p>
+<p><strong>8.5.</strong> El Proveedor podrá cobrar al Cliente la asistencia prestada bajo la cláusula 8.3 cuando ésta
+  sea manifiestamente desproporcionada o repetitiva, previa comunicación de su costo estimado.</p>
+
+<h2>9. Auditoría y demostración de cumplimiento</h2>
+<p><strong>9.1.</strong> El Proveedor pondrá a disposición del Cliente la información razonablemente necesaria para
+  demostrar el cumplimiento de este DPA.</p>
+<p><strong>9.2.</strong> El derecho de verificación del Cliente se satisface mediante la respuesta del Proveedor a
+  un cuestionario de seguridad razonable, una vez por año calendario, junto con la evidencia documental de que
+  disponga.</p>
+<p><strong>9.3.</strong> Atendida la naturaleza del Servicio y el tamaño del Proveedor, no procederán auditorías
+  presenciales ni inspecciones físicas de la infraestructura, salvo que una autoridad competente lo requiera por
+  mandato legal.</p>
+<p><strong>9.4.</strong> Toda información obtenida en el marco de este artículo es Información Confidencial del
+  Proveedor.</p>
+
+<h2>10. Devolución y supresión al término</h2>
+<p><strong>10.1. Ventana de exportación.</strong> Durante los 30 días corridos siguientes al término del contrato,
+  el Cliente podrá exportar íntegramente los Datos del Cliente en formato CSV y JSON, sin costo.</p>
+<p><strong>10.2. Supresión en producción.</strong> Vencida la ventana de exportación, el Proveedor eliminará los
+  Datos Personales de sus sistemas productivos dentro de 30 días corridos.</p>
+<p><strong>10.3. Supresión en respaldos.</strong> Los Datos Personales en copias de respaldo se eliminan conforme al
+  ciclo natural de rotación, que no excede de 30 días corridos adicionales, durante los cuales permanecen cifrados y
+  sin acceso operativo.</p>
+<p><strong>10.4.</strong> El plazo máximo total de eliminación completa es, en consecuencia, de 90 días corridos
+  contados desde el término del contrato.</p>
+<p><strong>10.5. Conservación por instrucción o mandato legal.</strong> El Proveedor conservará aquellos Datos
+  Personales que el Cliente le haya instruido conservar conforme a la Matriz de Retención, o cuya conservación sea
+  exigida por la ley.</p>
+<p><strong>10.6.</strong> A solicitud del Cliente, el Proveedor certificará por escrito la supresión efectuada.</p>
+
+<h2>11. Transferencia internacional de datos</h2>
+<p><strong>11.1.</strong> El Cliente reconoce y acepta que la prestación del Servicio implica el tratamiento de
+  Datos Personales en infraestructura ubicada en los Estados Unidos de América, a través de los Subencargados
+  individualizados en el Apéndice I.</p>
+<p><strong>11.2.</strong> El Proveedor adoptará un mecanismo de transferencia que ofrezca garantías adecuadas
+  conforme a la Ley de Datos, en particular la suscripción de cláusulas contractuales con los Subencargados que
+  impongan estándares de protección equivalentes a los exigidos por la legislación chilena.</p>
+<p><strong>11.3.</strong> El Proveedor mantendrá a disposición del Cliente la información sobre el mecanismo de
+  transferencia aplicado.</p>
+
+<h2>12. Responsabilidad</h2>
+<p><strong>12.1.</strong> La responsabilidad de las Partes bajo este DPA se rige por la cláusula 14 de los
+  <a href="{% url 'legal_terminos' %}">Términos</a>, con la precisión de que sus limitaciones rigen únicamente entre
+  las Partes y no son oponibles a la Agencia ni a los Titulares.</p>
+<p><strong>12.2.</strong> Cada Parte responde frente a la otra por los perjuicios directos que le cause su propio
+  incumplimiento de este DPA.</p>
+<p><strong>12.3.</strong> El Cliente, como Responsable, garantiza que cuenta con base de licitud suficiente para el
+  tratamiento y que ha cumplido su deber de informar a los Titulares.</p>
+
+<h2>13. Vigencia</h2>
+<p><strong>13.1.</strong> Este DPA rige mientras el Proveedor trate Datos Personales por cuenta del Cliente, y
+  subsiste tras el término del contrato en todo lo relativo a las obligaciones de supresión, confidencialidad y
+  responsabilidad.</p>
+
+<h2>Apéndice I — Subencargados autorizados</h2>
+<table>
+  <thead><tr><th>Subencargado</th><th>Función</th><th>Ubicación de tratamiento</th><th>Datos tratados</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Railway Corp.</td>
+      <td>Hosting de aplicación y base de datos</td>
+      <td>Estados Unidos (us-west)</td>
+      <td>Todas las categorías de la cláusula 2.4</td>
+    </tr>
+    <tr>
+      <td>Cloudflare, Inc.</td>
+      <td>Almacenamiento de copias de respaldo (R2) y proxy / CDN</td>
+      <td>Estados Unidos (us-east)</td>
+      <td>Todas las categorías (en respaldos cifrados)</td>
+    </tr>
+    <tr>
+      <td>Functional Software, Inc. (Sentry)</td>
+      <td>Monitoreo de errores y disponibilidad</td>
+      <td>Estados Unidos</td>
+      <td>Datos técnicos y de actividad; dirección IP. No recibe RUT, credenciales ni tokens, por aplicarse la
+        depuración de la cláusula 6.1</td>
+    </tr>
+  </tbody>
+</table>
+<p><strong>Copias de respaldo:</strong> frecuencia diaria, retención de 30 días (30 respaldos, siendo el más antiguo
+  de 30 días de antigüedad), almacenados cifrados en Cloudflare R2.</p>
+
+<hr>
+
+<h2>Anexo B.1 — Matriz de retención y criticidad</h2>
+<p>Los plazos de esta matriz son instrucciones por defecto del Cliente en su calidad de Responsable. El Cliente
+  puede fijar plazos distintos por instrucción escrita. Ninguno de estos plazos se funda en obligación legal propia
+  del Proveedor derivada de la normativa marítima.</p>
+
+<h3>Criterios</h3>
+<p><strong>Criticidad</strong> — impacto de la pérdida, alteración o filtración del dato:</p>
+<ul>
+  <li><strong>Alta:</strong> identifica a una persona y su compromiso genera riesgo directo (credenciales, RUT).</li>
+  <li><strong>Media:</strong> permite atribuir acciones o reconstruir actividad (autoría de fichas, logs de
+    acceso).</li>
+  <li><strong>Baja:</strong> dato operacional o técnico de bajo impacto individual.</li>
+</ul>
+
+<h3>Matriz</h3>
+<table>
+  <thead>
+    <tr><th>Dato</th><th>Criticidad</th><th>Plazo de retención (defecto)</th><th>Fundamento</th><th>Al vencer</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>RUT, nombre, apellido</td><td>Alta</td>
+      <td>Vigencia de la cuenta + duración del contrato</td>
+      <td>Necesario para prestar el Servicio</td>
+      <td>Supresión conforme cláusula 10</td>
+    </tr>
+    <tr>
+      <td>Correo electrónico</td><td>Media</td>
+      <td>Vigencia de la cuenta</td>
+      <td>Autenticación y contacto</td>
+      <td>Supresión</td>
+    </tr>
+    <tr>
+      <td>Contraseña / PIN (hash)</td><td>Alta</td>
+      <td>Vigencia de la credencial</td>
+      <td>Autenticación; nunca en texto claro</td>
+      <td>Eliminación inmediata al revocar</td>
+    </tr>
+    <tr>
+      <td>Token de dispositivo (hash)</td><td>Alta</td>
+      <td>Hasta revocación del dispositivo</td>
+      <td>Vinculación de kiosco</td>
+      <td>Eliminación al revocar</td>
+    </tr>
+    <tr>
+      <td>Ficha de registro (con autoría/RUT)</td><td>Media</td>
+      <td>5 años desde su creación</td>
+      <td>Interés legítimo del Cliente en conservar evidencia frente a reclamos, alineado con plazos de prescripción
+        aplicables</td>
+      <td>Anonimización o supresión, según instrucción del Cliente</td>
+    </tr>
+    <tr>
+      <td>Logs de acceso y actividad</td><td>Media</td>
+      <td>12 meses</td>
+      <td>Seguridad, trazabilidad y detección de incidentes</td>
+      <td>Eliminación</td>
+    </tr>
+    <tr>
+      <td>Dirección IP</td><td>Baja</td>
+      <td>12 meses (en logs)</td>
+      <td>Seguridad</td>
+      <td>Eliminación con el log</td>
+    </tr>
+    <tr>
+      <td>Datos de facturación</td><td>Media</td>
+      <td>Plazo legal tributario y contable</td>
+      <td>Obligación legal del Proveedor (Responsable)</td>
+      <td>Según norma tributaria</td>
+    </tr>
+    <tr>
+      <td>Copias de respaldo</td><td>Alta (contienen todo lo anterior)</td>
+      <td>30 días (rotación)</td>
+      <td>Recuperación ante desastres</td>
+      <td>Expiración automática por rotación</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Reglas transversales</h3>
+<p><strong>1.</strong> Vencido el plazo de una ficha de registro, la instrucción por defecto es anonimizar al
+  Titular (desvincular RUT y autoría) conservando el dato operacional de la nave, salvo que el Cliente instruya la
+  supresión total.</p>
+<p><strong>2.</strong> La supresión de cualquier dato en producción se propaga a las copias de respaldo por
+  expiración natural, en un máximo de 30 días adicionales.</p>
+<p><strong>3.</strong> Ningún plazo de esta matriz obliga al Proveedor a conservar datos más allá de lo instruido
+  por el Cliente. El Cliente puede, en cualquier momento y por escrito, acortar o extender estos plazos, asumiendo
+  la responsabilidad de que el plazo instruido cumpla la Ley de Datos.</p>
+
+{% endblock %}

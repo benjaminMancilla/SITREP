@@ -1,0 +1,386 @@
+{% extends 'legal/_base.html' %}
+
+{% block title %}Términos y condiciones — SITREP{% endblock %}
+
+{% block nav_terminos %}bg-navy/5 font-semibold text-navy{% endblock %}
+
+{% block doc_version %}1.0{% endblock %}
+{% block doc_date %}8 de julio de 2026{% endblock %}
+{% block doc_title %}Términos y condiciones de uso{% endblock %}
+{% block doc_intro %}
+<p class="mt-3 text-[14px] leading-6 text-ink-secondary">
+  Regulan el acceso y uso de la plataforma SITREP por parte de las navieras que la contratan. Vigentes desde la fecha
+  de aceptación por el Cliente.
+</p>
+{% endblock %}
+{% block doc_contact_email %}bmancilla@sitrep.cl{% endblock %}
+{% block doc_contact_email_display %}bmancilla@sitrep.cl{% endblock %}
+
+{% block legal_content %}
+
+<h2>Preámbulo</h2>
+<p>
+  Los presentes Términos y Condiciones (los <strong>"Términos"</strong>) regulan el acceso y uso de la plataforma de
+  software SITREP, disponible en el dominio <code>sitrep.cl</code> y sus subdominios.
+</p>
+<p>
+  SITREP es un servicio de software como servicio (SaaS) que permite al Cliente registrar y dar seguimiento al
+  estado operativo y de seguridad de los recursos a bordo de sus naves. Su catálogo de recursos se estructura
+  tomando como referencia el Convenio SOLAS y la normativa sectorial chilena, con el solo objeto de resultar útil a
+  la operación del Cliente.
+</p>
+<p>
+  <strong>SITREP no es un sistema de registro regulatorio</strong>, no genera documentación oficial, no interactúa
+  con la Dirección General del Territorio Marítimo y de Marina Mercante, y no acredita, certifica ni sustituye el
+  cumplimiento de obligación normativa alguna del Cliente. La observancia de la normativa marítima aplicable,
+  incluidos sus deberes de registro y conservación documental, recae exclusivamente en el Cliente y por medios
+  propios.
+</p>
+<p>
+  Estos Términos constituyen un contrato entre empresas (B2B). Los Usuarios Autorizados no son parte de este
+  contrato; su relación con la Plataforma se rige por la cláusula 5 y por la
+  <a href="{% url 'legal_privacidad' %}">Política de Privacidad</a>.
+</p>
+
+<h2>1. Definiciones</h2>
+<p><strong>1.1. "Proveedor" o "SITREP":</strong> Benjamín Mauricio Mancilla Vera E.I.R.L., RUT N° 78.157.006-0, con
+  domicilio en Puerta del Sol N° 151, Depto. N° 94, Las Condes, Región Metropolitana, Chile.</p>
+<p><strong>1.2. "Cliente" o "Naviera":</strong> la persona jurídica que contrata la Plataforma, individualizada en la
+  Orden de Servicio respectiva.</p>
+<p><strong>1.3. "Plataforma" o "Servicio":</strong> el software SITREP, en su versión web y de kiosco, junto con su
+  documentación, interfaces y funcionalidades.</p>
+<p><strong>1.4. "Usuario Autorizado":</strong> toda persona natural a quien el Cliente autoriza a acceder a la
+  Plataforma bajo su cuenta, incluyendo tripulantes, capitanes y personal administrativo en tierra.</p>
+<p><strong>1.5. "Datos del Cliente":</strong> la información cargada, generada o transmitida a la Plataforma por el
+  Cliente o sus Usuarios Autorizados, incluyendo el inventario de naves, sus atributos físicos, las fichas de
+  registro de inspección y los recursos privados creados por el Cliente.</p>
+<p><strong>1.6. "Catálogo Base":</strong> el conjunto de recursos, propósitos, áreas, periodicidades, requerimientos
+  y reglas de aplicación provistos de forma estándar a todos los clientes de la Plataforma. No constituye Datos del
+  Cliente.</p>
+<p><strong>1.7. "Recursos Privados":</strong> los recursos y reglas creados por el Cliente dentro de la Plataforma,
+  exclusivos de su organización. Constituyen Datos del Cliente.</p>
+<p><strong>1.8. "Datos Anonimizados":</strong> información derivada de los Datos del Cliente sometida a un proceso de
+  anonimización irreversible, del cual resulta imposible, mediante medios razonables, atribuir la información a una
+  persona natural determinada o al Cliente como organización identificable.</p>
+<p><strong>1.9. "Dispositivo Autorizado" o "Kiosco":</strong> el equipo físico registrado y aprovisionado por el
+  Cliente conforme a la cláusula 6, mediante la emisión de un token criptográfico de vinculación.</p>
+<p><strong>1.10. "DPA":</strong> el <a href="{% url 'legal_dpa' %}">Acuerdo de Procesamiento de Datos</a> suscrito
+  entre las Partes, que forma parte integrante de estos Términos como Anexo B.</p>
+<p><strong>1.11. "Ley de Datos":</strong> la Ley N° 19.628 sobre protección de la vida privada, en su versión
+  reformada por la Ley N° 21.719, y su normativa complementaria.</p>
+<p><strong>1.12. "Orden de Servicio":</strong> el documento comercial suscrito entre las Partes que individualiza el
+  plan contratado, el precio, el número de naves y usuarios habilitados, y el plazo de vigencia.</p>
+
+<h2>2. Objeto y aceptación</h2>
+<p><strong>2.1.</strong> Mediante estos Términos, el Proveedor otorga al Cliente el derecho de acceder y utilizar la
+  Plataforma, en la modalidad de servicio, durante la vigencia de la Orden de Servicio y sujeto al pago oportuno del
+  precio.</p>
+<p><strong>2.2.</strong> La aceptación de estos Términos se perfecciona por cualquiera de los siguientes actos, el
+  que ocurra primero: (i) la suscripción de la Orden de Servicio; (ii) la aceptación electrónica expresa por parte de
+  un representante del Cliente; o (iii) el primer acceso a la Plataforma por cualquier Usuario Autorizado.</p>
+<p><strong>2.3.</strong> Documentos que integran el contrato, en el siguiente orden de prelación en caso de
+  contradicción:</p>
+<ol>
+  <li>La Orden de Servicio;</li>
+  <li>El Anexo B (DPA) y su Anexo B.1 (Matriz de Retención y Criticidad);</li>
+  <li>Los presentes Términos;</li>
+  <li>El Anexo A (Acuerdo de Nivel de Servicio);</li>
+  <li>La Política de Privacidad.</li>
+</ol>
+
+<h2>3. Licencia de uso</h2>
+<p><strong>3.1. Alcance.</strong> El Proveedor otorga al Cliente una licencia no exclusiva, intransferible,
+  revocable, sin derecho a sublicenciar y limitada al territorio de la República de Chile, para acceder y usar la
+  Plataforma exclusivamente para sus fines internos de gestión de seguridad marítima.</p>
+<p><strong>3.2. Restricciones.</strong> El Cliente no podrá, ni permitirá a terceros:</p>
+<ul>
+  <li>Descompilar, desensamblar, aplicar ingeniería inversa o intentar obtener el código fuente de la Plataforma;</li>
+  <li>Utilizar procedimientos automatizados de extracción masiva de datos (<em>scraping</em>), salvo mediante las
+    interfaces que el Proveedor habilite expresamente;</li>
+  <li>Ceder, arrendar, sublicenciar o poner la Plataforma a disposición de terceros ajenos a su organización;</li>
+  <li>Utilizar la Plataforma para desarrollar un producto competitivo;</li>
+  <li>Eludir, deshabilitar o interferir los mecanismos de aislamiento entre inquilinos (<em>tenants</em>), de
+    autenticación o de vinculación de hardware;</li>
+  <li>Realizar pruebas de penetración, análisis de vulnerabilidades o tests de carga sin autorización previa y por
+    escrito del Proveedor.</li>
+</ul>
+<p><strong>3.3.</strong> El incumplimiento de la restricción de aislamiento entre inquilinos constituye
+  incumplimiento grave y faculta al Proveedor para suspender el Servicio de inmediato, sin perjuicio de las acciones
+  legales que correspondan.</p>
+
+<h2>4. Propiedad intelectual</h2>
+<p><strong>4.1. De la Plataforma.</strong> La Plataforma, su código fuente, arquitectura, diseño, interfaces, motor
+  de reglas y marcas son de propiedad exclusiva del Proveedor. Estos Términos no transfieren al Cliente derecho de
+  propiedad alguno sobre ellos.</p>
+<p><strong>4.2. Del Catálogo Base.</strong> El Catálogo Base es de titularidad del Proveedor, sin perjuicio de que su
+  contenido se estructure sobre la base de normas de acceso público. El Cliente reconoce que el Catálogo Base se
+  provee sin garantía de exhaustividad ni de correspondencia con la normativa vigente, conforme a la cláusula 13.</p>
+<p><strong>4.3. De los Datos del Cliente.</strong> Los Datos del Cliente son y permanecerán de propiedad exclusiva
+  del Cliente. El Cliente otorga al Proveedor una licencia limitada, no exclusiva y libre de regalías, para alojar,
+  procesar, transmitir y mostrar los Datos del Cliente únicamente en la medida necesaria para prestar el Servicio y
+  conforme a las instrucciones del Cliente establecidas en el DPA.</p>
+<p><strong>4.4. Datos Anonimizados.</strong> El Cliente autoriza expresamente al Proveedor a generar Datos
+  Anonimizados a partir de los Datos del Cliente, y a utilizarlos, sin límite de tiempo, para:</p>
+<ul>
+  <li>Operar, mantener, corregir y mejorar la Plataforma;</li>
+  <li>Producir estadísticas agregadas, estudios de mercado y comparativas sectoriales (<em>benchmarking</em>);</li>
+  <li>Desarrollar, entrenar y validar modelos analíticos o de aprendizaje automático, sean o no incorporados a la
+    Plataforma.</li>
+</ul>
+<p><strong>4.5. Límites al uso de Datos Anonimizados.</strong> El Proveedor se obliga a:</p>
+<ul>
+  <li>No comercializar, ceder ni transferir a terceros los Datos del Cliente en forma identificable ni
+    pseudonimizada;</li>
+  <li>Asegurar que ningún producto, publicación o modelo derivado permita identificar al Cliente, a sus naves
+    individualizadas, ni a persona natural alguna;</li>
+  <li>Aplicar técnicas de anonimización irreversible antes de cualquier uso bajo la cláusula 4.4, entendiéndose que la
+    mera supresión, cifrado o transformación mediante función de resumen (<em>hash</em>) del RUT constituye
+    seudonimización y no anonimización, y por tanto no habilita los usos de la cláusula 4.4;</li>
+  <li>No utilizar Datos Anonimizados de un Cliente para producir comparativas nominadas frente a otros clientes;</li>
+  <li>Documentar el procedimiento de anonimización empleado y ponerlo a disposición del Cliente a su requerimiento
+    razonable.</li>
+</ul>
+<p><strong>4.6.</strong> El Cliente podrá objetar por escrito el uso previsto en la letra (c) de la cláusula 4.4. En
+  tal caso, las Partes negociarán de buena fe una exclusión, la que podrá implicar un ajuste de precio.</p>
+
+<h2>5. Usuarios autorizados y cuentas</h2>
+<p><strong>5.1.</strong> El Cliente es responsable de designar, administrar y revocar los accesos de sus Usuarios
+  Autorizados, así como de mantener actualizada su nómina.</p>
+<p><strong>5.2.</strong> El Cliente responde ante el Proveedor por todo acto u omisión de sus Usuarios Autorizados,
+  como si fuera propio.</p>
+<p><strong>5.3. Credenciales.</strong> El acceso a la Plataforma se realiza por dos vías:</p>
+<ul>
+  <li><strong>Acceso Tierra:</strong> correo electrónico y contraseña.</li>
+  <li><strong>Acceso Mar (Kiosco):</strong> RUT y clave numérica personal (PIN), en conjunto con un Dispositivo
+    Autorizado.</li>
+</ul>
+<p>Las contraseñas, los PIN y los tokens de dispositivo se almacenan exclusivamente mediante funciones de resumen
+  criptográfico. El Proveedor no tiene ni puede tener acceso a las credenciales en texto claro.</p>
+<p><strong>5.4.</strong> El Cliente se obliga a instruir a sus Usuarios Autorizados sobre el carácter personal e
+  intransferible de sus credenciales, y a notificar al Proveedor sin demora cualquier acceso no autorizado del que
+  tome conocimiento.</p>
+<p><strong>5.5.</strong> El PIN de kiosco es un mecanismo de identificación operativa en entorno controlado, no un
+  factor de autenticación fuerte. Su seguridad depende de la posesión física del Dispositivo Autorizado. El Cliente
+  reconoce y acepta este diseño, adoptado en atención a las condiciones operativas a bordo.</p>
+
+<h2>6. Dispositivos autorizados (kioscos)</h2>
+<p><strong>6.1.</strong> El aprovisionamiento de Dispositivos Autorizados es facultad exclusiva de los usuarios con
+  rol de administrador o capitán del Cliente.</p>
+<p><strong>6.2.</strong> Al aprovisionar un dispositivo, el Proveedor emite un token criptográfico de un solo uso,
+  cuyo resumen se almacena en la Plataforma y cuyo valor en claro se inyecta en el almacenamiento local del
+  navegador del dispositivo.</p>
+<p><strong>6.3.</strong> El Cliente es exclusivamente responsable de:</p>
+<ul>
+  <li>La custodia física de los Dispositivos Autorizados;</li>
+  <li>Revocar de inmediato, mediante la Plataforma, todo dispositivo extraviado, sustraído o dado de baja;</li>
+  <li>No aprovisionar dispositivos de propiedad personal de los Usuarios Autorizados.</li>
+</ul>
+<p><strong>6.4.</strong> El Proveedor no responde por accesos originados desde un Dispositivo Autorizado cuya
+  custodia el Cliente no haya mantenido conforme a esta cláusula.</p>
+
+<h2>7. Obligaciones del Cliente</h2>
+<p><strong>7.1.</strong> El Cliente se obliga a:</p>
+<ul>
+  <li>Utilizar la Plataforma conforme a la ley, a estos Términos y a la normativa marítima que le resulte aplicable;</li>
+  <li>Garantizar la exactitud, integridad y licitud de los Datos del Cliente que carga;</li>
+  <li>Contar con base de licitud suficiente, bajo la Ley de Datos, para el tratamiento de los datos personales de sus
+    Usuarios Autorizados, y haber cumplido su deber de información hacia ellos;</li>
+  <li>Mantener sus propias copias de seguridad de la información crítica que le sea legalmente exigible conservar;</li>
+  <li>Pagar oportunamente el precio convenido.</li>
+</ul>
+<p><strong>7.2. Verificación de cumplimiento normativo.</strong> La determinación de qué recursos de seguridad debe
+  portar cada nave, y la verificación de que la matriz generada por la Plataforma satisface la normativa aplicable,
+  son de responsabilidad exclusiva del Cliente. El motor de reglas de la Plataforma es una herramienta de apoyo. El
+  Cliente conserva la facultad de modificar manualmente la matriz, entendiéndose que toda modificación manual es un
+  acto propio del Cliente.</p>
+
+<h2>8. Protección de datos personales</h2>
+<p><strong>8.1. Roles.</strong> Respecto de los datos personales de los Usuarios Autorizados, el Cliente actúa como
+  Responsable del tratamiento y el Proveedor como Encargado del tratamiento, en los términos de la Ley de Datos.</p>
+<p><strong>8.2.</strong> El tratamiento se rige íntegramente por el <a href="{% url 'legal_dpa' %}">DPA</a>, que
+  forma parte integrante de estos Términos y prevalece sobre ellos en materia de datos personales.</p>
+<p><strong>8.3.</strong> Respecto del Catálogo Base, de los datos de facturación del Cliente y de los Datos
+  Anonimizados, el Proveedor actúa como Responsable del tratamiento.</p>
+<p><strong>8.4. Conservación.</strong> Los plazos de conservación se establecen en la Matriz de Retención y
+  Criticidad (Anexo B.1) y constituyen instrucciones del Cliente en su calidad de Responsable del tratamiento. El
+  Proveedor no conserva los Datos del Cliente en virtud de obligación legal propia alguna derivada de la normativa
+  marítima.</p>
+<p><strong>8.5. Régimen transitorio.</strong> Hasta el 30 de noviembre de 2026, las obligaciones de las Partes en
+  materia de datos personales se rigen por la Ley N° 19.628 en su texto vigente. A partir del 1 de diciembre de
+  2026, rige plenamente su versión reformada por la Ley N° 21.719. Las Partes se obligan desde ya a observar los
+  estándares de esta última.</p>
+
+<h2>9. Disponibilidad del servicio</h2>
+<p><strong>9.1.</strong> El Proveedor se compromete a un nivel de disponibilidad mensual del <strong>99,0%</strong>,
+  medido conforme al Anexo A (Acuerdo de Nivel de Servicio).</p>
+<p><strong>9.2. Exclusiones.</strong> No se computan como indisponibilidad:</p>
+<ul>
+  <li>Las ventanas de mantenimiento programado, notificadas con al menos 48 horas de anticipación y ejecutadas fuera
+    del horario 08:00–20:00 hora de Chile continental;</li>
+  <li>Las fallas atribuibles a la conectividad del Cliente, a sus dispositivos, o a la conectividad satelital o
+    marítima de las naves;</li>
+  <li>Los eventos de fuerza mayor conforme a la cláusula 19.3;</li>
+  <li>Las fallas de proveedores de infraestructura de terceros, cuando el Proveedor haya adoptado medidas razonables
+    de mitigación;</li>
+  <li>La suspensión del Servicio por mora del Cliente o por infracción de la cláusula 3.2.</li>
+</ul>
+<p><strong>9.3. Remedio único.</strong> El incumplimiento del nivel de disponibilidad da derecho al Cliente, como
+  único y exclusivo remedio, a los créditos de servicio establecidos en el Anexo A.</p>
+<p><strong>9.4. Naturaleza del Servicio.</strong> El Cliente reconoce expresamente que la Plataforma no es un sistema
+  crítico de seguridad de la vida humana en el mar, no reemplaza los procedimientos de emergencia a bordo, y su
+  indisponibilidad temporal no debe impedir la operación de la nave. El Cliente se obliga a mantener procedimientos
+  de contingencia en soporte alternativo.</p>
+
+<h2>10. Soporte</h2>
+<p><strong>10.1.</strong> El Proveedor prestará soporte técnico por correo electrónico a
+  <a href="mailto:bmancilla@sitrep.cl">bmancilla@sitrep.cl</a>, en días hábiles de 09:00 a 18:00 hora de Chile
+  continental.</p>
+<p><strong>10.2.</strong> Tiempos de primera respuesta objetivo, no vinculantes:</p>
+<table>
+  <thead><tr><th>Severidad</th><th>Descripción</th><th>Primera respuesta</th></tr></thead>
+  <tbody>
+    <tr><td>Crítica</td><td>Plataforma inaccesible para todos los usuarios del Cliente</td><td>4 horas hábiles</td></tr>
+    <tr><td>Alta</td><td>Funcionalidad principal inoperativa, sin alternativa</td><td>1 día hábil</td></tr>
+    <tr><td>Media</td><td>Funcionalidad degradada, con alternativa disponible</td><td>3 días hábiles</td></tr>
+    <tr><td>Baja</td><td>Consultas, mejoras, documentación</td><td>5 días hábiles</td></tr>
+  </tbody>
+</table>
+
+<h2>11. Precio y facturación</h2>
+<p><strong>11.1. Modelo de cobro.</strong> El Servicio se factura por ciclos mensuales, en función del número de
+  Naves Activas del Cliente, conforme a la Lista de Precios individualizada en la Orden de Servicio.</p>
+<p><strong>11.2. Nave Activa.</strong> Se entiende por Nave Activa toda nave registrada en la Plataforma y no dada
+  de baja al primer día hábil del ciclo de facturación.</p>
+<p><strong>11.3. Ajuste de tramo.</strong> Toda variación en el número de Naves Activas produce el ajuste del tramo
+  tarifario a partir del ciclo de facturación inmediatamente siguiente, con prorrateo por días de uso.</p>
+<p><strong>11.4. Moneda e impuestos.</strong> Los valores se expresan en pesos chilenos y no incluyen IVA, el que se
+  agregará conforme a la ley.</p>
+<p><strong>11.5. Pago.</strong> Las facturas se pagan dentro de los 30 días corridos siguientes a su emisión.</p>
+<p><strong>11.6. Mora.</strong> El retardo en el pago devenga el interés corriente para operaciones reajustables.
+  Transcurridos 30 días corridos de mora, el Proveedor podrá suspender el Servicio previa notificación por escrito
+  con 10 días corridos de anticipación.</p>
+<p><strong>11.7. Modificación de la Lista de Precios.</strong> El Proveedor podrá modificar la Lista de Precios
+  notificando por escrito con al menos 60 días corridos de anticipación. El Cliente podrá, dentro de los 30 días
+  siguientes, poner término al contrato sin sanción.</p>
+
+<h2>12. Confidencialidad</h2>
+<p><strong>12.1.</strong> Cada Parte se obliga a mantener en reserva la Información Confidencial de la otra,
+  incluyendo los Datos del Cliente, el código y arquitectura de la Plataforma y los términos comerciales.</p>
+<p><strong>12.2.</strong> No constituye Información Confidencial aquella que sea de dominio público, ya poseída
+  lícitamente, desarrollada de forma independiente, o que deba revelarse por mandato legal.</p>
+<p><strong>12.3.</strong> Esta obligación subsiste por 5 años contados desde el término del contrato, y de forma
+  indefinida respecto de los secretos empresariales. El Catálogo Base no constituye Información Confidencial.</p>
+
+<h2>13. Garantías y descargo</h2>
+<p><strong>13.1.</strong> El Proveedor garantiza que prestará el Servicio con la diligencia y pericia razonablemente
+  esperables de un proveedor profesional de servicios de software en Chile, y que dispone de los derechos
+  necesarios para otorgar la licencia de la cláusula 3.</p>
+<p><strong>13.2.</strong> Salvo por lo expresamente garantizado en la cláusula 13.1 y en el Anexo A, la Plataforma se
+  provee "tal como está" (<em>as is</em>). El Proveedor no garantiza que el Servicio esté libre de errores, ni que
+  los resultados del motor de reglas sean adecuados para un fin particular.</p>
+<p><strong>13.3.</strong> El Proveedor no otorga garantía alguna respecto del cumplimiento por el Cliente de la
+  normativa marítima, laboral o sectorial que le sea aplicable.</p>
+
+<h2>14. Limitación de responsabilidad</h2>
+<p><strong>14.1. Exclusión de daños indirectos.</strong> En ningún caso el Proveedor responderá por lucro cesante,
+  pérdida de negocios, pérdida de oportunidad, daño reputacional, ni por daños indirectos o consecuenciales.</p>
+<p><strong>14.2. Tope de responsabilidad.</strong> La responsabilidad total y acumulada del Proveedor frente al
+  Cliente quedará limitada al monto efectivamente pagado por el Cliente durante los 12 ciclos de facturación
+  inmediatamente anteriores al hecho que origina la responsabilidad.</p>
+<p><strong>14.3. Excepciones al tope.</strong> Las limitaciones anteriores no se aplicarán al dolo y la culpa grave
+  del Proveedor, a los daños a las personas, a la infracción de confidencialidad, ni a la indemnidad por propiedad
+  intelectual de la cláusula 15.1.</p>
+<p><strong>14.4. Ámbito de la limitación.</strong> Estas limitaciones rigen únicamente entre las Partes y no son
+  oponibles a terceros, incluida la responsabilidad administrativa ante la Agencia de Protección de Datos
+  Personales ni los derechos de los titulares de datos.</p>
+
+<h2>15. Indemnidad</h2>
+<p><strong>15.1. Del Proveedor.</strong> El Proveedor mantendrá indemne al Cliente frente a demandas de terceros que
+  aleguen que la Plataforma o el Catálogo Base infringen derechos de propiedad intelectual en Chile, siempre que el
+  Cliente notifique oportunamente y coopere razonablemente.</p>
+<p><strong>15.2. Del Cliente.</strong> El Cliente mantendrá indemne al Proveedor frente a demandas de terceros
+  derivadas de la ilicitud de los Datos del Cliente, la falta de base de licitud respecto de sus Usuarios
+  Autorizados, el uso de la Plataforma en infracción de estos Términos, y el incumplimiento de la normativa marítima
+  o laboral aplicable.</p>
+
+<h2>16. Vigencia y término</h2>
+<p><strong>16.1.</strong> El contrato rige por períodos mensuales sucesivos, renovándose automáticamente, salvo
+  aviso escrito en contrario de cualquiera de las Partes con al menos 30 días corridos de anticipación.</p>
+<p><strong>16.2. Término anticipado por incumplimiento.</strong> Cualquier Parte podrá poner término anticipado, sin
+  indemnización, si la otra incurre en incumplimiento grave y no lo subsana dentro de 15 días corridos.</p>
+<p><strong>16.3. Término inmediato.</strong> El Proveedor podrá poner término de inmediato en caso de infracción de
+  los mecanismos de aislamiento entre inquilinos, o de insolvencia, quiebra o liquidación del Cliente.</p>
+
+<h2>17. Efectos del término</h2>
+<p><strong>17.1. Ventana de exportación.</strong> Durante los 30 días corridos siguientes al término del contrato, el
+  Cliente podrá solicitar y obtener la exportación íntegra de los Datos del Cliente en formato CSV y JSON, sin costo
+  adicional.</p>
+<p><strong>17.2. Eliminación.</strong> Transcurrida la ventana de exportación, el Proveedor eliminará los Datos del
+  Cliente de sus sistemas productivos dentro de 30 días corridos.</p>
+<p><strong>17.3. Copias de respaldo.</strong> Las copias de respaldo se eliminan conforme al ciclo natural de
+  rotación, que no excede de 30 días corridos adicionales. El plazo máximo total de eliminación es de 90 días
+  corridos desde el término del contrato.</p>
+<p><strong>17.4. Conservación por mandato legal.</strong> El Proveedor conservará aquellos registros cuya retención
+  le sea exigida por la ley, por el plazo mínimo legal y con acceso restringido a esa sola finalidad.</p>
+<p><strong>17.5. Supervivencia.</strong> Subsisten al término del contrato las cláusulas 4, 12, 13.2, 14, 15, 17 y
+  20.</p>
+
+<h2>18. Modificaciones</h2>
+<p><strong>18.1.</strong> El Proveedor podrá modificar estos Términos, notificando al Cliente con al menos 30 días
+  corridos de anticipación.</p>
+<p><strong>18.2.</strong> Si la modificación afecta sustancial y desfavorablemente los derechos del Cliente, éste
+  podrá poner término al contrato sin sanción, dentro de los 30 días siguientes a la notificación.</p>
+<p><strong>18.3.</strong> Las modificaciones al DPA requieren acuerdo escrito de ambas Partes, salvo aquellas
+  necesarias para adecuarse a cambios normativos.</p>
+
+<h2>19. Disposiciones generales</h2>
+<p><strong>19.1. Cesión.</strong> El Cliente no podrá ceder este contrato sin autorización escrita del Proveedor. El
+  Proveedor podrá cederlo en caso de reorganización societaria, fusión o venta sustancial de activos.</p>
+<p><strong>19.2. Subcontratación.</strong> El Proveedor podrá subcontratar la prestación del Servicio, respondiendo
+  ante el Cliente por los actos de sus subcontratistas como si fueran propios.</p>
+<p><strong>19.3. Fuerza mayor.</strong> Ninguna Parte responderá por el incumplimiento de sus obligaciones —salvo las
+  de pago— cuando derive de caso fortuito o fuerza mayor.</p>
+<p><strong>19.4. Notificaciones.</strong> Al Proveedor: <a href="mailto:bmancilla@sitrep.cl">bmancilla@sitrep.cl</a>,
+  con copia a <a href="mailto:privacidad@sitrep.cl">privacidad@sitrep.cl</a> en materias de datos personales. Al
+  Cliente: la dirección individualizada en la Orden de Servicio.</p>
+<p><strong>19.5. Nulidad parcial.</strong> La nulidad o ineficacia de una cláusula no afectará la validez de las
+  restantes.</p>
+<p><strong>19.6. Ausencia de renuncia.</strong> La tolerancia de una Parte frente al incumplimiento de la otra no
+  importa renuncia a sus derechos.</p>
+<p><strong>19.7. Integridad.</strong> Estos Términos, junto a sus anexos y la Orden de Servicio, constituyen el
+  acuerdo íntegro entre las Partes.</p>
+
+<h2>20. Ley aplicable y jurisdicción</h2>
+<p><strong>20.1.</strong> Estos Términos se rigen por la ley de la República de Chile.</p>
+<p><strong>20.2.</strong> Toda controversia será sometida al conocimiento de los Tribunales Ordinarios de Justicia
+  con asiento en la comuna de Santiago.</p>
+
+<h2>Anexo A — Acuerdo de Nivel de Servicio (SLA)</h2>
+<p><strong>A.1.</strong> Disponibilidad comprometida: 99,0% mensual.</p>
+<p><strong>A.2.</strong> Cálculo: (Minutos Totales del Mes − Minutos de Indisponibilidad) / Minutos Totales del Mes
+  × 100. Se excluyen los eventos listados en la cláusula 9.2.</p>
+<p><strong>A.3.</strong> Se entiende por Indisponibilidad todo período durante el cual la Plataforma responde con
+  error de servidor (HTTP 5xx) o no responde, a más del 50% de las solicitudes válidas del Cliente, medido en
+  intervalos de 5 minutos.</p>
+<p><strong>A.4.</strong> Créditos de servicio:</p>
+<table>
+  <thead><tr><th>Disponibilidad mensual efectiva</th><th>Crédito sobre la mensualidad</th></tr></thead>
+  <tbody>
+    <tr><td>≥ 99,0%</td><td>0%</td></tr>
+    <tr><td>98,0% – 98,99%</td><td>10%</td></tr>
+    <tr><td>95,0% – 97,99%</td><td>25%</td></tr>
+    <tr><td>&lt; 95,0%</td><td>50%</td></tr>
+  </tbody>
+</table>
+<p><strong>A.5.</strong> El Cliente debe solicitar el crédito por escrito dentro de los 30 días corridos siguientes
+  al cierre del mes afectado.</p>
+<p><strong>A.6.</strong> El crédito máximo acumulable en un mes no excederá del 50% de la mensualidad.</p>
+<p><strong>A.7. Fuente de medición.</strong> La disponibilidad se mide conforme a los registros de un servicio de
+  monitoreo externo e independiente, que verifica la respuesta de la Plataforma desde fuera de su infraestructura,
+  mediante sondeo periódico de un endpoint de salud que comprueba la conectividad con la base de datos.</p>
+
+<h2>Anexo B — Acuerdo de Procesamiento de Datos (DPA)</h2>
+<p>Ver <a href="{% url 'legal_dpa' %}">Acuerdo de Procesamiento de Datos y Anexo B.1 (Matriz de Retención y
+  Criticidad)</a>, documento que forma parte integrante de estos Términos.</p>
+
+{% endblock %}

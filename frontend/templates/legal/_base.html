@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body_class %}min-h-screen bg-surface font-sans text-ink antialiased{% endblock %}
+
+{% block extra_head %}
+<style>
+  .legal-prose h2 {
+    margin-top: 2.5rem;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f2d4a;
+    letter-spacing: -0.01em;
+  }
+  .legal-prose h2:first-child { margin-top: 0; }
+  .legal-prose h3 {
+    margin-top: 1.75rem;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f2d4a;
+  }
+  .legal-prose p, .legal-prose li { font-size: 14px; line-height: 1.7; color: #475569; }
+  .legal-prose p { margin-top: 0.9rem; }
+  .legal-prose strong { color: #1e293b; font-weight: 600; }
+  .legal-prose ul, .legal-prose ol { margin-top: 0.9rem; padding-left: 1.25rem; }
+  .legal-prose ul { list-style: disc; }
+  .legal-prose ol { list-style: decimal; }
+  .legal-prose li { margin-top: 0.4rem; }
+  .legal-prose li::marker { color: #94a3b8; }
+  .legal-prose a { color: #1d4ed8; text-decoration: underline; text-underline-offset: 2px; }
+  .legal-prose a:hover { color: #1e40af; }
+  .legal-prose table { margin-top: 1rem; width: 100%; border-collapse: collapse; font-size: 13px; }
+  .legal-prose th, .legal-prose td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; vertical-align: top; }
+  .legal-prose th { background: #f8fafc; font-weight: 600; color: #1e293b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .legal-prose td { color: #475569; }
+  .legal-prose hr { margin: 2rem 0; border-color: #e2e8f0; }
+  .legal-prose code { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.9em; background: #f0f4f8; padding: 1px 5px; border-radius: 4px; color: #1e293b; }
+</style>
+{% endblock %}
+
+{% block layout %}
+
+{# ── Topbar ─────────────────────────────────────────────────────────────────── #}
+<div class="sticky top-0 z-50 border-b border-surface-border bg-surface">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="flex h-14 items-center justify-between">
+      <a href="{% url 'homepage' %}" class="flex items-center gap-2.5">
+        <img src="{% static 'img/logo_color.svg' %}" class="h-7 w-7 shrink-0" alt="">
+        <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+      </a>
+      <a href="{% url 'homepage' %}" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">
+        ← Volver al inicio
+      </a>
+    </div>
+  </div>
+</div>
+
+<section class="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
+  <div class="grid gap-10 lg:grid-cols-[200px_1fr] lg:gap-14">
+
+    {# ── Índice de documentos legales ──────────────────────────────────────── #}
+    <aside class="order-2 lg:order-1">
+      <div class="lg:sticky lg:top-24">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-muted">Documentos legales</p>
+        <nav class="mt-3 flex flex-col gap-1" role="list">
+          <a href="{% url 'legal_terminos' %}"
+             class="rounded-md px-2.5 py-1.5 text-[13px] {% block nav_terminos %}text-ink-secondary hover:bg-white hover:text-ink{% endblock %}">
+            Términos y condiciones
+          </a>
+          <a href="{% url 'legal_privacidad' %}"
+             class="rounded-md px-2.5 py-1.5 text-[13px] {% block nav_privacidad %}text-ink-secondary hover:bg-white hover:text-ink{% endblock %}">
+            Política de privacidad
+          </a>
+          <a href="{% url 'legal_dpa' %}"
+             class="rounded-md px-2.5 py-1.5 text-[13px] {% block nav_dpa %}text-ink-secondary hover:bg-white hover:text-ink{% endblock %}">
+            Procesamiento de datos (DPA)
+          </a>
+        </nav>
+      </div>
+    </aside>
+
+    {# ── Documento ────────────────────────────────────────────────────────── #}
+    <div class="order-1 min-w-0 lg:order-2">
+      <div class="rounded-2xl border border-surface-border bg-white p-8 sm:p-10">
+
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="rounded-full bg-navy/5 px-2.5 py-0.5 font-mono text-[11px] font-medium text-navy">v{% block doc_version %}1.0{% endblock %}</span>
+          <span class="text-[12px] text-ink-muted">Última actualización: {% block doc_date %}{% endblock %}</span>
+        </div>
+
+        <h1 class="mt-3 text-[24px] font-bold leading-tight text-navy">{% block doc_title %}{% endblock %}</h1>
+        {% block doc_intro %}{% endblock %}
+
+        <hr class="mt-7 border-surface-border">
+
+        <div class="legal-prose">
+          {% block legal_content %}{% endblock %}
+        </div>
+      </div>
+
+      <p class="mt-6 text-[12px] text-ink-muted">
+        ¿Preguntas sobre este documento? Escríbenos a
+        <a href="mailto:{% block doc_contact_email %}legal@sitrep.cl{% endblock %}" class="text-brand hover:text-brand-dark">{% block doc_contact_email_display %}legal@sitrep.cl{% endblock %}</a>.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+{# ── Footer ──────────────────────────────────────────────────────────────────── #}
+<footer class="border-t border-surface-border bg-surface py-8">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
+      <div class="flex flex-wrap items-center gap-4 text-[12px] text-ink-muted">
+        <a href="{% url 'legal_terminos' %}" class="transition-colors hover:text-ink">Términos y condiciones</a>
+        <span aria-hidden="true">·</span>
+        <a href="{% url 'legal_privacidad' %}" class="transition-colors hover:text-ink">Política de privacidad</a>
+        <span aria-hidden="true">·</span>
+        <a href="{% url 'legal_dpa' %}" class="transition-colors hover:text-ink">DPA</a>
+        <span aria-hidden="true">·</span>
+        <span>© {% now "Y" %} Benjamín Mancilla Vera E.I.R.L. Todos los derechos reservados.</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+{% endblock %}

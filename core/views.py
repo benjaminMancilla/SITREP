@@ -10,6 +10,18 @@ def homepage(request):
     navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
     return render(request, "homepage.html", {"navieras": navieras})
 
+
+def legal_terminos(request):
+    return render(request, "legal/terminos.html")
+
+
+def legal_privacidad(request):
+    return render(request, "legal/privacidad.html")
+
+
+def legal_dpa(request):
+    return render(request, "legal/dpa.html")
+
 def health_check(request):
     # Shallow on purpose, this is what Railway polls to gate deploys.
     return HttpResponse("OK")
