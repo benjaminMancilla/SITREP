@@ -6,6 +6,7 @@ from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.catalog.models import Periodicidad
 
@@ -220,6 +221,10 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     pdf_file.seek(0)
 
     nombre_archivo = f"ficha_{nave.matricula}_{periodo.periodicidad.nombre}_{periodo.fecha_inicio}.pdf"
+    registrar_acceso(
+        request, "export", "ficha_pdf",
+        detalle=f"nave={nave.matricula} periodo_id={periodo.id}",
+    )
     response = HttpResponse(pdf_file.read(), content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
     return response

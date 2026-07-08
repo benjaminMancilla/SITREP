@@ -6,6 +6,7 @@ from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from core.utils import paginate
+from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
@@ -129,11 +130,16 @@ def listar_usuarios(request, slug):
         usuarios = usuarios.filter(rol=rol)
     _params = request.GET.copy()
     _params.pop("page", None)
+    page_obj = paginate(usuarios.order_by("first_name", "last_name"), request.GET.get("page"), 10)
+    registrar_acceso(
+        request, "read", "usuarios",
+        detalle=f"query_count={page_obj.paginator.count} page={page_obj.number}",
+    )
     return render(
         request,
         "accounts/usuarios_lista.html",
         {
-            "page_obj": paginate(usuarios.order_by("first_name", "last_name"), request.GET.get("page"), 10),
+            "page_obj": page_obj,
             "pagination_params": _params.urlencode(),
             "q": q,
             "rol": rol,

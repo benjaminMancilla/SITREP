@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from sitrep.accounts.models import Naviera, Usuario
+from sitrep.accounts.models import AuditEvent, Naviera, Usuario
 from sitrep.accounts.views import (
     _normalizar_rut,
     _pin_valido_4_digitos,
@@ -322,3 +322,39 @@ class TestCambiarPin(TestCase):
         self.client.force_login(capitan)
         response = self.client.post(self._url(self.marinero), {"pin": "9999"})
         self.assertEqual(response.status_code, 403)
+
+
+# ---------------------------------------------------------------------------
+# Audit trail y detección de anomalías
+# ---------------------------------------------------------------------------
+
+class TestAuditTrail(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(
+            nombre="Naviera Audit", rut="99999999-9", slug="audit-test"
+        )
+        self.admin = Usuario.objects.create_user(
+            username="admin_audit",
+            password="pass-seguro-123",
+            naviera=self.naviera,
+            rut="99999999-9",
+            email="admin@audit.com",
+            rol="admin_naviera",
+        )
+
+    def test_listar_usuarios_deja_audit_event(self):
+        self.client.force_login(self.admin)
+        self.client.get(reverse("inventory:listar_usuarios", kwargs={"slug": self.naviera.slug}))
+        self.assertTrue(
+            AuditEvent.objects.filter(usuario=self.admin, recurso="usuarios", accion="read").exists()
+        )
+
+    def test_usuario_anonimo_no_deja_audit_event(self):
+        from sitrep.accounts.audit import registrar_acceso
+        from django.test import RequestFactory
+
+        request = RequestFactory().get("/")
+        from django.contrib.auth.models import AnonymousUser
+        request.user = AnonymousUser()
+        registrar_acceso(request, "read", "usuarios")
+        self.assertFalse(AuditEvent.objects.exists())

@@ -54,3 +54,34 @@ class Usuario(AbstractUser):
     def __str__(self):
         nombre_tenant = self.naviera.nombre if self.naviera else "SITREP Global"
         return f"{self.rut} - {nombre_tenant} [{self.rol}]"
+
+
+class AuditEvent(models.Model):
+    """Audit trail: quién accedió/exportó datos con PII. No duplica el dato, solo el acceso."""
+
+    ACCION_CHOICES = [
+        ("read", "Lectura"),
+        ("export", "Exportación"),
+        ("write", "Escritura"),
+    ]
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    usuario = models.ForeignKey(
+        Usuario, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_events"
+    )
+    naviera = models.ForeignKey(Naviera, on_delete=models.SET_NULL, null=True, blank=True)
+    rol = models.CharField(max_length=20, blank=True)
+    accion = models.CharField(max_length=10, choices=ACCION_CHOICES)
+    recurso = models.CharField(max_length=100)
+    detalle = models.CharField(max_length=255, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    session_key = models.CharField(max_length=40, blank=True)
+    endpoint = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["usuario", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.accion}:{self.recurso} by {self.usuario_id} @ {self.created_at}"
