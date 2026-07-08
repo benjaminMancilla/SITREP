@@ -21,10 +21,11 @@ load_dotenv()
 
 SENTRY_DSN = os.getenv('SENTRY_DSN', '')
 if SENTRY_DSN:
+    _default_sentry_env = 'production' if os.getenv('RAILWAY_ENVIRONMENT_ID') else 'development'
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],
-        environment=os.getenv('SENTRY_ENVIRONMENT', 'production'),
+        environment=os.getenv('SENTRY_ENVIRONMENT', _default_sentry_env),
         traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
         send_default_pii=True,
     )
