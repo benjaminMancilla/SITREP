@@ -328,6 +328,47 @@ class TestCambiarPin(TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Softlock login mar/tierra (rol insuficiente no debe atrapar al usuario)
+# ---------------------------------------------------------------------------
+
+class TestSoftlockLoginRolInsuficiente(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(
+            nombre="Naviera Softlock", rut="44444444-4", slug="naviera-softlock"
+        )
+        self.marinero = Usuario.objects.create_user(
+            username="marinero_softlock",
+            password="pass-seguro-123",
+            naviera=self.naviera,
+            rut="99999999-9",
+            email="marinero@softlock.com",
+            rol="mar",
+        )
+
+    def test_mar_autenticado_en_login_sin_modo_va_a_kiosco_no_a_tierra(self):
+        """Antes: modo_default='tierra' mandaba a un usuario mar a `/`, donde
+        no tiene rol -> 403. El rol real del usuario manda sobre el modo."""
+        self.client.force_login(self.marinero)
+        response = self.client.get(
+            reverse("inventory:login_tierra", kwargs={"slug": self.naviera.slug})
+        )
+        self.assertRedirects(
+            response,
+            f"/{self.naviera.slug}/kiosco/",
+            fetch_redirect_response=False,
+        )
+
+    def test_rol_insuficiente_cierra_sesion_en_vez_de_atrapar_con_403(self):
+        self.client.force_login(self.marinero)
+        response = self.client.get(
+            reverse("inventory:listar_usuarios", kwargs={"slug": self.naviera.slug})
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(f"/{self.naviera.slug}/login/", response.url)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+
+# ---------------------------------------------------------------------------
 # Audit trail y detección de anomalías
 # ---------------------------------------------------------------------------
 

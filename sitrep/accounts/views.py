@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
+from core.permissions import ROLES_TIERRA
 from core.utils import paginate
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
@@ -54,7 +55,7 @@ def login_unificado(request, slug, modo_default="tierra"):
     )
 
     if request.user.is_authenticated and getattr(request.user, "naviera", None) == tenant:
-        if modo == "mar":
+        if modo == "mar" or getattr(request.user, "rol", None) not in ROLES_TIERRA:
             return redirect(f"/{slug}/kiosco/")
         return redirect(f"/{slug}/")
 
