@@ -17,14 +17,15 @@
 <div class="sticky top-0 z-50 border-b border-surface-border bg-surface">
   <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
     <div class="flex h-14 items-center justify-between">
-      <a href="#" class="flex items-center gap-2.5">
+      <a href="/" class="flex items-center gap-2.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
         <img src="{% static 'img/logo_color.svg' %}" class="h-7 w-7 shrink-0" alt="">
         <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
       </a>
-      <nav class="hidden items-center gap-6 sm:flex">
-        <a href="#que-hace" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Plataforma</a>
-        <a href="#seguridad" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Seguridad</a>
-        <a href="#contacto" class="text-[13px] text-ink-secondary transition-colors hover:text-ink">Contacto</a>
+      {# ponytail: 3 links cortos siempre visibles en vez de hamburguesa; revisar si el nav crece #}
+      <nav class="flex items-center gap-3 sm:gap-6">
+        <a href="#que-hace" class="rounded-sm text-[12px] text-ink-secondary transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:text-[13px]">Plataforma</a>
+        <a href="#seguridad" class="rounded-sm text-[12px] text-ink-secondary transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:text-[13px]">Seguridad</a>
+        <a href="#contacto" class="rounded-sm text-[12px] text-ink-secondary transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:text-[13px]">Contacto</a>
       </nav>
     </div>
   </div>
@@ -43,7 +44,7 @@
           {% for naviera in navieras %}
             <a
               href="{% url 'inventory:login_tierra' slug=naviera.slug %}"
-              class="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 transition-colors hover:border-brand-light/35 hover:bg-white/[0.10]"
+              class="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 transition-colors hover:border-brand-light/35 hover:bg-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-navy"
             >
               <div class="min-w-0">
                 <p class="truncate text-[15px] font-semibold text-white">{{ naviera.nombre }}</p>
@@ -61,7 +62,7 @@
 
       <p class="mt-5 border-t border-white/10 pt-4 text-[12px] text-white/50">
         ¿Tu naviera aún no está en SITREP?
-        <a href="#contacto" class="text-blue-200/70 transition-colors hover:text-blue-200">Escríbenos →</a>
+        <a href="#contacto" class="rounded-sm text-blue-200/70 transition-colors hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-navy">Escríbenos →</a>
       </p>
     </aside>
 
@@ -81,7 +82,7 @@
         >
           Solicitar una demo
         </a>
-        <a href="#que-hace" class="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink">
+        <a href="#que-hace" class="inline-flex items-center gap-1.5 rounded-sm text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
           Conoce la plataforma
           <svg class="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M7 2v10M2 7l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -167,9 +168,9 @@
           El detalle completo de estos compromisos está en nuestros documentos legales, escritos para ser leídos, no solo firmados.
         </p>
         <div class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-medium">
-          <a href="{% url 'legal_privacidad' %}" class="text-blue-200/70 transition-colors hover:text-blue-200">Política de privacidad →</a>
-          <a href="{% url 'legal_terminos' %}" class="text-blue-200/70 transition-colors hover:text-blue-200">Términos y condiciones →</a>
-          <a href="{% url 'legal_dpa' %}" class="text-blue-200/70 transition-colors hover:text-blue-200">Acuerdo de procesamiento de datos →</a>
+          <a href="{% url 'legal_privacidad' %}" class="rounded-sm text-blue-200/70 transition-colors hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-navy">Política de privacidad →</a>
+          <a href="{% url 'legal_terminos' %}" class="rounded-sm text-blue-200/70 transition-colors hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-navy">Términos y condiciones →</a>
+          <a href="{% url 'legal_dpa' %}" class="rounded-sm text-blue-200/70 transition-colors hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 focus-visible:ring-offset-navy">Acuerdo de procesamiento de datos →</a>
         </div>
       </div>
 
@@ -274,11 +275,11 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <span class="text-[11px] font-bold uppercase tracking-[0.26em] text-brand">SITREP</span>
       <div class="flex flex-wrap items-center gap-4 text-[12px] text-ink-secondary">
-        <a href="{% url 'legal_terminos' %}" class="transition-colors hover:text-ink">Términos y condiciones</a>
+        <a href="{% url 'legal_terminos' %}" class="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">Términos y condiciones</a>
         <span aria-hidden="true">·</span>
-        <a href="{% url 'legal_privacidad' %}" class="transition-colors hover:text-ink">Política de privacidad</a>
+        <a href="{% url 'legal_privacidad' %}" class="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">Política de privacidad</a>
         <span aria-hidden="true">·</span>
-        <a href="{% url 'legal_dpa' %}" class="transition-colors hover:text-ink">DPA</a>
+        <a href="{% url 'legal_dpa' %}" class="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">DPA</a>
         <span aria-hidden="true">·</span>
         <span>© {% now "Y" %} Benjamín Mancilla Vera E.I.R.L. Todos los derechos reservados.</span>
       </div>
