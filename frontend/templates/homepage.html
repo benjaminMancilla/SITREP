@@ -59,9 +59,9 @@
         <p class="mt-4 text-[13px] text-white/45">Aún no hay accesos configurados.</p>
       {% endif %}
 
-      <p class="mt-5 border-t border-white/10 pt-4 text-[12px] text-white/35">
-        ¿No encuentras tu naviera?
-        <a href="#contacto" class="text-blue-200/60 transition-colors hover:text-blue-200">Contacta al administrador →</a>
+      <p class="mt-5 border-t border-white/10 pt-4 text-[12px] text-white/50">
+        ¿Tu naviera aún no está en SITREP?
+        <a href="#contacto" class="text-blue-200/70 transition-colors hover:text-blue-200">Escríbenos →</a>
       </p>
     </aside>
 
@@ -74,12 +74,20 @@
       <p class="mt-4 text-[16px] leading-7 text-ink-secondary" style="max-width: 52ch">
         SITREP permite a las navieras registrar y trazabilizar las inspecciones periódicas de seguridad a bordo, desde la administración en tierra hasta la bitácora de cada nave.
       </p>
-      <a href="#que-hace" class="mt-6 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink">
-        Conoce la plataforma
-        <svg class="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <path d="M7 2v10M2 7l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </a>
+      <div class="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <a
+          href="#contacto"
+          class="inline-flex items-center rounded-xl bg-navy px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2"
+        >
+          Solicitar una demo
+        </a>
+        <a href="#que-hace" class="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink">
+          Conoce la plataforma
+          <svg class="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 2v10M2 7l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
     </div>
 
   </div>
@@ -220,16 +228,40 @@
 
       <div>
         <h2 class="text-[22px] font-bold text-navy">Contacto</h2>
-        <div class="mt-5 space-y-5">
+        <p class="mt-1 text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-muted">Empresa</p>
+        <p class="text-[15px] text-ink">Benjamín Mancilla Vera E.I.R.L. — RUT 78.157.006-0</p>
+
+        {% if messages %}
+          {% for message in messages %}
+            <p class="mt-4 rounded-lg border px-3 py-2 text-[13px] {% if message.tags == 'success' %}border-ok-border bg-ok-bg text-ok{% else %}border-fail-border bg-fail-bg text-fail{% endif %}">{{ message }}</p>
+          {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'contacto_submit' %}" class="mt-5 space-y-4">
+          {% csrf_token %}
           <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-muted">Empresa</p>
-            <p class="mt-1 text-[15px] text-ink">Benjamín Mancilla Vera E.I.R.L. — RUT 78.157.006-0</p>
+            <label for="{{ contacto_form.nombre.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Nombre</label>
+            {{ contacto_form.nombre }}
           </div>
           <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-muted">Email</p>
-            <a href="mailto:bmancilla@sitrep.cl" class="mt-1 block text-[15px] font-medium text-brand transition-colors hover:text-brand-dark">bmancilla@sitrep.cl</a>
+            <label for="{{ contacto_form.email.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Email</label>
+            {{ contacto_form.email }}
           </div>
-        </div>
+          <div>
+            <label for="{{ contacto_form.naviera.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Naviera</label>
+            {{ contacto_form.naviera }}
+          </div>
+          <div>
+            <label for="{{ contacto_form.mensaje.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Mensaje</label>
+            {{ contacto_form.mensaje }}
+          </div>
+          <button
+            type="submit"
+            class="inline-flex items-center rounded-xl bg-navy px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2"
+          >
+            Enviar
+          </button>
+        </form>
       </div>
 
     </div>

@@ -1,14 +1,33 @@
-﻿from django.shortcuts import render
+﻿from django.contrib import messages
+from django.shortcuts import redirect, render
 from django.http import HttpResponse, JsonResponse
 from django.db import connection
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
 
+from core.forms import ContactoForm
+from core.services import enviar_email_contacto
 from sitrep.accounts.models import Naviera
 
 
 def homepage(request):
     navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
-    return render(request, "homepage.html", {"navieras": navieras})
+    return render(request, "homepage.html", {"navieras": navieras, "contacto_form": ContactoForm()})
+
+
+def contacto(request):
+    if request.method != "POST":
+        return redirect("homepage")
+
+    form = ContactoForm(request.POST)
+    if form.is_valid():
+        enviar_email_contacto(**form.cleaned_data)
+        messages.success(request, "Gracias, te contactaremos a la brevedad.")
+        return redirect(f"{reverse('homepage')}#contacto")
+
+    messages.error(request, "Revisa los datos del formulario e inténtalo de nuevo.")
+    navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
+    return render(request, "homepage.html", {"navieras": navieras, "contacto_form": form})
 
 
 def legal_terminos(request):
