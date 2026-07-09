@@ -1,7 +1,14 @@
 {% load static %}
 <a href="{{ brand_href }}" class="flex items-center gap-2.5 opacity-90 transition hover:opacity-100">
-    <img src="{% static 'img/logo.svg' %}" class="{{ brand_logo_size|default:'h-8 w-8' }} shrink-0" alt="SITREP">
-    {% if brand_show_name %}
-        <span class="text-sm font-bold tracking-[0.14em] text-white">SITREP</span>
+    {% if brand_variant == "light" %}
+        <img src="{% static 'img/logo_color.svg' %}" class="{{ brand_logo_size|default:'h-8 w-8' }} shrink-0" alt="SITREP">
+        {% if brand_show_name %}
+            <span class="text-sm font-bold tracking-[0.14em] text-navy">SITREP</span>
+        {% endif %}
+    {% else %}
+        <img src="{% static 'img/logo.svg' %}" class="{{ brand_logo_size|default:'h-8 w-8' }} shrink-0" alt="SITREP">
+        {% if brand_show_name %}
+            <span class="text-sm font-bold tracking-[0.14em] text-white">SITREP</span>
+        {% endif %}
     {% endif %}
 </a>
