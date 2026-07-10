@@ -224,6 +224,7 @@ EMAIL_HOST_PASSWORD = os.getenv('RESEND_API_KEY', '')
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'SITREP <no-reply@sitrep.cl>')
 CONTACT_EMAIL_TO = os.getenv('CONTACT_EMAIL_TO', 'contacto@sitrep.cl')
+ARCO_EMAIL_TO = os.getenv('ARCO_EMAIL_TO', 'arco@sitrep.cl')
 
 # Cloudflare Turnstile
 TURNSTILE_SITE_KEY = os.getenv('TURNSTILE_SITE_KEY', '')

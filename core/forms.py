@@ -31,3 +31,37 @@ class ContactoForm(forms.Form):
 
     def is_spam(self):
         return bool(self.cleaned_data.get("pagina_web"))
+
+
+class ArcoForm(forms.Form):
+    nombre = forms.CharField(
+        max_length=120,
+        widget=forms.TextInput(attrs={"class": INPUT_CLASSES, "placeholder": "Tu nombre completo"}),
+    )
+    rut = forms.CharField(
+        max_length=12,
+        widget=forms.TextInput(attrs={"class": INPUT_CLASSES, "placeholder": "12.345.678-9"}),
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={"class": INPUT_CLASSES, "placeholder": "tu@correo.cl"}),
+    )
+    empresa = forms.CharField(
+        max_length=120,
+        required=False,
+        widget=forms.TextInput(attrs={"class": INPUT_CLASSES, "placeholder": "Empresa (opcional)"}),
+    )
+    mensaje = forms.CharField(
+        widget=forms.Textarea(attrs={
+            "class": INPUT_CLASSES,
+            "rows": 4,
+            "placeholder": "Describe tu solicitud: qué derecho deseas ejercer (acceso, rectificación, cancelación u oposición) y sobre qué datos",
+        }),
+    )
+    # Honeypot: oculto por CSS, invisible para humanos. Si viene lleno es un bot.
+    pagina_web = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"autocomplete": "off", "tabindex": "-1"}),
+    )
+
+    def is_spam(self):
+        return bool(self.cleaned_data.get("pagina_web"))
