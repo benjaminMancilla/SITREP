@@ -335,6 +335,10 @@
             <label for="{{ contacto_form.mensaje.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Mensaje</label>
             {{ contacto_form.mensaje }}
           </div>
+          <div class="absolute left-[-9999px]" aria-hidden="true">
+            <label for="{{ contacto_form.pagina_web.id_for_label }}">Sitio web</label>
+            {{ contacto_form.pagina_web }}
+          </div>
           <button
             type="submit"
             id="contacto-submit"

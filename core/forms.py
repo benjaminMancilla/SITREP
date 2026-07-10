@@ -23,3 +23,11 @@ class ContactoForm(forms.Form):
     mensaje = forms.CharField(
         widget=forms.Textarea(attrs={"class": INPUT_CLASSES, "rows": 4, "placeholder": "Cuéntanos qué necesitas"}),
     )
+    # Honeypot: oculto por CSS, invisible para humanos. Si viene lleno es un bot.
+    pagina_web = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"autocomplete": "off", "tabindex": "-1"}),
+    )
+
+    def is_spam(self):
+        return bool(self.cleaned_data.get("pagina_web"))

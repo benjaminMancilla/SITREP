@@ -1,7 +1,10 @@
 import logging
+from functools import wraps
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.paginator import Paginator
+from django.http import HttpResponse
 
 logger = logging.getLogger(__name__)
 _warned_no_secret = False
@@ -34,3 +37,27 @@ def get_client_ip(request):
             "que puede no ser la IP real si hay proxies delante."
         )
     return request.META.get("REMOTE_ADDR")
+
+
+def throttle(key_prefix, limit, window_seconds):
+    """Máx `limit` requests cada `window_seconds` por IP a la vista decorada.
+
+    Usa el cache de Django (ventana fija, no distribuida entre procesos si el
+    backend es LocMemCache — suficiente para frenar abuso de un endpoint
+    público de bajo tráfico; cambiar a un cache compartido si hace falta
+    consistencia entre workers).
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped(request, *args, **kwargs):
+            cache_key = f"throttle:{key_prefix}:{get_client_ip(request)}"
+            try:
+                count = cache.incr(cache_key)
+            except ValueError:
+                cache.set(cache_key, 1, window_seconds)
+                count = 1
+            if count > limit:
+                return HttpResponse("Demasiadas solicitudes, intenta más tarde.", status=429)
+            return view_func(request, *args, **kwargs)
+        return wrapped
+    return decorator

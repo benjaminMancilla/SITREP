@@ -10,6 +10,7 @@ from django.views.decorators.cache import never_cache
 
 from core.forms import ContactoForm
 from core.services import enviar_email_contacto
+from core.utils import throttle
 from sitrep.accounts.models import Naviera
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ def homepage(request):
     return render(request, "homepage.html", {"navieras": navieras, "contacto_form": contacto_form})
 
 
+@throttle("contacto", limit=3, window_seconds=600)
 def contacto(request):
     if request.method != "POST":
         return redirect("homepage")
@@ -37,8 +39,15 @@ def contacto(request):
         messages.error(request, "Revisa los datos del formulario e inténtalo de nuevo.")
         return redirect(f"{reverse('homepage')}#contacto")
 
+    if form.is_spam():
+        # No delatar al bot: mismo mensaje de éxito, pero sin gastar crédito de Resend.
+        logger.info("Contacto descartado por honeypot")
+        messages.success(request, "Gracias, te contactaremos a la brevedad.")
+        return redirect(f"{reverse('homepage')}#contacto")
+
+    datos = {k: v for k, v in form.cleaned_data.items() if k != "pagina_web"}
     try:
-        enviar_email_contacto(**form.cleaned_data)
+        enviar_email_contacto(**datos)
     except (smtplib.SMTPException, OSError):
         logger.exception("Fallo al enviar el correo de contacto")
         messages.error(request, "No pudimos enviar tu mensaje, intenta nuevamente en unos minutos.")
