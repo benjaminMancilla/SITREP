@@ -4,6 +4,7 @@ from django.test import TestCase, Client
 from django.db import OperationalError
 
 from core.forms import ArcoForm
+from core.services import enviar_email_arco
 
 
 class HealthCheckDbTests(TestCase):
@@ -55,3 +56,20 @@ class ArcoFormTests(TestCase):
         form = ArcoForm(self._valid_data())
         self.assertTrue(form.is_valid())
         self.assertFalse(form.is_spam())
+
+
+class EnviarEmailArcoTests(TestCase):
+    @patch("core.services.send_mail")
+    def test_sends_to_arco_email_to(self, mock_send_mail):
+        enviar_email_arco(
+            nombre="Juan Pérez",
+            rut="12.345.678-9",
+            email="juan@example.com",
+            empresa="",
+            mensaje="Quiero acceder a mis datos.",
+        )
+        args, kwargs = mock_send_mail.call_args
+        subject, body, from_email, to = args
+        self.assertIn("ARCO", subject)
+        self.assertIn("12.345.678-9", body)
+        self.assertEqual(to, ["arco@sitrep.cl"])

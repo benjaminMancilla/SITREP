@@ -15,12 +15,23 @@ def enviar_email(to, subject, body, from_email=None):
     send_mail(subject, body, from_email or settings.DEFAULT_FROM_EMAIL, to)
 
 
-def enviar_email_contacto(nombre, email, naviera, mensaje):
-    subject = f"Nuevo contacto desde la landing: {nombre}"
-    body = (
+def _armar_cuerpo_formulario(nombre, email, empresa, mensaje, extra_lines=""):
+    return (
         f"Nombre: {nombre}\n"
         f"Email: {email}\n"
-        f"Naviera/empresa: {naviera or '-'}\n\n"
-        f"Mensaje:\n{mensaje}"
+        f"Empresa: {empresa or '-'}\n"
+        f"{extra_lines}"
+        f"\nMensaje:\n{mensaje}"
     )
+
+
+def enviar_email_contacto(nombre, email, naviera, mensaje):
+    subject = f"Nuevo contacto desde la landing: {nombre}"
+    body = _armar_cuerpo_formulario(nombre, email, naviera, mensaje)
     enviar_email([settings.CONTACT_EMAIL_TO], subject, body, from_email=settings.CONTACT_EMAIL_TO)
+
+
+def enviar_email_arco(nombre, rut, email, empresa, mensaje):
+    subject = f"Solicitud ARCO: {nombre}"
+    body = _armar_cuerpo_formulario(nombre, email, empresa, mensaje, extra_lines=f"RUT: {rut}\n")
+    enviar_email([settings.ARCO_EMAIL_TO], subject, body, from_email=settings.ARCO_EMAIL_TO)
