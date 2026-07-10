@@ -151,6 +151,29 @@ class TestCatalogRuleEngine(TestCase):
             (5, False),
         )
 
+    def test_evaluar_regla_sin_version_se_trata_como_v1(self):
+        """Filas viejas sin 'version' en el JSON siguen funcionando (retrocompatibilidad)."""
+        self.assertEqual(
+            CatalogRuleEngine.evaluar_regla(self.nave, self.regla_semanal),
+            (2, True),
+        )
+
+    def test_evaluar_regla_version_1_explicita_se_evalua_igual(self):
+        regla_v1 = {**self.regla_semanal, "version": 1}
+        self.assertEqual(
+            CatalogRuleEngine.evaluar_regla(self.nave, regla_v1),
+            (2, True),
+        )
+
+    def test_evaluar_regla_version_desconocida_retorna_fallback_seguro(self):
+        """Una versión que este motor no reconoce (ej. escrita por una versión futura
+        de la app) no se interpreta a ciegas — cae al fallback seguro (0, True)."""
+        regla_futura = {"version": 99, "algo": "que este motor no entiende"}
+        self.assertEqual(
+            CatalogRuleEngine.evaluar_regla(self.nave, regla_futura),
+            (0, True),
+        )
+
 
 class TestConstruirLabelRequerimiento(TestCase):
     def test_tipo_estandar_usa_el_texto_del_editor(self):

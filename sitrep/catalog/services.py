@@ -24,6 +24,17 @@ class CatalogRuleEngine:
         if not regla_json:
             return 0, True
 
+        version = regla_json.get('version', 1)
+        evaluador = _EVALUADORES_DE_REGLA.get(version)
+        if evaluador is None:
+            # versión que este motor no reconoce (ej. escrita por una
+            # versión futura de la app) — no se arriesga a interpretar un schema
+            # que no entiende, cae al mismo fallback seguro que "sin regla".
+            return 0, True
+        return evaluador(nave, regla_json)
+
+    @classmethod
+    def _evaluar_v1(cls, nave, regla_json) -> tuple:
         atributo = regla_json.get('atributo')
         valor_nave = getattr(nave, atributo, None)
 
@@ -43,6 +54,15 @@ class CatalogRuleEngine:
                 return (condicion.get('resultado_cantidad', 0), condicion.get('resultado_visible', False))
 
         return (regla_json.get('fallback_cantidad', 0), regla_json.get('fallback_visible', False))
+
+
+# Dispatch por versión de regla_aplicacion. Filas sin "version" se tratan como
+# v1 (regla_json.get('version', 1) arriba). Una v2 nueva = un método
+# _evaluar_v2 + una entrada acá, sin tocar ni arriesgar romper las filas v1
+# existentes.
+_EVALUADORES_DE_REGLA = {
+    1: CatalogRuleEngine._evaluar_v1,
+}
 
 
 # Constructores de label por tipo de requerimiento especial.

@@ -62,7 +62,7 @@ class RecursoAdmin(admin.ModelAdmin):
         regla = obj.regla_aplicacion
         if regla:
             partes.append(
-                f"regla: atributo={regla.get('atributo')!r}, "
+                f"regla: v{regla.get('version', 1)}, atributo={regla.get('atributo')!r}, "
                 f"{len(regla.get('condiciones', []))} condición(es) de regla, "
                 f"fallback cantidad={regla.get('fallback_cantidad')} "
                 f"visible={regla.get('fallback_visible')}"

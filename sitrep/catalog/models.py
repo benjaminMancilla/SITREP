@@ -108,9 +108,11 @@ class Recurso(models.Model):
         help_text=(
             'Motor de reglas: calcula, por nave, tanto la CANTIDAD del requerimiento '
             '"cantidad" como la VISIBILIDAD del recurso (es_visible en la matriz). '
-            'Ej: {"atributo": "eslora", "condiciones": [{"operador": "<=", "valor": 10, '
-            '"resultado_cantidad": 0, "resultado_visible": false}], '
+            'Ej: {"version": 1, "atributo": "eslora", "condiciones": [{"operador": "<=", '
+            '"valor": 10, "resultado_cantidad": 0, "resultado_visible": false}], '
             '"fallback_cantidad": 2, "fallback_visible": true}. '
+            '"version" es opcional (se asume 1 si falta) — existe para que futuras '
+            'versiones del motor no rompan reglas viejas. '
             'Sin regla (null): cantidad=0 y es_visible=True para toda nave.'
         ),
     )
