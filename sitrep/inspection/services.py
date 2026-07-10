@@ -369,7 +369,6 @@ class MotorPeriodos:
             'periodos_con_error': 0,
         }
         hoy = timezone.localdate()
-        MotorReglasSITREP.sincronizar_matriz_nave(nave)
 
         for periodicidad in Periodicidad.objects.all():
             try:
@@ -387,6 +386,9 @@ class MotorPeriodos:
                     )
 
                     if periodo_abierto is None:
+                        # Cambio de período (uno recién nacido): recién acá se
+                        # sincroniza la matriz, no en cada tick del cron.
+                        MotorReglasSITREP.sincronizar_matriz_nave(nave)
                         cls._crear_periodo_abierto(nave, periodicidad, hoy)
                         stats['periodos_creados'] += 1
                         continue
@@ -400,6 +402,7 @@ class MotorPeriodos:
                         cls._cerrar_periodo(periodo_abierto)
                         stats['periodos_vencidos'] += 1
 
+                        MotorReglasSITREP.sincronizar_matriz_nave(nave)
                         cls._crear_periodo_abierto(nave, periodicidad, hoy)
                         stats['periodos_creados'] += 1
                         continue

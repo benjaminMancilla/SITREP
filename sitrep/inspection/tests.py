@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
@@ -519,6 +519,37 @@ class TestMotorPeriodosEstados(TestCase):
         self.assertIn("periodos_creados", stats)
         self.assertIn("periodos_vencidos", stats)
 
+    def test_sincronizar_periodos_nave_no_resincroniza_matriz_si_nada_vence(self):
+        """Un tick del cron sin ningún período vencido no debe tocar la matriz."""
+        with patch.object(MotorReglasSITREP, "sincronizar_matriz_nave") as mock_sync:
+            MotorPeriodos.sincronizar_periodos_nave(self.nave)
+
+        mock_sync.assert_not_called()
+
+    def test_sincronizar_periodos_nave_resincroniza_matriz_al_crear_periodo_nuevo(self):
+        """Una periodicidad sin período abierto todavía sí cuenta como cambio de período."""
+        Periodicidad.objects.create(
+            nombre="Trimestral Estados",
+            duracion_dias=90,
+            offset_dias=1,
+            responsabilidad="mar",
+            visibilidad="todos",
+        )
+
+        with patch.object(MotorReglasSITREP, "sincronizar_matriz_nave") as mock_sync:
+            MotorPeriodos.sincronizar_periodos_nave(self.nave)
+
+        mock_sync.assert_called_once_with(self.nave)
+
+    def test_sincronizar_periodos_nave_resincroniza_matriz_al_vencer_periodo(self):
+        self.periodo.fecha_termino = timezone.localdate() - timedelta(days=5)
+        self.periodo.save(update_fields=["fecha_termino"])
+
+        with patch.object(MotorReglasSITREP, "sincronizar_matriz_nave") as mock_sync:
+            MotorPeriodos.sincronizar_periodos_nave(self.nave)
+
+        mock_sync.assert_called_once_with(self.nave)
+
 
 class TestIntegracionMotorReglas(TestCase):
     REGLA_POR_ESLORA = {
@@ -676,8 +707,10 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertEqual(matriz.cantidad, 2)
         self.assertTrue(matriz.es_visible)
 
-    def test_editar_eslora_nave_actualiza_matriz(self):
-        """Al editar la eslora de una nave, la matriz debe actualizarse con el nuevo valor"""
+    def test_editar_nave_no_resincroniza_matriz_automaticamente(self):
+        """Editar una nave existente (ej. desde admin) NO debe resincronizar su
+        matriz: eso rompería la inmutabilidad de fichas ya abiertas. La sync
+        solo ocurre en cambio de período o de forma explícita."""
         recurso = self._crear_recurso(
             nombre="Recurso Actualizable",
             regla_aplicacion=self.REGLA_POR_ESLORA,
@@ -691,8 +724,7 @@ class TestIntegracionMotorReglas(TestCase):
         nave.save()
 
         matriz.refresh_from_db()
-        self.assertEqual(matriz.cantidad, 4)
-        self.assertTrue(matriz.es_visible)
+        self.assertEqual(matriz.cantidad, 2)
 
     def test_recurso_sin_regla_usa_fallback_default(self):
         """Recurso con regla_aplicacion=None usa fallback (0, True)"""

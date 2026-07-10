@@ -2,32 +2,25 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from sitrep.fleet.models import Nave
-from .services import MotorPeriodos, MotorReglasSITREP
+from .services import MotorPeriodos
 
 logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Nave)
 def trigger_sincronizacion(sender, instance, created, **kwargs):
     """
-    Escucha cada vez que se guarda una Nave.
-    - Si está activa: sincroniza la MatrizNaveRecurso.
-    - Si además es nueva (created): inicializa sus PeriodoRevision.
-    Cada motor tiene su propio try/except — un fallo no cancela el otro.
+    Al crear una nave activa, inicializa su MatrizNaveRecurso y sus
+    PeriodoRevision. Ediciones posteriores (ej. desde admin) NO resincronizan:
+    la ficha abierta de un período apunta a una versión fija del catálogo, y
+    resincronizar en cada guardado la rompería. La sync solo vuelve a ocurrir
+    en cambio de período (MotorPeriodos) o de forma explícita (acción de
+    admin / management command sincronizar_matriz).
     """
-    if instance.is_active:
+    if created and instance.is_active:
         try:
-            MotorReglasSITREP.sincronizar_matriz_nave(instance, crear_nuevos=False)
+            MotorPeriodos.sincronizar_periodos_nave(instance)
         except Exception:
             logger.error(
-                f"Error sincronizando matriz nave {instance.id}",
+                f"Error inicializando periodos nave {instance.id}",
                 exc_info=True,
             )
-
-        if created:
-            try:
-                MotorPeriodos.sincronizar_periodos_nave(instance)
-            except Exception:
-                logger.error(
-                    f"Error inicializando periodos nave {instance.id}",
-                    exc_info=True,
-                )
