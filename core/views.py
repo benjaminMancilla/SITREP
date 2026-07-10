@@ -3,8 +3,9 @@ import smtplib
 
 from django.contrib import messages
 from django.shortcuts import redirect, render
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, QueryDict
 from django.db import connection
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
 
 from core.forms import ContactoForm
@@ -13,10 +14,14 @@ from sitrep.accounts.models import Naviera
 
 logger = logging.getLogger(__name__)
 
+CONTACTO_SESSION_KEY = "contacto_form_data"
+
 
 def homepage(request):
     navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
-    return render(request, "homepage.html", {"navieras": navieras, "contacto_form": ContactoForm()})
+    stashed = request.session.pop(CONTACTO_SESSION_KEY, None)
+    contacto_form = ContactoForm(QueryDict(stashed)) if stashed else ContactoForm()
+    return render(request, "homepage.html", {"navieras": navieras, "contacto_form": contacto_form})
 
 
 def contacto(request):
@@ -24,21 +29,23 @@ def contacto(request):
         return redirect("homepage")
 
     form = ContactoForm(request.POST)
-    navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
+    # Se guarda para que homepage() pueda re-mostrar los valores tras el
+    # redirect (PRG: evita reenvío del form al recargar la página).
+    request.session[CONTACTO_SESSION_KEY] = request.POST.urlencode()
 
     if not form.is_valid():
         messages.error(request, "Revisa los datos del formulario e inténtalo de nuevo.")
-        return render(request, "homepage.html", {"navieras": navieras, "contacto_form": form})
+        return redirect(f"{reverse('homepage')}#contacto")
 
     try:
         enviar_email_contacto(**form.cleaned_data)
     except (smtplib.SMTPException, OSError):
         logger.exception("Fallo al enviar el correo de contacto")
         messages.error(request, "No pudimos enviar tu mensaje, intenta nuevamente en unos minutos.")
-        return render(request, "homepage.html", {"navieras": navieras, "contacto_form": form})
+        return redirect(f"{reverse('homepage')}#contacto")
 
     messages.success(request, "Gracias, te contactaremos a la brevedad.")
-    return render(request, "homepage.html", {"navieras": navieras, "contacto_form": form})
+    return redirect(f"{reverse('homepage')}#contacto")
 
 
 def legal_terminos(request):
