@@ -12,7 +12,4 @@ from .kiosco import (  # noqa: F401
     dashboard_kiosco, kiosco_periodo_detalle, kiosco_periodo_pdf,
     kiosco_periodo_historial, kiosco_recurso_ficha,
 )
-from .api import (  # noqa: F401
-    api_periodos_nave, api_recursos_periodo, api_detalle_recurso,
-    api_crear_ficha, api_modificar_ficha, api_guardar_fichas_periodo,
-)
+from .api import api_guardar_fichas_periodo  # noqa: F401

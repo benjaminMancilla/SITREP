@@ -34,23 +34,6 @@ urlpatterns = [
     path('api/v1/', include('core.api_urls')),
 
     # API JSON — Kiosco
-    path('api/periodos/', views.api_periodos_nave, name='api_periodos_nave'),
-    path('api/periodos/<int:periodo_id>/recursos/', views.api_recursos_periodo, name='api_recursos_periodo'),
-    path(
-        'api/periodos/<int:periodo_id>/recursos/<int:recurso_id>/',
-        views.api_detalle_recurso,
-        name='api_detalle_recurso',
-    ),
-    path(
-        'api/periodos/<int:periodo_id>/recursos/<int:recurso_id>/ficha/',
-        views.api_crear_ficha,
-        name='api_crear_ficha',
-    ),
-    path(
-        'api/periodos/<int:periodo_id>/recursos/<int:recurso_id>/ficha/modificar/',
-        views.api_modificar_ficha,
-        name='api_modificar_ficha',
-    ),
     path(
         'api/periodos/<int:periodo_id>/fichas/bulk/',
         views.api_guardar_fichas_periodo,
