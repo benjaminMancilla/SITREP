@@ -213,7 +213,9 @@ EMAIL_BACKEND = (
     else 'django.core.mail.backends.smtp.EmailBackend'
 )
 EMAIL_HOST = 'smtp.resend.com'
-EMAIL_PORT = 587
+# 587 daba TimeoutError en Railway (probable bloqueo de puerto del proveedor).
+# 2587 es el puerto alterno STARTTLS que Resend publica para este caso.
+EMAIL_PORT = 2587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'resend'
 EMAIL_HOST_PASSWORD = os.getenv('RESEND_API_KEY', '')
