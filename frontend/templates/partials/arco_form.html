@@ -1,0 +1,66 @@
+{# ── Solicitud de derechos ARCO ────────────────────────────────────────────── #}
+<div id="arco" class="mt-6 scroll-mt-20 rounded-2xl border border-surface-border bg-white p-8 sm:p-10">
+  <h2 class="text-[18px] font-bold text-navy">Ejerce tus derechos ARCO</h2>
+  <p class="mt-2 text-[14px] leading-6 text-ink-secondary" style="max-width: 60ch">
+    Si eres titular de datos personales tratados por SITREP y quieres <strong>acceder, rectificar,
+    cancelar (suprimir) u oponerte</strong> al tratamiento de tus datos conforme a la Ley N° 19.628 sobre
+    protección de la vida privada, completa este formulario o escríbenos directamente a
+    <a href="mailto:arco@sitrep.cl" class="text-brand hover:text-brand-dark">arco@sitrep.cl</a>.
+    El único objeto de este canal es que puedas ejercer tus derechos ARCO según la normativa chilena
+    vigente. Te responderemos dentro de un plazo máximo de <strong>72 horas</strong>.
+  </p>
+
+  {% if messages %}
+    {% for message in messages %}
+      <p class="mt-4 rounded-lg border px-3 py-2 text-[13px] {% if message.tags == 'success' %}border-ok-border bg-ok-bg text-ok{% else %}border-fail-border bg-fail-bg text-fail{% endif %}">{{ message }}</p>
+    {% endfor %}
+  {% endif %}
+
+  <form id="arco-form" method="post" action="{% url 'arco_solicitud' %}" class="mt-5 max-w-lg space-y-4">
+    {% csrf_token %}
+    <input type="hidden" name="pagina" value="{{ legal_page_slug }}">
+    <div>
+      <label for="{{ arco_form.nombre.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Nombre completo</label>
+      {{ arco_form.nombre }}
+    </div>
+    <div>
+      <label for="{{ arco_form.rut.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">RUT</label>
+      {{ arco_form.rut }}
+    </div>
+    <div>
+      <label for="{{ arco_form.email.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Email de contacto</label>
+      {{ arco_form.email }}
+    </div>
+    <div>
+      <label for="{{ arco_form.empresa.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Empresa (opcional)</label>
+      {{ arco_form.empresa }}
+    </div>
+    <div>
+      <label for="{{ arco_form.mensaje.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Describe tu solicitud</label>
+      {{ arco_form.mensaje }}
+    </div>
+    <div class="absolute left-[-9999px]" aria-hidden="true">
+      <label for="{{ arco_form.pagina_web.id_for_label }}">Sitio web</label>
+      {{ arco_form.pagina_web }}
+    </div>
+    <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
+    <button
+      type="submit"
+      id="arco-submit"
+      class="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+    >
+      <svg id="arco-spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      </svg>
+      <span id="arco-submit-label">Enviar solicitud</span>
+    </button>
+  </form>
+  <script>
+    document.getElementById('arco-form').addEventListener('submit', function () {
+      document.getElementById('arco-submit').disabled = true;
+      document.getElementById('arco-spinner').classList.remove('hidden');
+      document.getElementById('arco-submit-label').textContent = 'Enviando…';
+    });
+  </script>
+</div>

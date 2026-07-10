@@ -4,6 +4,8 @@
 {% block body_class %}min-h-screen bg-surface font-sans text-ink antialiased{% endblock %}
 
 {% block extra_head %}
+<!-- Sin integrity/SRI a propósito: Cloudflare sirve este script dinámico y lo rota, un hash fijo lo rompería. -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
   .legal-prose h2 {
     margin-top: 2.5rem;
@@ -102,6 +104,8 @@
         ¿Preguntas sobre este documento? Escríbenos a
         <a href="mailto:{% block doc_contact_email %}legal@sitrep.cl{% endblock %}" class="text-brand hover:text-brand-dark">{% block doc_contact_email_display %}legal@sitrep.cl{% endblock %}</a>.
       </p>
+
+      {% include "partials/arco_form.html" %}
     </div>
 
   </div>
