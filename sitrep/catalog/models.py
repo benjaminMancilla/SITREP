@@ -103,7 +103,17 @@ class Recurso(models.Model):
             '"cantidad" (label calculado por el motor de reglas, sin texto).'
         ),
     )
-    regla_aplicacion = models.JSONField(null=True, blank=True, help_text='Reglas para atributos dinámicos')
+    regla_aplicacion = models.JSONField(
+        null=True, blank=True,
+        help_text=(
+            'Motor de reglas: calcula, por nave, tanto la CANTIDAD del requerimiento '
+            '"cantidad" como la VISIBILIDAD del recurso (es_visible en la matriz). '
+            'Ej: {"atributo": "eslora", "condiciones": [{"operador": "<=", "valor": 10, '
+            '"resultado_cantidad": 0, "resultado_visible": false}], '
+            '"fallback_cantidad": 2, "fallback_visible": true}. '
+            'Sin regla (null): cantidad=0 y es_visible=True para toda nave.'
+        ),
+    )
 
     def __str__(self):
         return self.nombre

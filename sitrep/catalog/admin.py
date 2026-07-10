@@ -26,7 +26,21 @@ class RecursoAdmin(admin.ModelAdmin):
     )
     list_filter = ("proposito", "periodicidad", "area")
     search_fields = ("codigo", "nombre")
-    readonly_fields = ("created_at",)
+    readonly_fields = ("created_at", "resumen_requerimientos_especiales")
+    fieldsets = (
+        (None, {
+            "fields": ("nombre", "codigo", "area", "proposito", "periodicidad", "descripcion", "created_at"),
+        }),
+        ("Requerimientos especiales", {
+            "description": (
+                "Cantidad y condición son requerimientos tipados dentro de "
+                "'Requerimientos' (tipo: \"cantidad\" / \"condicion\"). El texto y el "
+                "número de \"cantidad\", y la visibilidad del recurso, salen de 'Regla "
+                "de aplicación' — no se escriben a mano."
+            ),
+            "fields": ("requerimientos", "regla_aplicacion", "resumen_requerimientos_especiales"),
+        }),
+    )
 
     def tiene_regla(self, obj):
         return bool(obj.regla_aplicacion)
@@ -36,6 +50,28 @@ class RecursoAdmin(admin.ModelAdmin):
     def num_requerimientos(self, obj):
         return len(obj.requerimientos) if obj.requerimientos else 0
     num_requerimientos.short_description = "# Requerimientos"
+
+    def resumen_requerimientos_especiales(self, obj):
+        reqs = [r for r in (obj.requerimientos or []) if isinstance(r, dict)]
+        tiene_cantidad = any(r.get("tipo") == "cantidad" for r in reqs)
+        condiciones = [r.get("id") for r in reqs if r.get("tipo") == "condicion"]
+
+        partes = [f"cantidad: {'sí' if tiene_cantidad else 'no'}"]
+        partes.append(f"condición: {len(condiciones)}" + (f" ({', '.join(condiciones)})" if condiciones else ""))
+
+        regla = obj.regla_aplicacion
+        if regla:
+            partes.append(
+                f"regla: atributo={regla.get('atributo')!r}, "
+                f"{len(regla.get('condiciones', []))} condición(es) de regla, "
+                f"fallback cantidad={regla.get('fallback_cantidad')} "
+                f"visible={regla.get('fallback_visible')}"
+            )
+        else:
+            partes.append("regla: ninguna (cantidad=0, es_visible=True siempre)")
+
+        return " · ".join(partes)
+    resumen_requerimientos_especiales.short_description = "Resumen (calculado, no editable)"
 
 
 class ImportarRecursosAdmin(admin.ModelAdmin):
