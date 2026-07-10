@@ -38,14 +38,25 @@
     class="flex min-h-screen flex-col lg:flex-row"
 >
     <section
-        class="relative flex w-full shrink-0 flex-col justify-between overflow-hidden px-6 py-8 transition-colors duration-300 sm:px-10 sm:py-10 lg:w-[36%] lg:max-w-[440px] lg:min-w-[320px] lg:py-12"
+        class="relative flex w-full shrink-0 flex-col justify-between overflow-hidden px-6 py-8 transition-colors duration-300 sm:px-10 sm:py-10 lg:w-[42%] lg:max-w-[500px] lg:min-w-[360px] lg:py-12"
         :class="modo === 'mar' ? 'bg-navy text-white' : 'bg-surface text-ink lg:border-r lg:border-surface-border'"
     >
-        <svg class="pointer-events-none absolute inset-x-0 top-0 h-40 w-full sm:h-56" viewBox="0 0 100 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <polygon points="0,0 0,88 22,56 38,112 55,76 72,124 88,84 100,104 100,0" :class="modo === 'mar' ? 'fill-brand-light/10' : 'fill-navy/[0.05]'"></polygon>
-            <polygon points="0,0 0,40 20,20 40,64 58,32 78,72 100,44 100,0" :class="modo === 'mar' ? 'fill-white/10' : 'fill-brand/[0.08]'"></polygon>
-            <polygon points="0,0 0,16 25,4 45,28 65,8 85,32 100,12 100,0" :class="modo === 'mar' ? 'fill-brand-light/20' : 'fill-navy/[0.1]'"></polygon>
-        </svg>
+        <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+            <img
+                src="{% static 'img/banner_sea_land.svg' %}"
+                alt=""
+                class="h-full w-full object-cover object-left transition-[object-position] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+                :class="modo === 'mar' ? 'lg:object-right' : 'lg:object-left'"
+            >
+        </div>
+
+        <div
+            class="pointer-events-none absolute inset-0 z-[1] transition-[background] duration-300"
+            :class="modo === 'mar'
+                ? 'bg-[linear-gradient(to_bottom,rgba(15,45,74,0.72)_0%,rgba(15,45,74,0.72)_20%,rgba(15,45,74,0)_42%,rgba(15,45,74,0)_60%,rgba(15,45,74,0.82)_100%)]'
+                : 'bg-[linear-gradient(to_bottom,rgba(255,255,255,0.82)_0%,rgba(255,255,255,0.82)_20%,rgba(255,255,255,0)_42%,rgba(255,255,255,0)_60%,rgba(255,255,255,0.82)_100%)]'"
+            aria-hidden="true"
+        ></div>
 
         <div class="relative z-10">
             <div class="mb-12 flex items-center gap-3 lg:mb-16">
