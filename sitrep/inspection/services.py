@@ -277,16 +277,17 @@ class MotorPeriodos:
         if ficha.estado_operativo is None:
             return False
 
-        requerimientos = ficha.recurso.requerimientos or []
-        if not requerimientos:
+        # cantidad=0: el número no se usa acá, solo las keys de la definición.
+        definicion = MotorFichas.obtener_definicion_checklist(ficha.recurso, 0, ficha=ficha)
+        if not definicion:
             return True
 
         payload_checklist = ficha.payload_checklist or {}
         if not isinstance(payload_checklist, dict):
             return False
 
-        for requerimiento in requerimientos:
-            item = payload_checklist.get(requerimiento["id"])
+        for item_def in definicion:
+            item = payload_checklist.get(item_def["key"])
             if not isinstance(item, dict) or "cumple" not in item:
                 return False
 
@@ -473,6 +474,9 @@ class MotorFichas:
 
     @classmethod
     def construir_definicion_checklist(cls, recurso, cantidad):
+        """Calcula la definición del checklist a partir del catálogo EN VIVO.
+        Usar solo para una ficha que todavía no existe — una ficha existente
+        debe leer su definición congelada vía obtener_definicion_checklist()."""
         return [
             {
                 "key": requerimiento["id"],
@@ -483,9 +487,21 @@ class MotorFichas:
         ]
 
     @classmethod
-    def construir_checklist_items(cls, recurso, cantidad, payload_checklist=None):
+    def obtener_definicion_checklist(cls, recurso, cantidad, ficha=None):
+        """
+        Definición de checklist a usar para leer/validar una ficha.
+        Si la ficha ya existe y tiene snapshot, usa ese snapshot congelado —
+        así el catálogo puede cambiar sin alterar fichas ya creadas. Sin ficha
+        (aún no existe) o con fichas anteriores a este campo (snapshot None),
+        cae al catálogo en vivo.
+        """
+        if ficha is not None and ficha.definicion_checklist is not None:
+            return ficha.definicion_checklist
+        return cls.construir_definicion_checklist(recurso, cantidad)
+
+    @classmethod
+    def construir_checklist_items(cls, definicion, payload_checklist=None):
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-        definicion = cls.construir_definicion_checklist(recurso, cantidad)
 
         checklist_items = []
         for index, item_def in enumerate(definicion):
@@ -519,13 +535,12 @@ class MotorFichas:
         ).first()
 
     @classmethod
-    def validar_payload_checklist(cls, recurso, payload_checklist, cantidad=0, require_cumple=False):
+    def validar_payload_checklist(cls, definicion, payload_checklist, require_cumple=False):
         """
-        Evalúa si el payload incluye todos los requerimientos del recurso.
+        Evalúa si el payload incluye todos los requerimientos de la definición.
         Con require_cumple=True verifica además que cada item tenga 'cumple' con valor no nulo.
         Retorna (esta_completo, faltantes).
         """
-        definicion = cls.construir_definicion_checklist(recurso, cantidad)
         if not definicion:
             return True, []
 
@@ -546,12 +561,11 @@ class MotorFichas:
         return not bool(faltantes), faltantes
 
     @classmethod
-    def validar_observaciones_requerimientos(cls, recurso, payload_checklist, cantidad=0):
+    def validar_observaciones_requerimientos(cls, definicion, payload_checklist):
         """
         Verifica que los requerimientos fallados tengan observación.
         Retorna (es_valido, lista_de_requerimientos_sin_observacion).
         """
-        definicion = cls.construir_definicion_checklist(recurso, cantidad)
         if not definicion:
             return True, []
 
@@ -579,7 +593,7 @@ class MotorFichas:
         return True, []
 
     @classmethod
-    def validar_estado_operativo(cls, recurso, estado_operativo, payload_checklist, cantidad=0):
+    def validar_estado_operativo(cls, definicion, estado_operativo, payload_checklist):
         """
         Impide marcar un recurso como operativo si algún requerimiento no está cumplido.
         """
@@ -590,14 +604,13 @@ class MotorFichas:
         if estado_operativo is False:
             return True
 
-        definicion = cls.construir_definicion_checklist(recurso, cantidad)
         if not definicion:
             return True
 
         return all(bool(payload_checklist.get(item["key"], {}).get("cumple")) for item in definicion)
 
     @classmethod
-    def derivar_estado_operativo_desde_checklist(cls, recurso, payload_checklist, cantidad=0):
+    def derivar_estado_operativo_desde_checklist(cls, definicion, payload_checklist):
         """
         Deriva el estado operativo desde el checklist:
         - True si no hay requerimientos o si todos están cumplidos
@@ -605,7 +618,6 @@ class MotorFichas:
         - None si aún faltan requerimientos por registrar y ninguno falló
         """
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-        definicion = cls.construir_definicion_checklist(recurso, cantidad)
         if not definicion:
             return True
 
@@ -616,7 +628,7 @@ class MotorFichas:
             return False
 
         checklist_completo, _faltantes = cls.validar_payload_checklist(
-            recurso, payload_checklist, cantidad=cantidad, require_cumple=True,
+            definicion, payload_checklist, require_cumple=True,
         )
         if not checklist_completo:
             return None
@@ -624,10 +636,10 @@ class MotorFichas:
         return True
 
     @classmethod
-    def calcular_estado_ficha(cls, recurso, estado_operativo, payload_checklist, cantidad=0):
+    def calcular_estado_ficha(cls, definicion, estado_operativo, payload_checklist):
         payload = cls.normalizar_payload_checklist(payload_checklist)
         checklist_completo, _faltantes = cls.validar_payload_checklist(
-            recurso, payload, cantidad=cantidad, require_cumple=True,
+            definicion, payload, require_cumple=True,
         )
         if estado_operativo is not None and checklist_completo:
             return "completa"
@@ -642,22 +654,22 @@ class MotorFichas:
         return "en_progreso"
 
     @classmethod
-    def _validar_payload_o_raise(cls, recurso, estado_operativo, payload_checklist_raw, cantidad):
+    def _validar_payload_o_raise(cls, definicion, estado_operativo, payload_checklist_raw):
         """Normaliza y valida el payload; retorna el payload normalizado o lanza ValueError."""
         payload = cls.normalizar_payload_checklist(payload_checklist_raw)
-        # construir_definicion_checklist ya incluye el requerimiento "cantidad" si el
-        # catálogo del recurso lo declara. La validación de presencia aplica solo
-        # cuando estado_operativo is not None.
-        es_valido, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad)
+        # La definición ya incluye el requerimiento "cantidad" si el catálogo (congelado
+        # o en vivo, según corresponda) lo declara. La validación de presencia aplica
+        # solo cuando estado_operativo is not None.
+        es_valido, faltantes = cls.validar_payload_checklist(definicion, payload)
         if estado_operativo is True and not es_valido:
             raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")
-        checklist_completo, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad, require_cumple=True)
+        checklist_completo, faltantes = cls.validar_payload_checklist(definicion, payload, require_cumple=True)
         if estado_operativo is True and not checklist_completo:
             raise ValueError(f"Faltan requerimientos completos en el checklist: {faltantes}")
-        obs_valido, sin_obs = cls.validar_observaciones_requerimientos(recurso, payload_checklist_raw, cantidad=cantidad)
+        obs_valido, sin_obs = cls.validar_observaciones_requerimientos(definicion, payload_checklist_raw)
         if not obs_valido:
             raise ValueError(f"Los siguientes requerimientos fallados requieren observación: {sin_obs}")
-        if not cls.validar_estado_operativo(recurso, estado_operativo, payload, cantidad=cantidad):
+        if not cls.validar_estado_operativo(definicion, estado_operativo, payload):
             raise ValueError("No se puede marcar el recurso como operativo si faltan requerimientos por cumplir.")
         return payload
 
@@ -696,8 +708,12 @@ class MotorFichas:
             if matriz is None:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
+            # Se congela acá, del catálogo en vivo — es la única vez que esta
+            # ficha calcula su definición desde cero. De ahí en más (incluida
+            # cualquier modificar_ficha futura) usa este mismo snapshot.
+            definicion = cls.construir_definicion_checklist(recurso, matriz.cantidad)
             payload_checklist = cls._validar_payload_o_raise(
-                recurso, estado_operativo, payload_checklist, matriz.cantidad
+                definicion, estado_operativo, payload_checklist
             )
 
             try:
@@ -705,10 +721,11 @@ class MotorFichas:
                     periodo=periodo,
                     recurso=recurso,
                     usuario=usuario,
-                    estado_ficha=cls.calcular_estado_ficha(recurso, estado_operativo, payload_checklist, cantidad=matriz.cantidad),
+                    estado_ficha=cls.calcular_estado_ficha(definicion, estado_operativo, payload_checklist),
                     estado_operativo=estado_operativo,
                     observacion_general=observacion_general,
                     payload_checklist=payload_checklist,
+                    definicion_checklist=definicion,
                 )
             except IntegrityError as exc:
                 raise ValueError(
@@ -736,19 +753,23 @@ class MotorFichas:
             if matriz is None:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
+            # Usa el snapshot congelado al crear la ficha — nunca recalcula desde
+            # el catálogo en vivo, así el catálogo puede cambiar mientras la ficha
+            # sigue abierta sin alterar qué se le exige. Fichas anteriores a este
+            # campo (definicion_checklist=None) se "gradúan" acá: calculan desde
+            # el catálogo en vivo una vez más y de ahí quedan congeladas también.
+            definicion = cls.obtener_definicion_checklist(ficha.recurso, matriz.cantidad, ficha=ficha)
             payload_checklist = cls._validar_payload_o_raise(
-                ficha.recurso, estado_operativo, payload_checklist, matriz.cantidad
+                definicion, estado_operativo, payload_checklist
             )
 
             ficha.estado_ficha = cls.calcular_estado_ficha(
-                recurso=ficha.recurso,
-                estado_operativo=estado_operativo,
-                payload_checklist=payload_checklist,
-                cantidad=matriz.cantidad,
+                definicion, estado_operativo, payload_checklist,
             )
             ficha.estado_operativo = estado_operativo
             ficha.observacion_general = observacion_general
             ficha.payload_checklist = payload_checklist
+            ficha.definicion_checklist = definicion
             ficha.modificado_por = usuario_modificador
             ficha.modificado_en = timezone.now()
             ficha.save(
@@ -757,6 +778,7 @@ class MotorFichas:
                     "estado_operativo",
                     "observacion_general",
                     "payload_checklist",
+                    "definicion_checklist",
                     "modificado_por",
                     "modificado_en",
                 ]

@@ -864,16 +864,16 @@ class TestIntegracionMotorReglas(TestCase):
             regla_aplicacion=self.REGLA_POR_ESLORA,
             requerimientos=["vigencia", "presion"],
         )
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=2)
 
         es_valido = MotorFichas.validar_estado_operativo(
-            recurso=recurso,
+            definicion,
             estado_operativo=True,
             payload_checklist=self._payload_con_cantidad(
                 True,
                 vigencia={"cumple": True, "observacion": ""},
                 presion={"cumple": False, "observacion": "baja presión"},
             ),
-            cantidad=2,
         )
 
         self.assertFalse(es_valido)
@@ -982,22 +982,21 @@ class TestIntegracionMotorReglas(TestCase):
             regla_aplicacion=self.REGLA_POR_ESLORA,
             requerimientos=["vigencia"],
         )
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=2)
 
         estado = MotorFichas.calcular_estado_ficha(
-            recurso=recurso,
+            definicion,
             estado_operativo=True,
             payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
-            cantidad=2,
         )
         self.assertEqual(estado, "en_progreso")
 
         estado = MotorFichas.calcular_estado_ficha(
-            recurso=recurso,
+            definicion,
             estado_operativo=True,
             payload_checklist=self._payload_con_cantidad(
                 True, vigencia={"cumple": True, "observacion": ""}
             ),
-            cantidad=2,
         )
         self.assertEqual(estado, "completa")
 
@@ -1007,16 +1006,17 @@ class TestIntegracionMotorReglas(TestCase):
             regla_aplicacion=self.REGLA_POR_ESLORA,
             requerimientos=["vigencia", "operatividad"],
         )
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
 
         estado = MotorFichas.calcular_estado_ficha(
-            recurso=recurso,
+            definicion,
             estado_operativo=None,
             payload_checklist={},
         )
         self.assertEqual(estado, "pendiente")
 
         estado = MotorFichas.calcular_estado_ficha(
-            recurso=recurso,
+            definicion,
             estado_operativo=None,
             payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
         )
@@ -1405,11 +1405,8 @@ class TestIntegracionMotorReglas(TestCase):
             requerimientos=["vigencia", "presion"],
         )
 
-        checklist = MotorFichas.construir_checklist_items(
-            recurso=recurso,
-            cantidad=4,
-            payload_checklist={},
-        )
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=4)
+        checklist = MotorFichas.construir_checklist_items(definicion, {})
 
         self.assertEqual(
             [item["key"] for item in checklist],
@@ -1428,11 +1425,8 @@ class TestIntegracionMotorReglas(TestCase):
             regla_aplicacion=None,
         )
 
-        checklist = MotorFichas.construir_checklist_items(
-            recurso=recurso,
-            cantidad=0,
-            payload_checklist={},
-        )
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
+        checklist = MotorFichas.construir_checklist_items(definicion, {})
 
         self.assertEqual([item["key"] for item in checklist], ["condicion_1"])
         self.assertEqual(checklist[0]["label"], "Condición.")
@@ -1449,11 +1443,8 @@ class TestIntegracionMotorReglas(TestCase):
             regla_aplicacion=None,
         )
 
-        checklist = MotorFichas.construir_checklist_items(
-            recurso=recurso,
-            cantidad=4,
-            payload_checklist={},
-        )
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=4)
+        checklist = MotorFichas.construir_checklist_items(definicion, {})
 
         self.assertEqual([item["key"] for item in checklist], ["vigencia"])
 
@@ -1466,11 +1457,8 @@ class TestIntegracionMotorReglas(TestCase):
             regla_aplicacion=None,
         )
 
-        checklist = MotorFichas.construir_checklist_items(
-            recurso=recurso,
-            cantidad=0,
-            payload_checklist={},
-        )
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
+        checklist = MotorFichas.construir_checklist_items(definicion, {})
 
         self.assertEqual([item["key"] for item in checklist], [MotorFichas.CANTIDAD_REQUISITO_KEY])
         self.assertEqual(checklist[0]["label"], "Cantidad: 0")
@@ -1498,6 +1486,129 @@ class TestIntegracionMotorReglas(TestCase):
         )
 
         self.assertTrue(MotorPeriodos._es_ficha_completa(ficha))
+
+    def test_crear_ficha_congela_definicion_checklist(self):
+        """crear_ficha guarda un snapshot de la definición, no solo el payload."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Snapshot",
+            regla_aplicacion=None,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Snapshot", "INT-070", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        self.assertEqual(
+            ficha.definicion_checklist,
+            MotorFichas.construir_definicion_checklist(recurso, cantidad=0),
+        )
+
+    def test_ficha_existente_ignora_requerimiento_agregado_despues_al_catalogo(self):
+        """Si el catálogo agrega un requerimiento después de crear la ficha, esa
+        ficha ya abierta no lo exige — sigue validando contra su snapshot."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Catalogo Cambia",
+            regla_aplicacion=None,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Catalogo Cambia", "INT-071", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+        )
+        self.assertTrue(MotorPeriodos._es_ficha_completa(ficha))
+
+        # El editor agrega un requerimiento nuevo al catálogo mientras el período sigue abierto.
+        recurso.requerimientos = requerimientos_estandar("vigencia", "presion")
+        recurso.save(update_fields=["requerimientos"])
+
+        # La ficha ya creada no se entera — sigue completa contra lo que existía al crearla.
+        ficha.refresh_from_db()
+        self.assertTrue(MotorPeriodos._es_ficha_completa(ficha))
+        definicion = MotorFichas.obtener_definicion_checklist(recurso, 0, ficha=ficha)
+        self.assertEqual([item["key"] for item in definicion], ["vigencia"])
+
+    def test_modificar_ficha_usa_definicion_congelada_no_la_recalcula(self):
+        """modificar_ficha valida contra el snapshot tomado al crear, no contra
+        el catálogo en vivo — aunque éste haya cambiado mientras tanto."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Modificar Snapshot",
+            regla_aplicacion=None,
+            requerimientos=["vigencia", "presion"],
+        )
+        nave = self._crear_nave("Nave Modificar Snapshot", "INT-072", 20)
+        periodo = self._get_periodo(nave)
+
+        ficha = MotorFichas.crear_ficha(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=None,
+            observacion_general="",
+            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+        )
+
+        # El editor quita "presion" del catálogo mientras el período sigue abierto.
+        recurso.requerimientos = requerimientos_estandar("vigencia")
+        recurso.save(update_fields=["requerimientos"])
+
+        # modificar_ficha sigue exigiendo "presion" — viene del snapshot, no del catálogo actual.
+        with self.assertRaises(ValueError):
+            MotorFichas.modificar_ficha(
+                ficha=ficha,
+                usuario_modificador=self.usuario,
+                estado_operativo=True,
+                observacion_general="",
+                payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+            )
+
+    def test_obtener_definicion_checklist_sin_ficha_usa_catalogo_en_vivo(self):
+        """Sin ficha (todavía no se creó), obtener_definicion_checklist refleja
+        el catálogo actual — recién se congela cuando la ficha existe."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Sin Ficha Aun",
+            regla_aplicacion=None,
+            requerimientos=["vigencia"],
+        )
+
+        definicion = MotorFichas.obtener_definicion_checklist(recurso, 0, ficha=None)
+        self.assertEqual([item["key"] for item in definicion], ["vigencia"])
+
+    def test_obtener_definicion_checklist_ficha_sin_snapshot_usa_catalogo_en_vivo(self):
+        """Una ficha anterior a este campo (definicion_checklist=None) cae al
+        catálogo en vivo — retrocompatible con fichas ya existentes."""
+        recurso = self._crear_recurso(
+            nombre="Recurso Ficha Legacy",
+            regla_aplicacion=None,
+            requerimientos=["vigencia"],
+        )
+        nave = self._crear_nave("Nave Ficha Legacy", "INT-073", 20)
+        periodo = self._get_periodo(nave)
+        ficha_legacy = FichaRegistro.objects.create(
+            periodo=periodo,
+            recurso=recurso,
+            usuario=self.usuario,
+            estado_operativo=True,
+            payload_checklist={"vigencia": {"cumple": True, "observacion": ""}},
+        )
+        self.assertIsNone(ficha_legacy.definicion_checklist)
+
+        definicion = MotorFichas.obtener_definicion_checklist(recurso, 0, ficha=ficha_legacy)
+        self.assertEqual([item["key"] for item in definicion], ["vigencia"])
 
     def test_regla_con_atributo_inexistente_usa_fallback(self):
         """regla_aplicacion con atributo='campo_inexistente' retorna fallback"""
@@ -1649,7 +1760,8 @@ class TestIntegracionMotorReglas(TestCase):
             requerimientos=["vigencia", "presion"],
         )
         payload = {"vigencia": {"cumple": False, "observacion": "vencida"}}
-        resultado = MotorFichas.derivar_estado_operativo_desde_checklist(recurso, payload)
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
+        resultado = MotorFichas.derivar_estado_operativo_desde_checklist(definicion, payload)
         self.assertIs(resultado, False)
 
     def test_require_cumple_rechaza_cumple_null(self):
@@ -1660,8 +1772,9 @@ class TestIntegracionMotorReglas(TestCase):
             requerimientos=["vigencia"],
         )
         payload = {"vigencia": {"cumple": None, "observacion": ""}}
+        definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
         es_valido, faltantes = MotorFichas.validar_payload_checklist(
-            recurso, payload, require_cumple=True
+            definicion, payload, require_cumple=True
         )
         self.assertFalse(es_valido)
         self.assertTrue(len(faltantes) > 0)

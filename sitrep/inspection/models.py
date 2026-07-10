@@ -74,6 +74,15 @@ class FichaRegistro(models.Model):
         help_text="None=sin determinar, True=operativo, False=con falla. Solo se asigna cuando la ficha está completa.")
     observacion_general = models.TextField(blank=True, default='')
     payload_checklist = models.JSONField(default=dict)
+    definicion_checklist = models.JSONField(
+        null=True, blank=True, default=None,
+        help_text=(
+            "Snapshot del checklist (mismo shape que MotorFichas.construir_definicion_checklist) "
+            "tomado al crear la ficha. Congela qué requerimientos aplican y sus labels para que "
+            "la ficha no cambie si el catálogo cambia después. "
+            "None = ficha anterior a este campo; usa el catálogo en vivo como fallback."
+        ),
+    )
     modificado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
         null=True, blank=True, related_name='fichas_modificadas',

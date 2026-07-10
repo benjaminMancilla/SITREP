@@ -329,11 +329,8 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         estado_operativo_form = request.POST.get("estado_operativo") == "on"
         observacion_general_form = (request.POST.get("observacion_general") or "").strip()
         payload_checklist_form = {}
-        checklist_definicion = MotorFichas.construir_checklist_items(
-            recurso=recurso,
-            cantidad=matriz.cantidad,
-            payload_checklist=payload_checklist_form,
-        )
+        definicion = MotorFichas.obtener_definicion_checklist(recurso, matriz.cantidad, ficha=ficha)
+        checklist_definicion = MotorFichas.construir_checklist_items(definicion, payload_checklist_form)
         for item in checklist_definicion:
             estado_item = _parse_estado_checklist_form(request.POST.get(f"req_{item['index']}"))
             if estado_item is None:
@@ -388,11 +385,8 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
     else:
         error = None
 
-    checklist_items = MotorFichas.construir_checklist_items(
-        recurso=recurso,
-        cantidad=matriz.cantidad,
-        payload_checklist=payload_checklist_form,
-    )
+    definicion = MotorFichas.obtener_definicion_checklist(recurso, matriz.cantidad, ficha=ficha)
+    checklist_items = MotorFichas.construir_checklist_items(definicion, payload_checklist_form)
     datos_anterior = repositories.get_datos_periodo_anterior(nave, periodo)
     ficha_anterior = datos_anterior.get(recurso.id)
     periodo_anterior_json = presenters.construir_periodo_anterior_json(ficha_anterior, checklist_items)

@@ -20,7 +20,7 @@ class FichaRegistroAdmin(admin.ModelAdmin):
     list_display = ("recurso", "periodo", "usuario", "estado_operativo", "fecha_revision", "fue_modificada")
     list_filter = ("estado_operativo", "periodo__nave__naviera", "periodo__nave")
     search_fields = ("recurso__nombre", "usuario__rut")
-    readonly_fields = ("fecha_revision", "modificado_en")
+    readonly_fields = ("fecha_revision", "modificado_en", "definicion_checklist")
 
     def fue_modificada(self, obj):
         return obj.modificado_por is not None

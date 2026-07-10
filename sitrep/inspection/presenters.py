@@ -219,11 +219,8 @@ def construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False
         payload_actual = MotorFichas.normalizar_payload_checklist(
             ficha.payload_checklist if ficha else {}
         )
-        checklist_items = MotorFichas.construir_checklist_items(
-            recurso=matriz.recurso,
-            cantidad=matriz.cantidad,
-            payload_checklist=payload_actual,
-        )
+        definicion = MotorFichas.obtener_definicion_checklist(matriz.recurso, matriz.cantidad, ficha=ficha)
+        checklist_items = MotorFichas.construir_checklist_items(definicion, payload_actual)
 
         item = {
             "matriz": matriz,
@@ -287,11 +284,8 @@ def construir_periodos_detalle(nave, periodos, for_history=False):
                 fallos_count += 1
 
             payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
-            checklist_items = MotorFichas.construir_checklist_items(
-                recurso=matriz.recurso,
-                cantidad=matriz.cantidad,
-                payload_checklist=payload_actual,
-            )
+            definicion = MotorFichas.obtener_definicion_checklist(matriz.recurso, matriz.cantidad, ficha=ficha)
+            checklist_items = MotorFichas.construir_checklist_items(definicion, payload_actual)
 
             registros.append({
                 "tipo": "ficha",
@@ -458,11 +452,8 @@ def adjuntar_detalle_a_fallos(fallos, naviera):
             continue
 
         payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
-        checklist_items = MotorFichas.construir_checklist_items(
-            recurso=fallo.recurso,
-            cantidad=fallo.cantidad,
-            payload_checklist=payload_actual,
-        )
+        definicion = MotorFichas.obtener_definicion_checklist(fallo.recurso, fallo.cantidad, ficha=ficha)
+        checklist_items = MotorFichas.construir_checklist_items(definicion, payload_actual)
         fallo.checklist_fallido = [
             item for item in checklist_items if item["checked"] is False
         ]

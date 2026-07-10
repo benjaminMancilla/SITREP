@@ -194,9 +194,8 @@ def api_recursos_periodo(request, slug, periodo_id):
                 "cantidad": matriz.cantidad,
                 "requerimientos": matriz.recurso.requerimientos or [],
                 "checklist_items": MotorFichas.construir_checklist_items(
-                    recurso=matriz.recurso,
-                    cantidad=matriz.cantidad,
-                    payload_checklist=ficha.payload_checklist if ficha else {},
+                    MotorFichas.obtener_definicion_checklist(matriz.recurso, matriz.cantidad, ficha=ficha),
+                    ficha.payload_checklist if ficha else {},
                 ),
                 "tiene_ficha": ficha is not None,
                 "estado_operativo": ficha.estado_operativo if ficha else None,
@@ -274,9 +273,8 @@ def api_detalle_recurso(request, slug, periodo_id, recurso_id):
             "cantidad_requerida": matriz.cantidad,
             "requerimientos": matriz.recurso.requerimientos or [],
             "checklist_items": MotorFichas.construir_checklist_items(
-                recurso=matriz.recurso,
-                cantidad=matriz.cantidad,
-                payload_checklist=payload_checklist,
+                MotorFichas.obtener_definicion_checklist(matriz.recurso, matriz.cantidad, ficha=ficha),
+                payload_checklist,
             ),
         },
         "ficha": {
@@ -441,15 +439,18 @@ def api_guardar_fichas_periodo(request, slug, periodo_id):
             if matriz is None:
                 raise ValueError("El recurso no está asignado a esta nave.")
 
+            ficha_existente = fichas_existentes.get(recurso_id)
+
             estado_operativo = data["estado_operativo"]
             if estado_operativo is None:
+                definicion = MotorFichas.obtener_definicion_checklist(
+                    recurso, matriz.cantidad, ficha=ficha_existente
+                )
                 estado_operativo = MotorFichas.derivar_estado_operativo_desde_checklist(
-                    recurso,
+                    definicion,
                     data["payload_checklist"],
-                    cantidad=matriz.cantidad,
                 )
 
-            ficha_existente = fichas_existentes.get(recurso_id)
             if ficha_existente is not None:
                 ficha = MotorFichas.modificar_ficha(
                     ficha=ficha_existente,
