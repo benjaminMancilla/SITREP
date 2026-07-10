@@ -5,7 +5,6 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.http import HttpResponse, JsonResponse
 from django.db import connection
-from django.urls import reverse
 from django.views.decorators.cache import never_cache
 
 from core.forms import ContactoForm
@@ -25,18 +24,20 @@ def contacto(request):
         return redirect("homepage")
 
     form = ContactoForm(request.POST)
-    if form.is_valid():
-        try:
-            enviar_email_contacto(**form.cleaned_data)
-        except (smtplib.SMTPException, OSError):
-            logger.exception("Fallo al enviar el correo de contacto")
-            messages.error(request, "No pudimos enviar tu mensaje, intenta nuevamente en unos minutos.")
-            return redirect(f"{reverse('homepage')}#contacto")
-        messages.success(request, "Gracias, te contactaremos a la brevedad.")
-        return redirect(f"{reverse('homepage')}#contacto")
-
-    messages.error(request, "Revisa los datos del formulario e inténtalo de nuevo.")
     navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
+
+    if not form.is_valid():
+        messages.error(request, "Revisa los datos del formulario e inténtalo de nuevo.")
+        return render(request, "homepage.html", {"navieras": navieras, "contacto_form": form})
+
+    try:
+        enviar_email_contacto(**form.cleaned_data)
+    except (smtplib.SMTPException, OSError):
+        logger.exception("Fallo al enviar el correo de contacto")
+        messages.error(request, "No pudimos enviar tu mensaje, intenta nuevamente en unos minutos.")
+        return render(request, "homepage.html", {"navieras": navieras, "contacto_form": form})
+
+    messages.success(request, "Gracias, te contactaremos a la brevedad.")
     return render(request, "homepage.html", {"navieras": navieras, "contacto_form": form})
 
 
