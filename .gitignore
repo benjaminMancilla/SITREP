@@ -9,6 +9,7 @@ static/dist/
 .vscode/
 .venv/
 .codex
+.impeccable/
 /docs
 /scripts
 .claude
