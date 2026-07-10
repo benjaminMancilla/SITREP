@@ -1,7 +1,10 @@
 from unittest.mock import patch
 
+from django.core import mail
+from django.core.cache import cache
 from django.test import TestCase, Client
 from django.db import OperationalError
+from django.urls import reverse
 
 from core.forms import ArcoForm
 from core.services import enviar_email_arco
@@ -73,3 +76,51 @@ class EnviarEmailArcoTests(TestCase):
         self.assertIn("ARCO", subject)
         self.assertIn("12.345.678-9", body)
         self.assertEqual(to, ["arco@sitrep.cl"])
+
+
+class ArcoSolicitudViewTests(TestCase):
+    def setUp(self):
+        # El throttle usa el cache de Django, no se limpia solo entre tests.
+        cache.clear()
+
+    def _valid_data(self, **overrides):
+        data = {
+            "nombre": "Juan Pérez",
+            "rut": "12.345.678-9",
+            "email": "juan@example.com",
+            "empresa": "",
+            "mensaje": "Quiero acceder a mis datos.",
+            "pagina_web": "",
+            "pagina": "privacidad",
+            "cf-turnstile-response": "test-token",
+        }
+        data.update(overrides)
+        return data
+
+    def test_legal_pages_expose_arco_form_in_context(self):
+        response = Client().get(reverse("legal_privacidad"))
+        self.assertIn("arco_form", response.context)
+        self.assertEqual(response.context["legal_page_slug"], "privacidad")
+
+    def test_invalid_pagina_falls_back_to_privacidad(self):
+        response = Client().post(reverse("arco_solicitud"), self._valid_data(pagina="not-a-real-page"))
+        self.assertRedirects(response, f"{reverse('legal_privacidad')}#arco", fetch_redirect_response=False)
+
+    @patch("core.views.verify_turnstile", return_value=True)
+    def test_honeypot_discards_without_sending_email(self, mock_verify):
+        response = Client().post(reverse("arco_solicitud"), self._valid_data(pagina_web="http://spam.example"))
+        self.assertRedirects(response, f"{reverse('legal_privacidad')}#arco", fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch("core.views.verify_turnstile", return_value=True)
+    def test_valid_submission_sends_email_and_redirects_to_originating_page(self, mock_verify):
+        response = Client().post(reverse("arco_solicitud"), self._valid_data(pagina="dpa"))
+        self.assertRedirects(response, f"{reverse('legal_dpa')}#arco", fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("ARCO", mail.outbox[0].subject)
+
+    @patch("core.views.verify_turnstile", return_value=False)
+    def test_failed_turnstile_blocks_send(self, mock_verify):
+        response = Client().post(reverse("arco_solicitud"), self._valid_data())
+        self.assertRedirects(response, f"{reverse('legal_privacidad')}#arco", fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 0)

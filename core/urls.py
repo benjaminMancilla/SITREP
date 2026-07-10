@@ -25,6 +25,7 @@ urlpatterns = [
     path("health/db/", views_core.health_check_db),
     path("", views_core.homepage, name="homepage"),
     path("contacto/", views_core.contacto, name="contacto_submit"),
+    path("arco/", views_core.arco_solicitud, name="arco_solicitud"),
     path("legal/terminos/", views_core.legal_terminos, name="legal_terminos"),
     path("legal/privacidad/", views_core.legal_privacidad, name="legal_privacidad"),
     path("legal/dpa/", views_core.legal_dpa, name="legal_dpa"),
