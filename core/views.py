@@ -1,4 +1,7 @@
-﻿from django.contrib import messages
+﻿import logging
+import smtplib
+
+from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.http import HttpResponse, JsonResponse
 from django.db import connection
@@ -8,6 +11,8 @@ from django.views.decorators.cache import never_cache
 from core.forms import ContactoForm
 from core.services import enviar_email_contacto
 from sitrep.accounts.models import Naviera
+
+logger = logging.getLogger(__name__)
 
 
 def homepage(request):
@@ -21,7 +26,12 @@ def contacto(request):
 
     form = ContactoForm(request.POST)
     if form.is_valid():
-        enviar_email_contacto(**form.cleaned_data)
+        try:
+            enviar_email_contacto(**form.cleaned_data)
+        except (smtplib.SMTPException, OSError):
+            logger.exception("Fallo al enviar el correo de contacto")
+            messages.error(request, "No pudimos enviar tu mensaje, intenta nuevamente en unos minutos.")
+            return redirect(f"{reverse('homepage')}#contacto")
         messages.success(request, "Gracias, te contactaremos a la brevedad.")
         return redirect(f"{reverse('homepage')}#contacto")
 

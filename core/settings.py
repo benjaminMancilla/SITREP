@@ -205,3 +205,17 @@ AUTHENTICATION_BACKENDS = [
 # Proxy SSL (Cloudflare)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
+
+# Correo saliente vía Resend (SMTP relay, dominio sitrep.cl ya verificado ahí).
+# En DEBUG se imprime en consola en vez de mandar de verdad.
+EMAIL_BACKEND = (
+    'django.core.mail.backends.console.EmailBackend' if DEBUG
+    else 'django.core.mail.backends.smtp.EmailBackend'
+)
+EMAIL_HOST = 'smtp.resend.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'resend'
+EMAIL_HOST_PASSWORD = os.getenv('RESEND_API_KEY', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'SITREP <no-reply@sitrep.cl>')
+CONTACT_EMAIL_TO = os.getenv('CONTACT_EMAIL_TO', 'contacto@sitrep.cl')
