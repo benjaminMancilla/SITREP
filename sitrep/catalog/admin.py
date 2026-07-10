@@ -5,7 +5,6 @@ from django.template.response import TemplateResponse
 from django.urls import path
 import json
 
-from sitrep.accounts.models import Naviera
 from .models import Area, Periodicidad, Proposito, Recurso
 
 
@@ -22,10 +21,10 @@ class AreaAdmin(admin.ModelAdmin):
 @admin.register(Recurso)
 class RecursoAdmin(admin.ModelAdmin):
     list_display = (
-        "codigo", "nombre", "naviera", "area", "proposito",
+        "codigo", "nombre", "area", "proposito",
         "periodicidad", "created_at", "tiene_regla", "num_requerimientos",
     )
-    list_filter = ("naviera", "proposito", "periodicidad", "area")
+    list_filter = ("proposito", "periodicidad", "area")
     search_fields = ("codigo", "nombre")
     readonly_fields = ("created_at",)
 
@@ -60,15 +59,12 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
         context = {
             **self.admin_site.each_context(request),
             "title": "Importar recursos desde JSON",
-            "navieras": Naviera.objects.all().order_by("nombre"),
             "resultado": None,
             "opts": self.model._meta,
         }
 
         if request.method == "POST":
             archivo = request.FILES.get("json_file")
-            scope = request.POST.get("scope", "global")
-            naviera_id = request.POST.get("naviera_id", "")
             dry_run = request.POST.get("dry_run") == "on"
 
             if not archivo:
@@ -82,15 +78,7 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
                 context["error"] = f"Archivo inválido: {e}"
                 return TemplateResponse(request, "admin/inventory/importar_recursos.html", context)
 
-            naviera = None
-            if scope == "naviera" and naviera_id:
-                try:
-                    naviera = Naviera.objects.get(pk=naviera_id)
-                except Naviera.DoesNotExist:
-                    context["error"] = "Naviera no encontrada."
-                    return TemplateResponse(request, "admin/inventory/importar_recursos.html", context)
-
-            stats = ejecutar_carga(json_data, naviera=naviera, dry_run=dry_run)
+            stats = ejecutar_carga(json_data, dry_run=dry_run)
             context["resultado"] = stats
             context["dry_run"] = dry_run
 

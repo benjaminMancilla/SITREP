@@ -198,8 +198,9 @@ class MotorReglasSITREP:
     @classmethod
     def sincronizar_matriz_nave(cls, nave, crear_nuevos=True):
         """
-        Genera o actualiza la matriz de la nave.
-        RESPETA LA BANDERA DE AUDITORÍA (modificado_manualmente).
+        Genera o actualiza la matriz de la nave a partir del catálogo único.
+        El motor de reglas es la única fuente de verdad: siempre recalcula
+        cantidad/es_visible, sin excepciones manuales.
         Con crear_nuevos=False solo actualiza entradas existentes (útil en señales reactivas).
         """
         stats = {
@@ -208,13 +209,8 @@ class MotorReglasSITREP:
             'recursos_omitidos': 0,
             'recursos_con_error': 0,
         }
-        recursos_aplicables = Recurso.objects.filter(
-            naviera__isnull=True
-        ) | Recurso.objects.filter(
-            naviera=nave.naviera
-        )
 
-        for recurso in recursos_aplicables:
+        for recurso in Recurso.objects.all():
             try:
                 with transaction.atomic():
                     cantidad_calc, visible_calc = cls.evaluar_regla(nave, recurso.regla_aplicacion)
@@ -223,7 +219,6 @@ class MotorReglasSITREP:
                         updated = MatrizNaveRecurso.objects.filter(
                             nave=nave,
                             recurso=recurso,
-                            modificado_manualmente=False,
                         ).update(cantidad=cantidad_calc, es_visible=visible_calc)
                         if updated:
                             stats['recursos_actualizados'] += 1
@@ -237,16 +232,11 @@ class MotorReglasSITREP:
                         defaults={
                             'cantidad': cantidad_calc,
                             'es_visible': visible_calc,
-                            'modificado_manualmente': False
                         }
                     )
 
                     if created:
                         stats['recursos_creados'] += 1
-                        continue
-
-                    if matriz_obj.modificado_manualmente:
-                        stats['recursos_omitidos'] += 1
                         continue
 
                     matriz_obj.cantidad = cantidad_calc

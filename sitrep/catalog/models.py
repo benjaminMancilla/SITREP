@@ -79,10 +79,6 @@ class Periodicidad(models.Model):
 
 
 class Recurso(models.Model):
-    naviera = models.ForeignKey(
-        'accounts.Naviera', on_delete=models.CASCADE,
-        null=True, blank=True, related_name='recursos_privados'
-    )
     proposito = models.ForeignKey(Proposito, on_delete=models.PROTECT)
     periodicidad = models.ForeignKey(Periodicidad, on_delete=models.PROTECT)
     area = models.ForeignKey(
@@ -110,5 +106,4 @@ class Recurso(models.Model):
     regla_aplicacion = models.JSONField(null=True, blank=True, help_text='Reglas para atributos dinámicos')
 
     def __str__(self):
-        tipo = "Global" if not self.naviera else f"Privado ({self.naviera.nombre})"
-        return f"{self.nombre} [{tipo}]"
+        return self.nombre

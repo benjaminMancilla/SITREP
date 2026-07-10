@@ -4,14 +4,10 @@ inventory/management/commands/load_recursos.py
 Carga recursos y requerimientos desde el JSON generado por extract_recursos.py.
 
 Uso:
-    # Recursos globales (todas las navieras):
-    python manage.py load_recursos recursos.json --global
-
-    # Recursos privados de una naviera:
-    python manage.py load_recursos recursos.json --naviera <slug>
+    python manage.py load_recursos recursos.json
 
     # Dry-run:
-    python manage.py load_recursos recursos.json --global --dry-run
+    python manage.py load_recursos recursos.json --dry-run
 
 Comportamiento:
 - Idempotente: si el recurso ya existe (mismo nombre + periodicidad + área), lo omite.
@@ -31,11 +27,10 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 
 # Lógica de carga reutilizable desde la vista del admin
-def ejecutar_carga(json_data: list, naviera=None, dry_run: bool = False) -> dict:
+def ejecutar_carga(json_data: list, dry_run: bool = False) -> dict:
     """
     Núcleo de carga. Acepta los datos ya parseados como lista de dicts.
     Retorna estadísticas: {areas_creadas, recursos_creados, recursos_omitidos, errores, log}.
-    naviera=None → recursos globales.
     """
     from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
 
@@ -54,7 +49,7 @@ def ejecutar_carga(json_data: list, naviera=None, dry_run: bool = False) -> dict
 
     for entrada in json_data:
         try:
-            _procesar_entrada(entrada, naviera, dry_run, stats, log)
+            _procesar_entrada(entrada, dry_run, stats, log)
         except Exception as e:
             stats["errores"] += 1
             logger.error(
@@ -67,7 +62,7 @@ def ejecutar_carga(json_data: list, naviera=None, dry_run: bool = False) -> dict
     return stats
 
 
-def _procesar_entrada(entrada, naviera, dry_run, stats, log):
+def _procesar_entrada(entrada, dry_run, stats, log):
     from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
 
     nombre_area = entrada["area"]
@@ -136,7 +131,6 @@ def _procesar_entrada(entrada, naviera, dry_run, stats, log):
                 nombre_area=nombre_area,
                 periodicidad=periodicidad,
                 proposito_obj=proposito_obj,
-                naviera=naviera,
                 dry_run=dry_run,
                 stats=stats,
                 log=log,
@@ -153,7 +147,7 @@ def _procesar_entrada(entrada, naviera, dry_run, stats, log):
 
 def _procesar_recurso(
     recurso_data, area, nombre_area, periodicidad,
-    proposito_obj, naviera, dry_run, stats, log,
+    proposito_obj, dry_run, stats, log,
 ):
     from sitrep.catalog.models import Recurso
     from sitrep.catalog.services import requerimientos_estandar
@@ -186,7 +180,6 @@ def _procesar_recurso(
             periodicidad=periodicidad,
             area=area,
             proposito=proposito_obj,
-            naviera=naviera,           # None = global, obj = privado
             requerimientos=requerimientos_estandar(*requerimientos),
             regla_aplicacion=None,
         )
@@ -202,38 +195,20 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("json_file", type=str, help="Ruta al JSON de recursos")
-        scope = parser.add_mutually_exclusive_group(required=True)
-        scope.add_argument(
-            "--global", dest="global_scope", action="store_true",
-            help="Crear recursos globales (naviera=None, visibles para todos)",
-        )
-        scope.add_argument(
-            "--naviera", type=str, dest="naviera_slug",
-            help="Slug de la naviera para recursos privados",
-        )
         parser.add_argument(
             "--dry-run", action="store_true",
             help="Muestra qué se crearía sin escribir en la BD",
         )
 
     def handle(self, *args, **options):
-        from sitrep.inspection.models import Naviera
-
         json_path = Path(options["json_file"])
         if not json_path.exists():
             raise CommandError(f"Archivo no encontrado: {json_path}")
 
-        naviera = None
-        if options["naviera_slug"]:
-            try:
-                naviera = Naviera.objects.get(slug=options["naviera_slug"])
-            except Naviera.DoesNotExist:
-                raise CommandError(f"Naviera {options['naviera_slug']!r} no existe")
-
         dry_run = options["dry_run"]
         json_data = json.loads(json_path.read_text(encoding="utf-8"))
 
-        stats = ejecutar_carga(json_data, naviera=naviera, dry_run=dry_run)
+        stats = ejecutar_carga(json_data, dry_run=dry_run)
 
         for nivel, msg in stats["log"]:
             if nivel == "error":

@@ -62,39 +62,6 @@
       </p>
     </div>
 
-    <div style="margin-bottom:20px;">
-      <label style="display:block;font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">
-        Alcance
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
-        <input type="radio" name="scope" value="global" checked
-               onchange="document.getElementById('naviera-select').style.display='none'">
-        <span style="font-size:13px;">
-          <strong>Global</strong> — visibles para todas las navieras
-        </span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-        <input type="radio" name="scope" value="naviera"
-               onchange="document.getElementById('naviera-select').style.display='block'">
-        <span style="font-size:13px;">
-          <strong>Privado</strong> — solo para una naviera
-        </span>
-      </label>
-
-      <div id="naviera-select" style="display:none;margin-top:12px;padding-left:24px;">
-        <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:4px;">
-          Naviera
-        </label>
-        <select name="naviera_id"
-                style="min-width:260px;padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
-          <option value="">— Seleccionar —</option>
-          {% for nav in navieras %}
-          <option value="{{ nav.pk }}">{{ nav.nombre }} ({{ nav.slug }})</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-
     <div style="margin-bottom:24px;">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
         <input type="checkbox" name="dry_run" value="on">

@@ -69,9 +69,8 @@ class TestMotorReglasSITREP(TestCase):
             "fallback_visible": False,
         }
 
-    def _crear_recurso(self, nombre, regla_aplicacion, naviera=None):
+    def _crear_recurso(self, nombre, regla_aplicacion):
         return Recurso.objects.create(
-            naviera=naviera,
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre=nombre,
@@ -80,11 +79,10 @@ class TestMotorReglasSITREP(TestCase):
         )
 
     def test_sincronizar_matriz_nave_crea_entradas(self):
-        """Al sincronizar una nave con recursos aplicables, crea MatrizNaveRecurso"""
+        """Al sincronizar una nave con recursos del catálogo, crea MatrizNaveRecurso"""
         recurso = self._crear_recurso(
-            nombre="Extintor Global",
+            nombre="Extintor",
             regla_aplicacion=self.regla_semanal,
-            naviera=None,
         )
 
         MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
@@ -92,43 +90,19 @@ class TestMotorReglasSITREP(TestCase):
         matriz = MatrizNaveRecurso.objects.get(nave=self.nave, recurso=recurso)
         self.assertEqual(matriz.cantidad, 2)
         self.assertTrue(matriz.es_visible)
-        self.assertFalse(matriz.modificado_manualmente)
 
-    def test_sincronizar_matriz_nave_respeta_modificado_manualmente(self):
-        """Una entrada con modificado_manualmente=True no es sobreescrita"""
+    def test_sincronizar_matriz_nave_siempre_recalcula_valores_previos(self):
+        """El motor de reglas es la única fuente de verdad: cualquier valor previo
+        en la matriz (manual o desactualizado) se sobreescribe al sincronizar."""
         recurso = self._crear_recurso(
-            nombre="Chaleco Global",
+            nombre="Chaleco",
             regla_aplicacion=self.regla_semanal,
-            naviera=None,
         )
         matriz = MatrizNaveRecurso.objects.create(
             nave=self.nave,
             recurso=recurso,
             cantidad=99,
             es_visible=False,
-            modificado_manualmente=True,
-        )
-
-        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
-
-        matriz.refresh_from_db()
-        self.assertEqual(matriz.cantidad, 99)
-        self.assertFalse(matriz.es_visible)
-        self.assertTrue(matriz.modificado_manualmente)
-
-    def test_sincronizar_matriz_nave_actualiza_entradas_existentes(self):
-        """Una entrada existente sin modificado_manualmente=True sí se actualiza"""
-        recurso = self._crear_recurso(
-            nombre="Botiquin Global",
-            regla_aplicacion=self.regla_semanal,
-            naviera=None,
-        )
-        matriz = MatrizNaveRecurso.objects.create(
-            nave=self.nave,
-            recurso=recurso,
-            cantidad=1,
-            es_visible=False,
-            modificado_manualmente=False,
         )
 
         MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
@@ -137,17 +111,33 @@ class TestMotorReglasSITREP(TestCase):
         self.assertEqual(matriz.cantidad, 2)
         self.assertTrue(matriz.es_visible)
 
-    def test_sincronizar_matriz_nave_catalogo_hibrido(self):
-        """Recursos globales (naviera=None) y privados del tenant se incluyen"""
-        recurso_global = self._crear_recurso(
-            nombre="Recurso Global",
+    def test_sincronizar_matriz_nave_actualiza_entradas_existentes(self):
+        recurso = self._crear_recurso(
+            nombre="Botiquin",
             regla_aplicacion=self.regla_semanal,
-            naviera=None,
         )
-        recurso_privado = self._crear_recurso(
-            nombre="Recurso Privado Tenant",
+        matriz = MatrizNaveRecurso.objects.create(
+            nave=self.nave,
+            recurso=recurso,
+            cantidad=1,
+            es_visible=False,
+        )
+
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        matriz.refresh_from_db()
+        self.assertEqual(matriz.cantidad, 2)
+        self.assertTrue(matriz.es_visible)
+
+    def test_sincronizar_matriz_nave_incluye_todo_el_catalogo(self):
+        """Todo recurso del catálogo aplica a toda nave — catálogo único, sin excepciones por naviera."""
+        recurso_a = self._crear_recurso(
+            nombre="Recurso A",
             regla_aplicacion=self.regla_semanal,
-            naviera=self.naviera,
+        )
+        recurso_b = self._crear_recurso(
+            nombre="Recurso B",
+            regla_aplicacion=self.regla_semanal,
         )
 
         MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
@@ -158,68 +148,17 @@ class TestMotorReglasSITREP(TestCase):
                 flat=True,
             )
         )
-        self.assertEqual(recursos_en_matriz, {recurso_global.id, recurso_privado.id})
-
-    def test_sincronizar_matriz_nave_excluye_recursos_de_otro_tenant(self):
-        """Recursos privados de otra naviera no se incluyen en la matriz"""
-        otra_naviera = Naviera.objects.create(
-            nombre="Naviera Externa",
-            rut="44444444-4",
-            slug="naviera-externa",
-        )
-        recurso_global = self._crear_recurso(
-            nombre="Recurso Global Incluido",
-            regla_aplicacion=self.regla_semanal,
-            naviera=None,
-        )
-        recurso_privado_tenant = self._crear_recurso(
-            nombre="Recurso Privado Incluido",
-            regla_aplicacion=self.regla_semanal,
-            naviera=self.naviera,
-        )
-        recurso_otro_tenant = self._crear_recurso(
-            nombre="Recurso Privado Excluido",
-            regla_aplicacion=self.regla_semanal,
-            naviera=otra_naviera,
-        )
-
-        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
-
-        self.assertTrue(
-            MatrizNaveRecurso.objects.filter(
-                nave=self.nave,
-                recurso=recurso_global,
-            ).exists()
-        )
-        self.assertTrue(
-            MatrizNaveRecurso.objects.filter(
-                nave=self.nave,
-                recurso=recurso_privado_tenant,
-            ).exists()
-        )
-        self.assertFalse(
-            MatrizNaveRecurso.objects.filter(
-                nave=self.nave,
-                recurso=recurso_otro_tenant,
-            ).exists()
-        )
+        self.assertEqual(recursos_en_matriz, {recurso_a.id, recurso_b.id})
 
     def test_sincronizar_matriz_nave_retorna_estadisticas(self):
-        """Retorna estadisticas de creados, actualizados, omitidos y errores"""
+        """Retorna estadisticas de creados, actualizados y errores"""
         recurso_creado = self._crear_recurso(
             nombre="Recurso Creado",
             regla_aplicacion=self.regla_semanal,
-            naviera=None,
         )
         recurso_actualizado = self._crear_recurso(
             nombre="Recurso Actualizado",
             regla_aplicacion=self.regla_semanal,
-            naviera=None,
-        )
-        recurso_omitido = self._crear_recurso(
-            nombre="Recurso Omitido",
-            regla_aplicacion=self.regla_semanal,
-            naviera=None,
         )
 
         MatrizNaveRecurso.objects.create(
@@ -227,14 +166,6 @@ class TestMotorReglasSITREP(TestCase):
             recurso=recurso_actualizado,
             cantidad=1,
             es_visible=False,
-            modificado_manualmente=False,
-        )
-        MatrizNaveRecurso.objects.create(
-            nave=self.nave,
-            recurso=recurso_omitido,
-            cantidad=99,
-            es_visible=False,
-            modificado_manualmente=True,
         )
 
         stats = MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
@@ -244,7 +175,7 @@ class TestMotorReglasSITREP(TestCase):
             {
                 "recursos_creados": 1,
                 "recursos_actualizados": 1,
-                "recursos_omitidos": 1,
+                "recursos_omitidos": 0,
                 "recursos_con_error": 0,
             },
         )
@@ -257,12 +188,10 @@ class TestMotorReglasSITREP(TestCase):
         recurso_ok = self._crear_recurso(
             nombre="Recurso OK",
             regla_aplicacion=self.regla_semanal,
-            naviera=None,
         )
         recurso_falla = self._crear_recurso(
             nombre="Recurso Falla",
             regla_aplicacion=self.regla_semanal,
-            naviera=None,
         )
 
         original_get_or_create = MatrizNaveRecurso.objects.get_or_create
@@ -313,7 +242,6 @@ class TestMotorPeriodosEstados(TestCase):
             tipo="Material",
         )
         self.recurso_a = Recurso.objects.create(
-            naviera=None,
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Extintor A",
@@ -321,7 +249,6 @@ class TestMotorPeriodosEstados(TestCase):
             regla_aplicacion=None,
         )
         self.recurso_b = Recurso.objects.create(
-            naviera=None,
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Extintor B",
@@ -329,7 +256,6 @@ class TestMotorPeriodosEstados(TestCase):
             regla_aplicacion=None,
         )
         self.recurso_sin_checklist = Recurso.objects.create(
-            naviera=None,
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Radio VHF",
@@ -663,7 +589,6 @@ class TestIntegracionMotorReglas(TestCase):
         nombre,
         regla_aplicacion,
         requerimientos=None,
-        naviera=None,
         periodicidad=None,
         codigo=None,
         area=None,
@@ -676,7 +601,6 @@ class TestIntegracionMotorReglas(TestCase):
                 {"id": MotorFichas.CANTIDAD_REQUISITO_KEY, "tipo": "cantidad"}
             )
         return Recurso.objects.create(
-            naviera=naviera,
             proposito=self.proposito,
             periodicidad=periodicidad or self.periodicidad,
             area=area,
@@ -783,10 +707,10 @@ class TestIntegracionMotorReglas(TestCase):
         self.assertEqual(matriz.cantidad, 0)
         self.assertTrue(matriz.es_visible)
 
-    def test_recurso_global_aplica_a_todas_las_naves_del_tenant(self):
-        """Un recurso global (naviera=None) debe aparecer en la matriz de todas las naves activas"""
+    def test_recurso_del_catalogo_aplica_a_todas_las_naves(self):
+        """Catálogo único: un recurso aplica a la matriz de toda nave, sin excepción por naviera."""
         recurso = self._crear_recurso(
-            nombre="Recurso Global Integración",
+            nombre="Recurso Integración",
             regla_aplicacion=self.REGLA_POR_ESLORA,
         )
         nave_a = self._crear_nave("Nave Global A", "INT-007", 20)
@@ -794,26 +718,6 @@ class TestIntegracionMotorReglas(TestCase):
 
         self.assertTrue(MatrizNaveRecurso.objects.filter(nave=nave_a, recurso=recurso).exists())
         self.assertTrue(MatrizNaveRecurso.objects.filter(nave=nave_b, recurso=recurso).exists())
-
-    def test_recurso_privado_no_aplica_a_naves_de_otro_tenant(self):
-        """Un recurso privado de naviera_a no debe aparecer en matriz de naves de naviera_b"""
-        naviera_b = Naviera.objects.create(
-            nombre="Naviera Integración B",
-            rut="88888888-8",
-            slug="naviera-integracion-b",
-        )
-        recurso_privado = self._crear_recurso(
-            nombre="Recurso Privado Tenant",
-            regla_aplicacion=self.REGLA_POR_ESLORA,
-            naviera=self.naviera,
-        )
-        nave_a = self._crear_nave("Nave Privada A", "INT-009", 20)
-        nave_b = self._crear_nave("Nave Privada B", "INT-010", 20, naviera=naviera_b)
-
-        self.assertTrue(MatrizNaveRecurso.objects.filter(nave=nave_a, recurso=recurso_privado).exists())
-        self.assertFalse(
-            MatrizNaveRecurso.objects.filter(nave=nave_b, recurso=recurso_privado).exists()
-        )
 
     def test_flujo_completo_ficha_operativa(self):
         """
@@ -1517,7 +1421,6 @@ class TestIntegracionMotorReglas(TestCase):
         """Un requerimiento tipo 'condicion' se valida como cualquier otro,
         pero su label es fijo ('Condición.') y no depende del texto del editor."""
         recurso = Recurso.objects.create(
-            naviera=None,
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Bote Salvavidas Condición",
@@ -1539,7 +1442,6 @@ class TestIntegracionMotorReglas(TestCase):
         calculado por el motor de reglas — aunque cantidad>1, si el recurso no
         declaró el requerimiento 'cantidad' en su catálogo, no aparece."""
         recurso = Recurso.objects.create(
-            naviera=None,
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Recurso Sin Cantidad En Catalogo",
@@ -1557,7 +1459,6 @@ class TestIntegracionMotorReglas(TestCase):
 
     def test_cantidad_aparece_si_esta_marcada_en_el_catalogo(self):
         recurso = Recurso.objects.create(
-            naviera=None,
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Recurso Con Cantidad En Catalogo",

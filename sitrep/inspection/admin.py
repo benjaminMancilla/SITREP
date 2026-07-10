@@ -8,16 +8,11 @@ class MatrizNaveRecursoAdmin(admin.ModelAdmin):
     list_display = (
         "nave", "recurso", "cantidad", "es_visible",
         "ultimo_estado_operativo", "ultimo_estado_operativo_anterior",
-        "es_fallo_nuevo", "modificado_manualmente",
+        "es_fallo_nuevo",
     )
     readonly_fields = ("ultimo_estado_operativo_en",)
-    list_filter = ("nave__naviera", "es_visible", "modificado_manualmente")
+    list_filter = ("nave__naviera", "es_visible")
     search_fields = ("nave__nombre", "recurso__nombre")
-    actions = ["marcar_como_automatico"]
-
-    def marcar_como_automatico(self, request, queryset):
-        queryset.update(modificado_manualmente=False)
-    marcar_como_automatico.short_description = "Resetear bandera de modificación manual"
 
 
 @admin.register(FichaRegistro)

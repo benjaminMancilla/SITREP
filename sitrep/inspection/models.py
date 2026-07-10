@@ -7,7 +7,6 @@ class MatrizNaveRecurso(models.Model):
     recurso = models.ForeignKey('catalog.Recurso', on_delete=models.CASCADE)
     cantidad = models.IntegerField()
     es_visible = models.BooleanField(default=True)
-    modificado_manualmente = models.BooleanField(default=False)
     ultimo_estado_operativo = models.BooleanField(
         null=True, blank=True, default=None,
         help_text=(
