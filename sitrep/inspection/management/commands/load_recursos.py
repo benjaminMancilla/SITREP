@@ -156,6 +156,7 @@ def _procesar_recurso(
     proposito_obj, naviera, dry_run, stats, log,
 ):
     from sitrep.catalog.models import Recurso
+    from sitrep.catalog.services import requerimientos_estandar
 
     nombre = recurso_data["nombre"]
     requerimientos = recurso_data["requerimientos"]
@@ -186,7 +187,7 @@ def _procesar_recurso(
             area=area,
             proposito=proposito_obj,
             naviera=naviera,           # None = global, obj = privado
-            requerimientos=requerimientos,
+            requerimientos=requerimientos_estandar(*requerimientos),
             regla_aplicacion=None,
         )
 

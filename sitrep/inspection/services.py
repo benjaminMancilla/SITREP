@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from sitrep.accounts.services import AccountsQueryService
 from sitrep.catalog.models import Periodicidad, Recurso
-from sitrep.catalog.services import CatalogRuleEngine
+from sitrep.catalog.services import CatalogRuleEngine, construir_label_requerimiento
 from sitrep.fleet.models import Nave
 from sitrep.fleet.services import FleetQueryService
 from .models import (
@@ -295,12 +295,8 @@ class MotorPeriodos:
         if not isinstance(payload_checklist, dict):
             return False
 
-        requerimientos_esperados = list(requerimientos)
-        if CHECKLIST_CANTIDAD_KEY in payload_checklist:
-            requerimientos_esperados.append(CHECKLIST_CANTIDAD_KEY)
-
-        for requerimiento in requerimientos_esperados:
-            item = payload_checklist.get(requerimiento)
+        for requerimiento in requerimientos:
+            item = payload_checklist.get(requerimiento["id"])
             if not isinstance(item, dict) or "cumple" not in item:
                 return False
 
@@ -486,47 +482,20 @@ class MotorFichas:
         return payload_normalizado
 
     @classmethod
-    def construir_definicion_checklist(
-        cls,
-        recurso,
-        cantidad,
-        incluir_requisito_cantidad=None,
-    ):
-        if incluir_requisito_cantidad is None:
-            incluir_requisito_cantidad = cantidad > 1
-
-        definicion = [
+    def construir_definicion_checklist(cls, recurso, cantidad):
+        return [
             {
-                "key": requerimiento,
-                "label": requerimiento,
-                "synthetic": False,
+                "key": requerimiento["id"],
+                "label": construir_label_requerimiento(requerimiento, cantidad),
+                "synthetic": requerimiento["tipo"] != "estandar",
             }
             for requerimiento in (recurso.requerimientos or [])
         ]
-        if incluir_requisito_cantidad:
-            definicion.append(
-                {
-                    "key": cls.CANTIDAD_REQUISITO_KEY,
-                    "label": f"Cantidad: {cantidad}",
-                    "synthetic": True,
-                }
-            )
-        return definicion
 
     @classmethod
-    def construir_checklist_items(
-        cls,
-        recurso,
-        cantidad,
-        payload_checklist=None,
-        incluir_requisito_cantidad=None,
-    ):
+    def construir_checklist_items(cls, recurso, cantidad, payload_checklist=None):
         payload_checklist = cls.normalizar_payload_checklist(payload_checklist)
-        definicion = cls.construir_definicion_checklist(
-            recurso,
-            cantidad,
-            incluir_requisito_cantidad=incluir_requisito_cantidad,
-        )
+        definicion = cls.construir_definicion_checklist(recurso, cantidad)
 
         checklist_items = []
         for index, item_def in enumerate(definicion):
@@ -686,8 +655,9 @@ class MotorFichas:
     def _validar_payload_o_raise(cls, recurso, estado_operativo, payload_checklist_raw, cantidad):
         """Normaliza y valida el payload; retorna el payload normalizado o lanza ValueError."""
         payload = cls.normalizar_payload_checklist(payload_checklist_raw)
-        # construir_definicion_checklist ya incluye __cantidad__ cuando cantidad > 1.
-        # La validación de presencia aplica solo cuando estado_operativo is not None.
+        # construir_definicion_checklist ya incluye el requerimiento "cantidad" si el
+        # catálogo del recurso lo declara. La validación de presencia aplica solo
+        # cuando estado_operativo is not None.
         es_valido, faltantes = cls.validar_payload_checklist(recurso, payload, cantidad=cantidad)
         if estado_operativo is True and not es_valido:
             raise ValueError(f"Faltan requerimientos en el checklist: {faltantes}")

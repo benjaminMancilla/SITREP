@@ -2,7 +2,11 @@ from django.test import TestCase
 
 from sitrep.accounts.models import Naviera
 from sitrep.fleet.models import Nave
-from sitrep.catalog.services import CatalogRuleEngine
+from sitrep.catalog.services import (
+    CatalogRuleEngine,
+    construir_label_requerimiento,
+    requerimientos_estandar,
+)
 
 
 class TestCatalogRuleEngine(TestCase):
@@ -145,4 +149,33 @@ class TestCatalogRuleEngine(TestCase):
         self.assertEqual(
             CatalogRuleEngine.evaluar_regla(self.nave, regla),
             (5, False),
+        )
+
+
+class TestConstruirLabelRequerimiento(TestCase):
+    def test_tipo_estandar_usa_el_texto_del_editor(self):
+        spec = {"id": "vigencia", "tipo": "estandar", "texto": "Vigencia mínima 6 meses"}
+        self.assertEqual(construir_label_requerimiento(spec), "Vigencia mínima 6 meses")
+
+    def test_tipo_condicion_es_fijo_sin_texto(self):
+        spec = {"id": "condicion_1", "tipo": "condicion"}
+        self.assertEqual(construir_label_requerimiento(spec), "Condición.")
+
+    def test_tipo_cantidad_usa_el_valor_calculado_por_el_motor(self):
+        spec = {"id": "__cantidad__", "tipo": "cantidad"}
+        self.assertEqual(construir_label_requerimiento(spec, cantidad=4), "Cantidad: 4")
+
+    def test_tipo_desconocido_cae_al_texto_por_compatibilidad_forward(self):
+        spec = {"id": "futuro", "tipo": "algo_que_no_existe_aun", "texto": "texto de respaldo"}
+        self.assertEqual(construir_label_requerimiento(spec), "texto de respaldo")
+
+
+class TestRequerimientosEstandar(TestCase):
+    def test_convierte_strings_planos_a_requerimientos_tipados(self):
+        self.assertEqual(
+            requerimientos_estandar("vigencia", "presión"),
+            [
+                {"id": "vigencia", "tipo": "estandar", "texto": "vigencia"},
+                {"id": "presión", "tipo": "estandar", "texto": "presión"},
+            ],
         )

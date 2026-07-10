@@ -7,6 +7,7 @@ from unittest.mock import patch
 from sitrep.accounts.models import Naviera, Usuario
 from sitrep.fleet.models import Nave
 from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
+from sitrep.catalog.services import requerimientos_estandar
 from .models import (
     FichaRegistro,
     MatrizNaveRecurso,
@@ -316,7 +317,7 @@ class TestMotorPeriodosEstados(TestCase):
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Extintor A",
-            requerimientos=["vigencia", "presion"],
+            requerimientos=requerimientos_estandar("vigencia", "presion"),
             regla_aplicacion=None,
         )
         self.recurso_b = Recurso.objects.create(
@@ -324,7 +325,7 @@ class TestMotorPeriodosEstados(TestCase):
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Extintor B",
-            requerimientos=["sello"],
+            requerimientos=requerimientos_estandar("sello"),
             regla_aplicacion=None,
         )
         self.recurso_sin_checklist = Recurso.objects.create(
@@ -667,6 +668,13 @@ class TestIntegracionMotorReglas(TestCase):
         codigo=None,
         area=None,
     ):
+        requerimientos_tipados = requerimientos_estandar(*(requerimientos or []))
+        if regla_aplicacion:
+            # Mismo criterio que la migración de datos: un recurso con motor de
+            # reglas asignado declara el requerimiento "cantidad" en su catálogo.
+            requerimientos_tipados.append(
+                {"id": MotorFichas.CANTIDAD_REQUISITO_KEY, "tipo": "cantidad"}
+            )
         return Recurso.objects.create(
             naviera=naviera,
             proposito=self.proposito,
@@ -674,7 +682,7 @@ class TestIntegracionMotorReglas(TestCase):
             area=area,
             nombre=nombre,
             codigo=codigo,
-            requerimientos=requerimientos if requerimientos is not None else [],
+            requerimientos=requerimientos_tipados,
             regla_aplicacion=regla_aplicacion,
         )
 
@@ -1505,10 +1513,73 @@ class TestIntegracionMotorReglas(TestCase):
         )
         self.assertEqual(checklist[-1]["label"], "Cantidad: 4")
 
+    def test_requerimiento_tipo_condicion_usa_label_fijo(self):
+        """Un requerimiento tipo 'condicion' se valida como cualquier otro,
+        pero su label es fijo ('Condición.') y no depende del texto del editor."""
+        recurso = Recurso.objects.create(
+            naviera=None,
+            proposito=self.proposito,
+            periodicidad=self.periodicidad,
+            nombre="Bote Salvavidas Condición",
+            requerimientos=[{"id": "condicion_1", "tipo": "condicion"}],
+            regla_aplicacion=None,
+        )
+
+        checklist = MotorFichas.construir_checklist_items(
+            recurso=recurso,
+            cantidad=0,
+            payload_checklist={},
+        )
+
+        self.assertEqual([item["key"] for item in checklist], ["condicion_1"])
+        self.assertEqual(checklist[0]["label"], "Condición.")
+
+    def test_cantidad_no_aparece_si_no_esta_marcada_en_el_catalogo(self):
+        """Presencia de 'cantidad' depende del catálogo (editor), no del valor
+        calculado por el motor de reglas — aunque cantidad>1, si el recurso no
+        declaró el requerimiento 'cantidad' en su catálogo, no aparece."""
+        recurso = Recurso.objects.create(
+            naviera=None,
+            proposito=self.proposito,
+            periodicidad=self.periodicidad,
+            nombre="Recurso Sin Cantidad En Catalogo",
+            requerimientos=requerimientos_estandar("vigencia"),
+            regla_aplicacion=None,
+        )
+
+        checklist = MotorFichas.construir_checklist_items(
+            recurso=recurso,
+            cantidad=4,
+            payload_checklist={},
+        )
+
+        self.assertEqual([item["key"] for item in checklist], ["vigencia"])
+
+    def test_cantidad_aparece_si_esta_marcada_en_el_catalogo(self):
+        recurso = Recurso.objects.create(
+            naviera=None,
+            proposito=self.proposito,
+            periodicidad=self.periodicidad,
+            nombre="Recurso Con Cantidad En Catalogo",
+            requerimientos=[{"id": MotorFichas.CANTIDAD_REQUISITO_KEY, "tipo": "cantidad"}],
+            regla_aplicacion=None,
+        )
+
+        checklist = MotorFichas.construir_checklist_items(
+            recurso=recurso,
+            cantidad=0,
+            payload_checklist={},
+        )
+
+        self.assertEqual([item["key"] for item in checklist], [MotorFichas.CANTIDAD_REQUISITO_KEY])
+        self.assertEqual(checklist[0]["label"], "Cantidad: 0")
+
     def test_ficha_legacy_sin_requisito_cantidad_sigue_completa(self):
+        """Un recurso cuyo catálogo no declara el requerimiento 'cantidad'
+        (aunque tenga motor de reglas) no lo exige para estar completa."""
         recurso = self._crear_recurso(
             nombre="Recurso Legacy Cantidad",
-            regla_aplicacion=self.REGLA_POR_ESLORA,
+            regla_aplicacion=None,
             requerimientos=["vigencia", "presion"],
         )
         nave = self._crear_nave("Nave Legacy Cantidad", "INT-020", 20)

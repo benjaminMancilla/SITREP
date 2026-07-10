@@ -219,14 +219,10 @@ def construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False
         payload_actual = MotorFichas.normalizar_payload_checklist(
             ficha.payload_checklist if ficha else {}
         )
-        incluir_requisito_cantidad = matriz.cantidad > 1 and (
-            not for_history or MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual
-        )
         checklist_items = MotorFichas.construir_checklist_items(
             recurso=matriz.recurso,
             cantidad=matriz.cantidad,
             payload_checklist=payload_actual,
-            incluir_requisito_cantidad=incluir_requisito_cantidad,
         )
 
         item = {
@@ -295,7 +291,6 @@ def construir_periodos_detalle(nave, periodos, for_history=False):
                 recurso=matriz.recurso,
                 cantidad=matriz.cantidad,
                 payload_checklist=payload_actual,
-                incluir_requisito_cantidad=MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual,
             )
 
             registros.append({
@@ -467,7 +462,6 @@ def adjuntar_detalle_a_fallos(fallos, naviera):
             recurso=fallo.recurso,
             cantidad=fallo.cantidad,
             payload_checklist=payload_actual,
-            incluir_requisito_cantidad=MotorFichas.CANTIDAD_REQUISITO_KEY in payload_actual,
         )
         fallo.checklist_fallido = [
             item for item in checklist_items if item["checked"] is False

@@ -96,7 +96,17 @@ class Recurso(models.Model):
         help_text="Descripción extendida del recurso. Separada del nombre para nombres limpios.")
     created_at = models.DateTimeField(auto_now_add=True,
         help_text="Fecha de creación del recurso. Usada para excluir recursos del historial de períodos anteriores a su creación.")
-    requerimientos = models.JSONField(default=list, help_text='Ej: ["ser naranjo", "tener cintas"]')
+    requerimientos = models.JSONField(
+        default=list,
+        help_text=(
+            'Lista de requerimientos tipados. Ej: '
+            '[{"id": "vigencia", "tipo": "estandar", "texto": "Vigencia vigente"}, '
+            '{"id": "condicion_1", "tipo": "condicion"}, '
+            '{"id": "__cantidad__", "tipo": "cantidad"}]. '
+            'Tipos: "estandar" (texto fijo del editor), "condicion" (label fijo "Condición."), '
+            '"cantidad" (label calculado por el motor de reglas, sin texto).'
+        ),
+    )
     regla_aplicacion = models.JSONField(null=True, blank=True, help_text='Reglas para atributos dinámicos')
 
     def __str__(self):

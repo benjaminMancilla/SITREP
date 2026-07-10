@@ -156,6 +156,7 @@ class Command(BaseCommand):
 
     def _seed_recursos(self):
         from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
+        from sitrep.catalog.services import requerimientos_estandar
 
         periodicidades = {p.nombre: p for p in Periodicidad.objects.all()}
         areas = {a.nombre: a for a in Area.objects.all()}
@@ -167,7 +168,11 @@ class Command(BaseCommand):
             for nombre, codigo, reqs in recursos:
                 Recurso.objects.get_or_create(
                     nombre=nombre, periodicidad=period, area=area, naviera=None,
-                    defaults={'codigo': codigo, 'proposito': prop, 'requerimientos': reqs},
+                    defaults={
+                        'codigo': codigo,
+                        'proposito': prop,
+                        'requerimientos': requerimientos_estandar(*reqs),
+                    },
                 )
 
 

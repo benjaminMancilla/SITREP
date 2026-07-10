@@ -197,7 +197,6 @@ def api_recursos_periodo(request, slug, periodo_id):
                     recurso=matriz.recurso,
                     cantidad=matriz.cantidad,
                     payload_checklist=ficha.payload_checklist if ficha else {},
-                    incluir_requisito_cantidad=matriz.cantidad > 1,
                 ),
                 "tiene_ficha": ficha is not None,
                 "estado_operativo": ficha.estado_operativo if ficha else None,
@@ -278,7 +277,6 @@ def api_detalle_recurso(request, slug, periodo_id, recurso_id):
                 recurso=matriz.recurso,
                 cantidad=matriz.cantidad,
                 payload_checklist=payload_checklist,
-                incluir_requisito_cantidad=matriz.cantidad > 1,
             ),
         },
         "ficha": {

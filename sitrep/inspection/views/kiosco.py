@@ -333,7 +333,6 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
             recurso=recurso,
             cantidad=matriz.cantidad,
             payload_checklist=payload_checklist_form,
-            incluir_requisito_cantidad=matriz.cantidad > 1,
         )
         for item in checklist_definicion:
             estado_item = _parse_estado_checklist_form(request.POST.get(f"req_{item['index']}"))
@@ -393,7 +392,6 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
         recurso=recurso,
         cantidad=matriz.cantidad,
         payload_checklist=payload_checklist_form,
-        incluir_requisito_cantidad=matriz.cantidad > 1,
     )
     datos_anterior = repositories.get_datos_periodo_anterior(nave, periodo)
     ficha_anterior = datos_anterior.get(recurso.id)
