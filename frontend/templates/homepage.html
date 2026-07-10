@@ -7,6 +7,8 @@
 <style>
   html { scroll-behavior: smooth; }
 </style>
+<!-- Sin integrity/SRI a propósito: Cloudflare sirve este script dinámico y lo rota, un hash fijo lo rompería. -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 {% endblock %}
 
 {% block body_class %}min-h-screen bg-surface font-sans text-ink antialiased{% endblock %}
@@ -339,6 +341,7 @@
             <label for="{{ contacto_form.pagina_web.id_for_label }}">Sitio web</label>
             {{ contacto_form.pagina_web }}
           </div>
+          <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
           <button
             type="submit"
             id="contacto-submit"

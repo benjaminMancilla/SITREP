@@ -1,4 +1,8 @@
+import json
 import logging
+import urllib.error
+import urllib.parse
+import urllib.request
 from functools import wraps
 
 from django.conf import settings
@@ -61,3 +65,23 @@ def throttle(key_prefix, limit, window_seconds):
             return view_func(request, *args, **kwargs)
         return wrapped
     return decorator
+
+
+def verify_turnstile(token, remote_ip):
+    """Valida un token de Cloudflare Turnstile contra siteverify. False si falta, es inválido o falla la red."""
+    if not token:
+        return False
+    data = urllib.parse.urlencode({
+        "secret": settings.TURNSTILE_SECRET_KEY,
+        "response": token,
+        "remoteip": remote_ip,
+    }).encode()
+    try:
+        with urllib.request.urlopen(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify", data=data, timeout=5
+        ) as resp:
+            result = json.loads(resp.read())
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        logger.exception("Fallo al verificar Turnstile")
+        return False
+    return bool(result.get("success"))

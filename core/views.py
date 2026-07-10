@@ -8,9 +8,11 @@ from django.db import connection
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
 
+from django.conf import settings
+
 from core.forms import ContactoForm
 from core.services import enviar_email_contacto
-from core.utils import throttle
+from core.utils import get_client_ip, throttle, verify_turnstile
 from sitrep.accounts.models import Naviera
 
 logger = logging.getLogger(__name__)
@@ -22,7 +24,11 @@ def homepage(request):
     navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
     stashed = request.session.pop(CONTACTO_SESSION_KEY, None)
     contacto_form = ContactoForm(QueryDict(stashed)) if stashed else ContactoForm()
-    return render(request, "homepage.html", {"navieras": navieras, "contacto_form": contacto_form})
+    return render(request, "homepage.html", {
+        "navieras": navieras,
+        "contacto_form": contacto_form,
+        "turnstile_site_key": settings.TURNSTILE_SITE_KEY,
+    })
 
 
 @throttle("contacto", limit=3, window_seconds=600)
@@ -43,6 +49,11 @@ def contacto(request):
         # No delatar al bot: mismo mensaje de éxito, pero sin gastar crédito de Resend.
         logger.info("Contacto descartado por honeypot")
         messages.success(request, "Gracias, te contactaremos a la brevedad.")
+        return redirect(f"{reverse('homepage')}#contacto")
+
+    token = request.POST.get("cf-turnstile-response")
+    if not verify_turnstile(token, get_client_ip(request)):
+        messages.error(request, "No pudimos verificar que no eres un robot, intenta de nuevo.")
         return redirect(f"{reverse('homepage')}#contacto")
 
     datos = {k: v for k, v in form.cleaned_data.items() if k != "pagina_web"}
