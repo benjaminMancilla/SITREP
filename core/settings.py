@@ -217,5 +217,8 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'resend'
 EMAIL_HOST_PASSWORD = os.getenv('RESEND_API_KEY', '')
+# Sin esto smtplib bloquea indefinidamente si Resend no responde, y con
+# gunicorn --timeout 120 --workers 2 eso puede tumbar el sitio entero.
+EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'SITREP <no-reply@sitrep.cl>')
 CONTACT_EMAIL_TO = os.getenv('CONTACT_EMAIL_TO', 'contacto@sitrep.cl')
