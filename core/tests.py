@@ -163,10 +163,12 @@ class ApiRateThrottleRateSelectionTests(TestCase):
 
         throttle = ApiRateThrottle()
         write_num_requests, _ = throttle.parse_rate(WRITE_RATE)
-        for _ in range(write_num_requests):
-            self.assertTrue(throttle.allow_request(self._request("POST"), view=None))
 
-        # Write budget is now exhausted...
-        self.assertFalse(throttle.allow_request(self._request("POST"), view=None))
-        # ...but GET (separate bucket) is unaffected.
-        self.assertTrue(throttle.allow_request(self._request("GET"), view=None))
+        # Enough GETs to exceed the WRITE threshold, but still far under the
+        # READ budget (120/min) — this is the scenario a shared cache bucket
+        # gets wrong: a burst of reads should never spend the write budget.
+        for _ in range(write_num_requests + 1):
+            self.assertTrue(throttle.allow_request(self._request("GET"), view=None))
+
+        # The write budget must be untouched by all those reads.
+        self.assertTrue(throttle.allow_request(self._request("POST"), view=None))
