@@ -7,7 +7,7 @@ from unittest.mock import patch
 from sitrep.accounts.models import Naviera, Usuario
 from sitrep.fleet.models import Nave
 from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso, CatalogoVersion
-from sitrep.catalog.services import requerimientos_estandar
+from sitrep.catalog.services import requerimientos_estandar, CatalogoEditorService, CatalogoResolver
 from .models import (
     FichaRegistro,
     MatrizNaveRecurso,
@@ -196,17 +196,17 @@ class TestMotorReglasSITREP(TestCase):
             regla_aplicacion=self.regla_semanal,
         )
 
-        original_get_or_create = MatrizNaveRecurso.objects.get_or_create
+        original_create = MatrizNaveRecurso.objects.create
 
-        def get_or_create_con_fallo(*args, **kwargs):
+        def create_con_fallo(*args, **kwargs):
             if kwargs.get("recurso") == recurso_falla:
                 raise RuntimeError("fallo simulado de recurso")
-            return original_get_or_create(*args, **kwargs)
+            return original_create(*args, **kwargs)
 
         with patch.object(
             MatrizNaveRecurso.objects,
-            "get_or_create",
-            side_effect=get_or_create_con_fallo,
+            "create",
+            side_effect=create_con_fallo,
         ):
             with self.assertLogs("sitrep.inspection.services", level="ERROR") as logs:
                 stats = MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
@@ -222,6 +222,70 @@ class TestMotorReglasSITREP(TestCase):
             MatrizNaveRecurso.objects.filter(nave=self.nave, recurso=recurso_falla).exists()
         )
         self.assertTrue(any("Error processing recurso" in linea for linea in logs.output))
+
+
+class TestSincronizarMatrizNaveVersionado(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera S", rut="66666666-6", slug="naviera-s")
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave S", matricula="NVS-001",
+            eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
+        )
+        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
+        self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
+
+    def test_pk_drift_actualiza_recurso_fk_preserva_historial_operativo(self):
+        _, (r1,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+        matriz = MatrizNaveRecurso.objects.get(nave=self.nave, recurso=r1)
+        matriz_pk = matriz.pk
+        matriz.ultimo_estado_operativo = True
+        matriz.save(update_fields=['ultimo_estado_operativo'])
+
+        _, (r2,) = CatalogoEditorService.publicar(filas=[{'base': r1, 'cambios': {'nombre': 'Extintor v2'}}])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        matriz.refresh_from_db()
+        self.assertEqual(matriz.pk, matriz_pk)  # misma fila, no recreada
+        self.assertEqual(matriz.recurso_id, r2.id)  # apunta al PK nuevo
+        self.assertTrue(matriz.ultimo_estado_operativo)  # historial preservado
+
+    def test_lineage_removida_oculta_matriz_sin_borrarla(self):
+        _, (r1,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+        CatalogoEditorService.publicar(filas=[{'base': r1, 'cambios': {'activo': False}}])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        matriz = MatrizNaveRecurso.objects.get(nave=self.nave, recurso=r1)
+        self.assertFalse(matriz.es_visible)
+
+    def test_catalogo_independiente_oculta_matrices_centrales(self):
+        _, (r1,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+        self.nave.catalogo_independiente = True
+        self.nave.save(update_fields=['catalogo_independiente'])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        matriz = MatrizNaveRecurso.objects.get(nave=self.nave, recurso=r1)
+        self.assertFalse(matriz.es_visible)
 
 
 class TestMotorPeriodosEstados(TestCase):
