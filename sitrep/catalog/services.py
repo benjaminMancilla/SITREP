@@ -1,5 +1,7 @@
 import operator
 
+from .models import CatalogoVersion, Recurso
+
 
 class CatalogRuleEngine:
     """
@@ -85,3 +87,72 @@ def construir_label_requerimiento(spec, cantidad=None):
 def requerimientos_estandar(*textos):
     """Convierte strings planos legacy a requerimientos tipados 'estandar'."""
     return [{'id': texto, 'tipo': 'estandar', 'texto': texto} for texto in textos]
+
+
+class CatalogoResolver:
+    """Resuelve qué filas de Recurso aplican efectivamente a una nave, componiendo
+    capas nave > naviera > central (o solo nave+naviera si catalogo_independiente
+    aplica). No modifica nada — función de lectura pura sobre el estado guardado."""
+
+    @classmethod
+    def _independiente(cls, nave):
+        return bool(nave.catalogo_independiente or nave.naviera.catalogo_independiente)
+
+    @classmethod
+    def filas_vigentes_por_lineage(cls, queryset, numero_maximo=None):
+        """De un queryset de Recurso (ya filtrado a UN scope), retorna
+        {raiz_id: Recurso|None} — la fila de mayor 'numero' por lineage
+        (None si esa cabeza tiene activo=False, i.e. lineage removida en este scope).
+        numero_maximo: tope de catalogo_version.numero para reconstrucción histórica;
+        None = usar la cabeza viva."""
+        if numero_maximo is not None:
+            queryset = queryset.filter(catalogo_version__numero__lte=numero_maximo)
+        filas = queryset.select_related('linaje_raiz', 'catalogo_version').order_by(
+            '-catalogo_version__numero', '-id'
+        )
+        vistos = {}
+        for fila in filas:
+            raiz_id = fila.linaje_raiz_id or fila.id
+            if raiz_id not in vistos:
+                vistos[raiz_id] = fila if fila.activo else None
+        return vistos
+
+    @classmethod
+    def catalogo_efectivo(cls, nave, *, pin_central=None, pin_naviera=None, pin_nave=None):
+        """Lista de Recurso activos y efectivos para `nave`. pin_* = numero tope
+        de CatalogoVersion para esa capa (None = capa viva)."""
+        naviera = nave.naviera
+        independiente = cls._independiente(nave)
+
+        capas_ordenadas = [
+            (Recurso.objects.filter(naviera=naviera, nave=nave), pin_nave),
+            (Recurso.objects.filter(naviera=naviera, nave__isnull=True), pin_naviera),
+        ]
+        if not independiente:
+            capas_ordenadas.append(
+                (Recurso.objects.filter(naviera__isnull=True, nave__isnull=True), pin_central)
+            )
+
+        resultado = {}
+        for queryset, pin in capas_ordenadas:
+            for raiz_id, fila in cls.filas_vigentes_por_lineage(queryset, pin).items():
+                if raiz_id in resultado:
+                    continue
+                resultado[raiz_id] = fila
+
+        return [fila for fila in resultado.values() if fila is not None]
+
+    @classmethod
+    def versiones_vigentes(cls, nave):
+        """CatalogoVersion actual (cabeza) por capa aplicable a `nave` — usado por
+        MotorPeriodos para pinnear qué versión produjo cada PeriodoRevision."""
+        naviera = nave.naviera
+        independiente = cls._independiente(nave)
+        return {
+            'central': (
+                None if independiente else
+                CatalogoVersion.objects.filter(naviera__isnull=True, nave__isnull=True).order_by('-numero').first()
+            ),
+            'naviera': CatalogoVersion.objects.filter(naviera=naviera, nave__isnull=True).order_by('-numero').first(),
+            'nave': CatalogoVersion.objects.filter(nave=nave).order_by('-numero').first(),
+        }

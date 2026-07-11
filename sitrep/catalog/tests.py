@@ -5,8 +5,9 @@ from django.test import TestCase
 
 from sitrep.accounts.models import Naviera
 from sitrep.fleet.models import Nave
-from sitrep.catalog.models import CatalogoVersion
+from sitrep.catalog.models import CatalogoVersion, Periodicidad, Proposito, Recurso
 from sitrep.catalog.services import (
+    CatalogoResolver,
     CatalogRuleEngine,
     construir_label_requerimiento,
     requerimientos_estandar,
@@ -252,3 +253,124 @@ class TestCatalogoVersion(TestCase):
         with self.assertRaises(IntegrityError):
             with db_transaction.atomic():
                 CatalogoVersion.objects.create(naviera=None, nave=None, numero=1)
+
+
+class TestCatalogoResolver(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera R", rut="33333333-3", slug="naviera-r")
+        self.otra_naviera = Naviera.objects.create(nombre="Otra R", rut="44444444-4", slug="otra-r")
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave R", matricula="NVR-001",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
+        )
+        self.otra_nave_misma_naviera = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave R2", matricula="NVR-002",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
+        )
+        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
+        self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
+        self.v_central = CatalogoVersion.crear_para_scope()
+
+    def _recurso(self, nombre, *, naviera=None, nave=None, version=None, linaje_raiz=None, activo=True):
+        return Recurso.objects.create(
+            proposito=self.proposito, periodicidad=self.periodicidad, nombre=nombre,
+            requerimientos=[], regla_aplicacion=None,
+            naviera=naviera, nave=nave, catalogo_version=version or self.v_central,
+            linaje_raiz=linaje_raiz, activo=activo,
+        )
+
+    def test_solo_central_sin_overrides(self):
+        central = self._recurso("Extintor")
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual([r.id for r in efectivo], [central.id])
+
+    def test_override_naviera_reemplaza_central_para_todas_sus_naves(self):
+        central = self._recurso("Extintor")
+        v_naviera = CatalogoVersion.crear_para_scope(naviera=self.naviera)
+        override = self._recurso("Extintor (override)", naviera=self.naviera, version=v_naviera, linaje_raiz=central)
+
+        efectivo_nave1 = CatalogoResolver.catalogo_efectivo(self.nave)
+        efectivo_nave2 = CatalogoResolver.catalogo_efectivo(self.otra_nave_misma_naviera)
+        self.assertEqual([r.id for r in efectivo_nave1], [override.id])
+        self.assertEqual([r.id for r in efectivo_nave2], [override.id])
+
+    def test_override_naviera_no_afecta_otra_naviera(self):
+        nave_otra_naviera = Nave.objects.create(
+            naviera=self.otra_naviera, nombre="Nave Otra", matricula="NVO-001",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
+        )
+        central = self._recurso("Extintor")
+        v_naviera = CatalogoVersion.crear_para_scope(naviera=self.naviera)
+        self._recurso("Extintor (override)", naviera=self.naviera, version=v_naviera, linaje_raiz=central)
+
+        efectivo = CatalogoResolver.catalogo_efectivo(nave_otra_naviera)
+        self.assertEqual([r.id for r in efectivo], [central.id])
+
+    def test_override_nave_gana_sobre_override_naviera_y_central(self):
+        central = self._recurso("Extintor")
+        v_naviera = CatalogoVersion.crear_para_scope(naviera=self.naviera)
+        self._recurso("Extintor (naviera)", naviera=self.naviera, version=v_naviera, linaje_raiz=central)
+        v_nave = CatalogoVersion.crear_para_scope(nave=self.nave)
+        override_nave = self._recurso("Extintor (nave)", naviera=self.naviera, nave=self.nave, version=v_nave, linaje_raiz=central)
+
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual([r.id for r in efectivo], [override_nave.id])
+
+    def test_catalogo_independiente_en_nave_ignora_central(self):
+        self._recurso("Extintor")
+        self.nave.catalogo_independiente = True
+        self.nave.save(update_fields=['catalogo_independiente'])
+
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual(efectivo, [])
+
+    def test_catalogo_independiente_en_naviera_se_hereda(self):
+        self._recurso("Extintor")
+        self.naviera.catalogo_independiente = True
+        self.naviera.save(update_fields=['catalogo_independiente'])
+
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual(efectivo, [])
+
+    def test_recurso_independiente_nuevo_aparece_para_naves_de_su_naviera(self):
+        propio = self._recurso("Equipo especial", naviera=self.naviera)
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertIn(propio.id, [r.id for r in efectivo])
+
+    def test_activo_false_en_nave_no_filtra_a_central_oculta_la_lineage(self):
+        central = self._recurso("Extintor")
+        v_nave = CatalogoVersion.crear_para_scope(nave=self.nave)
+        self._recurso("Extintor (removido)", naviera=self.naviera, nave=self.nave, version=v_nave, linaje_raiz=central, activo=False)
+
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual(efectivo, [])
+        efectivo_otra_nave = CatalogoResolver.catalogo_efectivo(self.otra_nave_misma_naviera)
+        self.assertEqual([r.id for r in efectivo_otra_nave], [central.id])
+
+    def test_activo_false_en_central_sin_override_oculta_en_todos_lados(self):
+        self._recurso("Extintor", activo=False)
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual(efectivo, [])
+
+    def test_versiones_vigentes_naviera_sin_overrides_es_none(self):
+        self._recurso("Extintor")
+        versiones = CatalogoResolver.versiones_vigentes(self.nave)
+        self.assertIsNotNone(versiones['central'])
+        self.assertIsNone(versiones['naviera'])
+        self.assertIsNone(versiones['nave'])
+
+    def test_versiones_vigentes_naviera_independiente_central_es_none(self):
+        self.naviera.catalogo_independiente = True
+        self.naviera.save(update_fields=['catalogo_independiente'])
+        versiones = CatalogoResolver.versiones_vigentes(self.nave)
+        self.assertIsNone(versiones['central'])
+
+    def test_pin_central_reconstruye_version_historica(self):
+        v1_central = self._recurso("Extintor v1")
+        v2 = CatalogoVersion.crear_para_scope()
+        v2_central = self._recurso("Extintor v2", version=v2, linaje_raiz=v1_central)
+
+        efectivo_v1 = CatalogoResolver.catalogo_efectivo(self.nave, pin_central=self.v_central.numero)
+        efectivo_live = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual([r.id for r in efectivo_v1], [v1_central.id])
+        self.assertEqual([r.id for r in efectivo_live], [v2_central.id])
