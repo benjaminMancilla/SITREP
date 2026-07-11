@@ -438,3 +438,62 @@ class TestDetectAnomalies(TestCase):
         out = StringIO()
         call_command("detect_anomalies", "--threshold=50", stdout=out)
         self.assertIn(f"usuario={self.usuario.id}", out.getvalue())
+
+
+class TestTenantMemberRequired(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera Tenant", rut="12121212-1", slug="tenant-a")
+        self.otra_naviera = Naviera.objects.create(nombre="Otra Tenant", rut="13131313-1", slug="tenant-b")
+        self.admin_naviera = Usuario.objects.create_user(
+            username="admin-naviera-tenant", naviera=self.naviera, rut="14141414-1",
+            rol="admin_naviera", email="an@test.com",
+        )
+        self.admin_sitrep_global = Usuario.objects.create_user(
+            username="admin-sitrep-global", naviera=None, rut="15151515-1",
+            rol="admin_sitrep", is_superuser=True, email="asg@test.com",
+        )
+
+    def test_usuario_de_otra_naviera_es_rechazado(self):
+        self.client.force_login(self.admin_naviera)
+        resp = self.client.get(reverse("inventory:tenant_home", kwargs={"slug": self.otra_naviera.slug}))
+        self.assertEqual(resp.status_code, 302)
+
+    def test_admin_sitrep_sin_naviera_propia_entra_a_cualquier_tenant(self):
+        self.client.force_login(self.admin_sitrep_global)
+        resp = self.client.get(reverse("inventory:tenant_home", kwargs={"slug": self.naviera.slug}))
+        self.assertEqual(resp.status_code, 200)
+        resp_otra = self.client.get(reverse("inventory:tenant_home", kwargs={"slug": self.otra_naviera.slug}))
+        self.assertEqual(resp_otra.status_code, 200)
+
+
+class TestWebTenantBackendLogin(TestCase):
+    """El login de tierra (email+password) pasa por WebTenantBackend, que
+    tiene el mismo chequeo de naviera que tenant_member_required — un
+    admin_sitrep global debe poder loguearse contra cualquier slug."""
+
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera Login", rut="16161616-1", slug="tenant-login")
+        self.usuario_tenant = Usuario.objects.create_user(
+            username="usuario-tenant-login", naviera=self.naviera, rut="17171717-1",
+            rol="tierra", email="ut@test.com", password="clave-segura-1",
+        )
+        self.admin_sitrep_global = Usuario.objects.create_user(
+            username="admin-sitrep-login", naviera=None, rut="18181818-1",
+            rol="admin_sitrep", is_superuser=True, email="asl@test.com", password="clave-segura-2",
+        )
+
+    def _login(self, email, password):
+        return self.client.post(
+            reverse("inventory:login_tierra", kwargs={"slug": self.naviera.slug}),
+            {"email": email, "password": password},
+            follow=True,
+        )
+
+    def test_usuario_del_tenant_se_loguea_normal(self):
+        resp = self._login("ut@test.com", "clave-segura-1")
+        self.assertTrue(resp.wsgi_request.user.is_authenticated)
+
+    def test_admin_sitrep_global_se_loguea_contra_cualquier_slug(self):
+        resp = self._login("asl@test.com", "clave-segura-2")
+        self.assertTrue(resp.wsgi_request.user.is_authenticated)
+        self.assertEqual(resp.wsgi_request.user, self.admin_sitrep_global)

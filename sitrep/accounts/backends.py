@@ -15,7 +15,7 @@ class WebTenantBackend(ModelBackend):
         except (Usuario.DoesNotExist, Usuario.MultipleObjectsReturned):
             return None
 
-        if usuario.naviera != getattr(request, "naviera", None):
+        if not usuario.es_admin_sitrep_global and usuario.naviera != getattr(request, "naviera", None):
             return None
         if usuario.rol == 'mar':
             return None

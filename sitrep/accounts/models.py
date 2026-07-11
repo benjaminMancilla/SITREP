@@ -55,6 +55,12 @@ class Usuario(AbstractUser):
             return False
         return check_password(raw_pin, self.pin_kiosco)
 
+    @property
+    def es_admin_sitrep_global(self):
+        """admin_sitrep sin naviera propia: cuenta de soporte, entra (login y
+        vistas) a cualquier tenant en vez de quedar scoped a uno solo."""
+        return self.naviera_id is None and self.rol == "admin_sitrep"
+
     def __str__(self):
         nombre_tenant = self.naviera.nombre if self.naviera else "SITREP Global"
         return f"{self.rut} - {nombre_tenant} [{self.rol}]"
