@@ -1,8 +1,9 @@
 from unittest.mock import patch
 
+from django.contrib.auth.models import AnonymousUser
 from django.core import mail
 from django.core.cache import cache
-from django.test import TestCase, Client
+from django.test import TestCase, Client, RequestFactory
 from django.db import OperationalError
 from django.urls import reverse
 
@@ -124,3 +125,35 @@ class ArcoSolicitudViewTests(TestCase):
         response = Client().post(reverse("arco_solicitud"), self._valid_data())
         self.assertRedirects(response, f"{reverse('legal_privacidad')}#arco", fetch_redirect_response=False)
         self.assertEqual(len(mail.outbox), 0)
+
+
+class ApiRateThrottleRateSelectionTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+
+    def _request(self, method):
+        request = getattr(self.factory, method.lower())("/fake/")
+        request.user = AnonymousUser()
+        return request
+
+    def test_get_uses_read_rate(self):
+        from core.throttling import ApiRateThrottle, READ_RATE
+
+        throttle = ApiRateThrottle()
+        throttle.allow_request(self._request("GET"), view=None)
+        self.assertEqual(throttle.rate, READ_RATE)
+
+    def test_post_uses_write_rate(self):
+        from core.throttling import ApiRateThrottle, WRITE_RATE
+
+        throttle = ApiRateThrottle()
+        throttle.allow_request(self._request("POST"), view=None)
+        self.assertEqual(throttle.rate, WRITE_RATE)
+
+    def test_delete_uses_write_rate(self):
+        from core.throttling import ApiRateThrottle, WRITE_RATE
+
+        throttle = ApiRateThrottle()
+        throttle.allow_request(self._request("DELETE"), view=None)
+        self.assertEqual(throttle.rate, WRITE_RATE)
