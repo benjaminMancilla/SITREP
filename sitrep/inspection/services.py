@@ -263,12 +263,16 @@ class MotorPeriodos:
     @classmethod
     def _crear_periodo_abierto(cls, nave, periodicidad, fecha_inicio):
         fecha_termino = fecha_inicio + timedelta(days=periodicidad.duracion_dias - 1)
+        versiones = CatalogoResolver.versiones_vigentes(nave)
         return PeriodoRevision.objects.create(
             nave=nave,
             periodicidad=periodicidad,
             fecha_inicio=fecha_inicio,
             fecha_termino=fecha_termino,
             estado='pendiente',
+            catalogo_version_central=versiones['central'],
+            catalogo_version_naviera=versiones['naviera'],
+            catalogo_version_nave=versiones['nave'],
         )
 
     @classmethod

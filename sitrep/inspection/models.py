@@ -52,6 +52,19 @@ class PeriodoRevision(models.Model):
     ESTADOS_INCOMPLETOS = {'vencido'}
     estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
 
+    catalogo_version_central = models.ForeignKey(
+        'catalog.CatalogoVersion', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+        help_text="Versión central vigente al crear este período. Null si el catálogo era independiente en ese momento.",
+    )
+    catalogo_version_naviera = models.ForeignKey(
+        'catalog.CatalogoVersion', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+        help_text="Versión del override de la naviera vigente al crear este período. Null si la naviera nunca tuvo overrides.",
+    )
+    catalogo_version_nave = models.ForeignKey(
+        'catalog.CatalogoVersion', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+        help_text="Versión del override de la nave vigente al crear este período. Null si la nave nunca tuvo overrides.",
+    )
+
     class Meta:
         verbose_name = "Periodo de Revisión"
         verbose_name_plural = "Periodos de Revisión"

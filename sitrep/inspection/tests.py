@@ -1973,3 +1973,34 @@ class TestIntegracionMotorReglas(TestCase):
         )
         matriz.refresh_from_db()
         self.assertFalse(matriz.ultimo_estado_operativo)
+
+
+class TestPeriodoRevisionVersionPinning(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera P", rut="77777777-7", slug="naviera-p")
+        # ponytail: brief's setUp omitted this — versiones_vigentes() legitimately
+        # returns central=None when no central CatalogoVersion row exists at all
+        # (verified against sitrep/catalog/services.py), so without a central
+        # version the "primer periodo pinnea version central" test is untestable.
+        # Matches the fixture pattern already used by TestMotorPeriodosEstados /
+        # TestIntegracionMotorReglas in this same file.
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave P", matricula="NVP-001",
+            eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
+        )
+        self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
+
+    def test_primer_periodo_pinnea_version_central_1(self):
+        MotorPeriodos.sincronizar_periodos_nave(self.nave)
+        periodo = PeriodoRevision.objects.get(nave=self.nave, periodicidad=self.periodicidad)
+        self.assertIsNotNone(periodo.catalogo_version_central)
+        self.assertIsNone(periodo.catalogo_version_naviera)
+        self.assertIsNone(periodo.catalogo_version_nave)
+
+    def test_periodo_en_naviera_independiente_no_pinnea_central(self):
+        self.naviera.catalogo_independiente = True
+        self.naviera.save(update_fields=['catalogo_independiente'])
+        MotorPeriodos.sincronizar_periodos_nave(self.nave)
+        periodo = PeriodoRevision.objects.get(nave=self.nave, periodicidad=self.periodicidad)
+        self.assertIsNone(periodo.catalogo_version_central)
