@@ -1,9 +1,11 @@
+import json
 from unittest import skipUnless
 
 from django.db import IntegrityError, connection, transaction as db_transaction
 from django.test import TestCase
+from django.urls import reverse
 
-from sitrep.accounts.models import Naviera
+from sitrep.accounts.models import Naviera, Usuario
 from sitrep.fleet.models import Nave
 from sitrep.catalog.models import CatalogoVersion, Periodicidad, Proposito, Recurso
 from sitrep.catalog.services import (
@@ -506,3 +508,187 @@ class TestLoadRecursosVersionado(TestCase):
         conteo_antes = CatalogoVersion.objects.count()
         ejecutar_carga(json_data, dry_run=True)
         self.assertEqual(CatalogoVersion.objects.count(), conteo_antes)
+
+
+class TestCatalogoApiViews(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera API", rut="66666666-6", slug="naviera-api")
+        self.otra_naviera = Naviera.objects.create(nombre="Otra API", rut="77777777-7", slug="otra-api")
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave API", matricula="NVA-001",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
+        )
+        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos",
+        )
+        self.admin_sitrep = Usuario.objects.create_user(
+            username="admin-api", naviera=self.naviera, rut="10101010-1", rol="admin_sitrep",
+            email="admin-api@test.com",
+        )
+        self.tierra_user = Usuario.objects.create_user(
+            username="tierra-api", naviera=self.naviera, rut="20202020-2", rol="tierra",
+            email="tierra-api@test.com",
+        )
+        self.url_efectivo = reverse("inventory:api_catalogo_efectivo", kwargs={"slug": self.naviera.slug})
+        self.url_recursos = reverse("inventory:api_catalogo_recursos", kwargs={"slug": self.naviera.slug})
+        self.url_independiente = reverse("inventory:api_catalogo_independiente", kwargs={"slug": self.naviera.slug})
+        self.url_revertir = reverse("inventory:api_catalogo_revertir", kwargs={"slug": self.naviera.slug})
+
+    def _post(self, url, body):
+        return self.client.post(url, data=json.dumps(body), content_type="application/json")
+
+    def _cambios_base(self, nombre="Extintor"):
+        return {
+            "nombre": nombre, "proposito_id": self.proposito.id, "periodicidad_id": self.periodicidad.id,
+            "requerimientos": [], "regla_aplicacion": None,
+        }
+
+    def test_no_admin_sitrep_no_puede_publicar(self):
+        self.client.force_login(self.tierra_user)
+        resp = self._post(self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_admin_sitrep_crea_recurso_central(self):
+        self.client.force_login(self.admin_sitrep)
+        resp = self._post(self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]})
+        self.assertEqual(resp.status_code, 201)
+        recurso_id = resp.json()["recursos"][0]["id"]
+        recurso = Recurso.objects.get(pk=recurso_id)
+        self.assertIsNone(recurso.naviera_id)
+        self.assertIsNone(recurso.linaje_raiz_id)
+
+    def test_admin_sitrep_crea_override_de_naviera(self):
+        self.client.force_login(self.admin_sitrep)
+        central_id = self._post(
+            self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]},
+        ).json()["recursos"][0]["id"]
+
+        resp = self._post(self.url_recursos, {
+            "naviera_id": self.naviera.id,
+            "filas": [{"base": central_id, "cambios": {"nombre": "Extintor (naviera)"}}],
+        })
+        self.assertEqual(resp.status_code, 201)
+        override = Recurso.objects.get(pk=resp.json()["recursos"][0]["id"])
+        self.assertEqual(override.naviera_id, self.naviera.id)
+        self.assertEqual(override.linaje_raiz_id, central_id)
+
+    def test_nave_de_otra_naviera_es_rechazada(self):
+        self.client.force_login(self.admin_sitrep)
+        resp = self._post(self.url_recursos, {
+            "naviera_id": self.otra_naviera.id, "nave_id": self.nave.id,
+            "filas": [{"base": None, "cambios": self._cambios_base()}],
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    def test_quitar_recurso_es_soft_delete(self):
+        self.client.force_login(self.admin_sitrep)
+        central_id = self._post(
+            self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]},
+        ).json()["recursos"][0]["id"]
+
+        resp = self._post(self.url_recursos, {
+            "filas": [{"base": central_id, "cambios": {"activo": False}}],
+        })
+        self.assertEqual(resp.status_code, 201)
+        nueva = Recurso.objects.get(pk=resp.json()["recursos"][0]["id"])
+        self.assertFalse(nueva.activo)
+        original = Recurso.objects.get(pk=central_id)
+        self.assertTrue(original.activo)  # fila vieja intacta
+
+    def test_marcar_catalogo_independiente_de_naviera(self):
+        self.client.force_login(self.admin_sitrep)
+        resp = self._post(self.url_independiente, {"naviera_id": self.naviera.id})
+        self.assertEqual(resp.status_code, 200)
+        self.naviera.refresh_from_db()
+        self.assertTrue(self.naviera.catalogo_independiente)
+
+    def test_marcar_catalogo_independiente_de_nave(self):
+        self.client.force_login(self.admin_sitrep)
+        resp = self._post(self.url_independiente, {"nave_id": self.nave.id})
+        self.assertEqual(resp.status_code, 200)
+        self.nave.refresh_from_db()
+        self.assertTrue(self.nave.catalogo_independiente)
+
+    def test_independiente_sin_copiar_desde_padre_queda_vacio(self):
+        self.client.force_login(self.admin_sitrep)
+        self._post(self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]})
+
+        resp = self._post(self.url_independiente, {"naviera_id": self.naviera.id})
+        self.assertEqual(resp.json()["recursos_copiados"], 0)
+        self.assertFalse(Recurso.objects.filter(naviera=self.naviera).exists())
+
+    def test_independiente_de_naviera_copiando_desde_padre_clona_el_central(self):
+        self.client.force_login(self.admin_sitrep)
+        central_id = self._post(
+            self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]},
+        ).json()["recursos"][0]["id"]
+
+        resp = self._post(self.url_independiente, {"naviera_id": self.naviera.id, "copiar_desde_padre": True})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["recursos_copiados"], 1)
+
+        copia = Recurso.objects.get(naviera=self.naviera)
+        self.assertEqual(copia.linaje_raiz_id, central_id)
+        self.assertEqual(copia.nombre, "Extintor")
+
+    def test_independiente_de_nave_copiando_desde_padre_clona_el_efectivo_actual(self):
+        self.client.force_login(self.admin_sitrep)
+        central_id = self._post(
+            self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]},
+        ).json()["recursos"][0]["id"]
+        self._post(self.url_recursos, {
+            "naviera_id": self.naviera.id,
+            "filas": [{"base": central_id, "cambios": {"nombre": "Extintor (naviera)"}}],
+        })
+
+        resp = self._post(self.url_independiente, {"nave_id": self.nave.id, "copiar_desde_padre": True})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["recursos_copiados"], 1)
+
+        copia_nave = Recurso.objects.get(nave=self.nave)
+        self.assertEqual(copia_nave.linaje_raiz_id, central_id)
+        self.assertEqual(copia_nave.nombre, "Extintor (naviera)")  # clonó el efectivo (override), no el central
+
+        efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
+        self.assertEqual([r.id for r in efectivo], [copia_nave.id])
+
+    def test_desmarcar_catalogo_independiente_revierte_el_flag(self):
+        self.client.force_login(self.admin_sitrep)
+        self._post(self.url_independiente, {"naviera_id": self.naviera.id})
+        self.naviera.refresh_from_db()
+        self.assertTrue(self.naviera.catalogo_independiente)
+
+        resp = self._post(self.url_independiente, {"naviera_id": self.naviera.id, "independiente": False})
+        self.assertEqual(resp.status_code, 200)
+        self.naviera.refresh_from_db()
+        self.assertFalse(self.naviera.catalogo_independiente)
+
+    def test_revertir_crea_version_nueva_con_estado_historico(self):
+        self.client.force_login(self.admin_sitrep)
+        r1_id = self._post(
+            self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base("Extintor v1")}]},
+        ).json()["recursos"][0]["id"]
+        self._post(self.url_recursos, {"filas": [{"base": r1_id, "cambios": {"nombre": "Extintor v2"}}]})
+
+        resp = self._post(self.url_revertir, {"numero_objetivo": 1, "nota": "rollback test"})
+        self.assertEqual(resp.status_code, 201)
+        recurso_revertido = Recurso.objects.get(pk=resp.json()["recursos"][0]["id"])
+        self.assertEqual(recurso_revertido.nombre, "Extintor v1")
+
+    def test_ver_catalogo_efectivo_requiere_nave_id(self):
+        self.client.force_login(self.tierra_user)
+        resp = self.client.get(self.url_efectivo)
+        self.assertEqual(resp.status_code, 400)
+
+    def test_ver_catalogo_efectivo_permitido_a_cualquier_rol_tierra(self):
+        self.client.force_login(self.admin_sitrep)
+        self._post(self.url_recursos, {"filas": [{"base": None, "cambios": self._cambios_base()}]})
+
+        self.client.force_login(self.tierra_user)
+        resp = self.client.get(self.url_efectivo, {"nave_id": self.nave.id})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data["recursos"]), 1)
+        self.assertEqual(data["recursos"][0]["nombre"], "Extintor")
+        self.assertIsNotNone(data["versiones_vigentes"]["central"])

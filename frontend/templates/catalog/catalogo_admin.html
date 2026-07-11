@@ -1,0 +1,348 @@
+{% extends 'layouts/tierra.html' %}
+
+{% block nav_active %}catalogo{% endblock %}
+{% block page_title %}SITREP | Catálogo{% endblock %}
+{% block topbar_title %}Catálogo dinámico{% endblock %}
+
+{% block page_content %}
+<div
+    x-data="catalogoAdmin({
+        naviera_id: {{ request.naviera.id }},
+        urls: {
+            efectivo: '{% url "inventory:api_catalogo_efectivo" slug=slug %}',
+            recursos: '{% url "inventory:api_catalogo_recursos" slug=slug %}',
+            independiente: '{% url "inventory:api_catalogo_independiente" slug=slug %}',
+            revertir: '{% url "inventory:api_catalogo_revertir" slug=slug %}',
+        },
+        csrfToken: '{{ csrf_token }}',
+    })"
+    class="space-y-6 text-[13px]"
+>
+    <p class="text-[12px] text-ink-muted">
+        Pestaña cruda para ejercitar los endpoints del catálogo dinámico de punta a punta.
+        Sin validación visual elaborada — los campos JSON se pasan tal cual al endpoint.
+    </p>
+
+    <!-- Ver catálogo -->
+    <section class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <h2 class="mb-3 text-[14px] font-bold text-navy">Ver catálogo (vigente o histórico)</h2>
+        <div class="flex flex-wrap items-end gap-2.5">
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Nave</span>
+                <select x-model="verNaveId" class="h-9 rounded-md border border-surface-border px-2">
+                    <option value="">—</option>
+                    {% for nave in naves %}
+                    <option value="{{ nave.id }}">{{ nave.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">pin_central</span>
+                <input type="number" x-model="pinCentral" class="h-9 w-24 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">pin_naviera</span>
+                <input type="number" x-model="pinNaviera" class="h-9 w-24 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">pin_nave</span>
+                <input type="number" x-model="pinNave" class="h-9 w-24 rounded-md border border-surface-border px-2">
+            </label>
+            <button type="button" @click="verCatalogo()" class="h-9 rounded-md bg-navy px-3.5 font-semibold text-white">Ver</button>
+        </div>
+
+        <template x-if="versionesVigentes">
+            <p class="mt-3 text-[12px] text-ink-muted">
+                Versiones vigentes —
+                central: <span x-text="versionesVigentes.central ? versionesVigentes.central.numero : 'ninguna'"></span>,
+                naviera: <span x-text="versionesVigentes.naviera ? versionesVigentes.naviera.numero : 'ninguna'"></span>,
+                nave: <span x-text="versionesVigentes.nave ? versionesVigentes.nave.numero : 'ninguna'"></span>
+            </p>
+        </template>
+
+        <div class="mt-3 overflow-x-auto" x-show="recursos.length">
+            <table class="min-w-full text-[12px]">
+                <thead class="bg-neutral-bg text-ink-muted">
+                    <tr>
+                        <th class="px-2 py-1.5 text-left">id</th>
+                        <th class="px-2 py-1.5 text-left">nombre</th>
+                        <th class="px-2 py-1.5 text-left">código</th>
+                        <th class="px-2 py-1.5 text-left">scope</th>
+                        <th class="px-2 py-1.5 text-left">versión</th>
+                        <th class="px-2 py-1.5 text-left">activo</th>
+                        <th class="px-2 py-1.5 text-right">acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="r in recursos" :key="r.id">
+                        <tr class="border-b border-surface-border">
+                            <td class="px-2 py-1.5" x-text="r.id"></td>
+                            <td class="px-2 py-1.5" x-text="r.nombre"></td>
+                            <td class="px-2 py-1.5" x-text="r.codigo || ''"></td>
+                            <td class="px-2 py-1.5" x-text="(r.nave ? 'nave' : (r.naviera ? 'naviera' : 'central'))"></td>
+                            <td class="px-2 py-1.5" x-text="r.catalogo_version"></td>
+                            <td class="px-2 py-1.5" x-text="r.activo"></td>
+                            <td class="px-2 py-1.5 text-right">
+                                <button type="button" class="text-brand underline" @click="cargarParaEditar(r)">Editar</button>
+                                <button type="button" class="ml-2 text-fail underline" @click="quitar(r)">Quitar</button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Crear / modificar recurso -->
+    <section class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <h2 class="mb-3 text-[14px] font-bold text-navy">
+            Crear / modificar recurso — <span x-text="form.base ? ('editando base #' + form.base) : 'nuevo'"></span>
+            <button type="button" x-show="form.base" @click="nuevoRecurso()" class="ml-2 text-[11px] text-ink-muted underline">limpiar</button>
+        </h2>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Nombre</span>
+                <input type="text" x-model="form.nombre" class="h-9 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Código</span>
+                <input type="text" x-model="form.codigo" class="h-9 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Propósito</span>
+                <select x-model="form.proposito_id" class="h-9 rounded-md border border-surface-border px-2">
+                    <option value="">—</option>
+                    {% for p in propositos %}<option value="{{ p.id }}">{{ p }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Periodicidad</span>
+                <select x-model="form.periodicidad_id" class="h-9 rounded-md border border-surface-border px-2">
+                    <option value="">—</option>
+                    {% for p in periodicidades %}<option value="{{ p.id }}">{{ p.nombre }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Área</span>
+                <select x-model="form.area_id" class="h-9 rounded-md border border-surface-border px-2">
+                    <option value="">—</option>
+                    {% for a in areas %}<option value="{{ a.id }}">{{ a.nombre }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Scope: naviera_id (vacío = central)</span>
+                <input type="number" x-model="form.naviera_id" class="h-9 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Scope: nave_id (opcional)</span>
+                <select x-model="form.nave_id" class="h-9 rounded-md border border-surface-border px-2">
+                    <option value="">—</option>
+                    {% for nave in naves %}
+                    <option value="{{ nave.id }}">{{ nave.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="flex items-center gap-1.5 self-end pb-1.5">
+                <input type="checkbox" x-model="form.activo">
+                <span class="text-[11px] text-ink-muted">Activo</span>
+            </label>
+        </div>
+        <label class="mt-3 flex flex-col gap-1">
+            <span class="text-[11px] text-ink-muted">Descripción</span>
+            <textarea x-model="form.descripcion" rows="2" class="rounded-md border border-surface-border px-2 py-1.5"></textarea>
+        </label>
+        <label class="mt-3 flex flex-col gap-1">
+            <span class="text-[11px] text-ink-muted">requerimientos (JSON)</span>
+            <textarea x-model="form.requerimientos" rows="3" class="rounded-md border border-surface-border px-2 py-1.5 font-mono text-[11px]"></textarea>
+        </label>
+        <label class="mt-3 flex flex-col gap-1">
+            <span class="text-[11px] text-ink-muted">regla_aplicacion (JSON o null)</span>
+            <textarea x-model="form.regla_aplicacion" rows="3" class="rounded-md border border-surface-border px-2 py-1.5 font-mono text-[11px]"></textarea>
+        </label>
+        <label class="mt-3 flex flex-col gap-1">
+            <span class="text-[11px] text-ink-muted">Nota de la versión</span>
+            <input type="text" x-model="form.nota" class="h-9 rounded-md border border-surface-border px-2">
+        </label>
+        <button type="button" @click="guardarRecurso()" class="mt-3 h-9 rounded-md bg-navy px-3.5 font-semibold text-white">
+            Publicar
+        </button>
+    </section>
+
+    <!-- Catálogo independiente -->
+    <section class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <h2 class="mb-3 text-[14px] font-bold text-navy">Marcar catálogo independiente</h2>
+        <div class="flex flex-wrap items-end gap-2.5">
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">naviera_id</span>
+                <input type="number" x-model="independiente.naviera_id" class="h-9 w-28 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">nave_id</span>
+                <input type="number" x-model="independiente.nave_id" class="h-9 w-28 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex items-center gap-1.5 self-end pb-1.5">
+                <input type="checkbox" x-model="independiente.valor">
+                <span class="text-[11px] text-ink-muted">Independiente (destildar para revertir)</span>
+            </label>
+            <label class="flex items-center gap-1.5 self-end pb-1.5" x-show="independiente.valor">
+                <input type="checkbox" x-model="independiente.copiarDesdePadre">
+                <span class="text-[11px] text-ink-muted">Copiar catálogo del padre (si no, queda vacío)</span>
+            </label>
+            <button type="button" @click="marcarIndependiente()" class="h-9 rounded-md bg-navy px-3.5 font-semibold text-white">Aplicar</button>
+        </div>
+    </section>
+
+    <!-- Revertir a versión -->
+    <section class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <h2 class="mb-3 text-[14px] font-bold text-navy">Revertir a versión</h2>
+        <div class="flex flex-wrap items-end gap-2.5">
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">naviera_id</span>
+                <input type="number" x-model="revertir.naviera_id" class="h-9 w-28 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">nave_id</span>
+                <input type="number" x-model="revertir.nave_id" class="h-9 w-28 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">numero_objetivo</span>
+                <input type="number" x-model="revertir.numero_objetivo" class="h-9 w-28 rounded-md border border-surface-border px-2">
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">nota</span>
+                <input type="text" x-model="revertir.nota" class="h-9 rounded-md border border-surface-border px-2">
+            </label>
+            <button type="button" @click="revertirVersion()" class="h-9 rounded-md bg-navy px-3.5 font-semibold text-white">Revertir</button>
+        </div>
+    </section>
+
+    <!-- Resultado crudo -->
+    <section class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+        <h2 class="mb-2 text-[14px] font-bold text-navy">Respuesta cruda de la última llamada</h2>
+        <pre class="max-h-96 overflow-auto rounded-md bg-neutral-bg p-3 text-[11px]" x-text="ultimaRespuesta"></pre>
+    </section>
+</div>
+
+<script>
+    function catalogoAdmin(config) {
+        function formVacio(navieraId) {
+            return {
+                base: null, nombre: '', codigo: '', descripcion: '',
+                proposito_id: '', periodicidad_id: '', area_id: '',
+                requerimientos: '[]', regla_aplicacion: 'null',
+                activo: true, naviera_id: navieraId, nave_id: '', nota: '',
+            };
+        }
+
+        return {
+            urls: config.urls,
+            csrfToken: config.csrfToken,
+            verNaveId: '',
+            pinCentral: '',
+            pinNaviera: '',
+            pinNave: '',
+            recursos: [],
+            versionesVigentes: null,
+            ultimaRespuesta: '',
+            form: formVacio(config.naviera_id),
+            independiente: { naviera_id: config.naviera_id, nave_id: '', valor: true, copiarDesdePadre: false },
+            revertir: { naviera_id: config.naviera_id, nave_id: '', numero_objetivo: '', nota: '' },
+
+            nuevoRecurso() {
+                this.form = formVacio(config.naviera_id);
+            },
+
+            cargarParaEditar(r) {
+                this.form = {
+                    base: r.id, nombre: r.nombre, codigo: r.codigo || '', descripcion: r.descripcion || '',
+                    proposito_id: r.proposito || '', periodicidad_id: r.periodicidad || '', area_id: r.area || '',
+                    requerimientos: JSON.stringify(r.requerimientos ?? []),
+                    regla_aplicacion: JSON.stringify(r.regla_aplicacion ?? null),
+                    activo: r.activo, naviera_id: r.naviera || '', nave_id: r.nave || '', nota: '',
+                };
+            },
+
+            async _post(url, body) {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrfToken },
+                    body: JSON.stringify(body),
+                });
+                const data = await resp.json().catch(() => ({}));
+                this.ultimaRespuesta = JSON.stringify(data, null, 2);
+                return { ok: resp.ok, data };
+            },
+
+            async verCatalogo() {
+                if (!this.verNaveId) { alert('Elige una nave.'); return; }
+                const params = new URLSearchParams({ nave_id: this.verNaveId });
+                if (this.pinCentral) params.set('pin_central', this.pinCentral);
+                if (this.pinNaviera) params.set('pin_naviera', this.pinNaviera);
+                if (this.pinNave) params.set('pin_nave', this.pinNave);
+                const resp = await fetch(`${this.urls.efectivo}?${params}`);
+                const data = await resp.json();
+                this.ultimaRespuesta = JSON.stringify(data, null, 2);
+                if (!resp.ok) return;
+                this.recursos = data.recursos;
+                this.versionesVigentes = data.versiones_vigentes;
+            },
+
+            async guardarRecurso() {
+                let requerimientos, reglaAplicacion;
+                try {
+                    requerimientos = JSON.parse(this.form.requerimientos);
+                    reglaAplicacion = JSON.parse(this.form.regla_aplicacion);
+                } catch (e) {
+                    alert('JSON inválido en requerimientos o regla_aplicacion: ' + e.message);
+                    return;
+                }
+                const cambios = {
+                    nombre: this.form.nombre, codigo: this.form.codigo || null,
+                    descripcion: this.form.descripcion || null,
+                    proposito_id: this.form.proposito_id || null,
+                    periodicidad_id: this.form.periodicidad_id || null,
+                    area_id: this.form.area_id || null,
+                    requerimientos: requerimientos, regla_aplicacion: reglaAplicacion,
+                    activo: this.form.activo,
+                };
+                const body = {
+                    naviera_id: this.form.naviera_id || null,
+                    nave_id: this.form.nave_id || null,
+                    nota: this.form.nota,
+                    filas: [{ base: this.form.base, cambios: cambios }],
+                };
+                const { ok } = await this._post(this.urls.recursos, body);
+                if (ok) this.verCatalogo();
+            },
+
+            async quitar(r) {
+                if (!confirm(`¿Quitar (soft-delete) "${r.nombre}"?`)) return;
+                const body = {
+                    naviera_id: r.naviera || null, nave_id: r.nave || null, nota: 'Quitado desde admin',
+                    filas: [{ base: r.id, cambios: { activo: false } }],
+                };
+                const { ok } = await this._post(this.urls.recursos, body);
+                if (ok) this.verCatalogo();
+            },
+
+            async marcarIndependiente() {
+                await this._post(this.urls.independiente, {
+                    naviera_id: this.independiente.naviera_id || null,
+                    nave_id: this.independiente.nave_id || null,
+                    independiente: this.independiente.valor,
+                    copiar_desde_padre: this.independiente.copiarDesdePadre,
+                });
+            },
+
+            async revertirVersion() {
+                await this._post(this.urls.revertir, {
+                    naviera_id: this.revertir.naviera_id || null,
+                    nave_id: this.revertir.nave_id || null,
+                    numero_objetivo: this.revertir.numero_objetivo,
+                    nota: this.revertir.nota,
+                });
+            },
+        };
+    }
+</script>
+{% endblock %}

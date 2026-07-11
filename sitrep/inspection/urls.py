@@ -7,6 +7,7 @@ app_name = 'inventory'
 urlpatterns = [
     path('', include('sitrep.accounts.urls')),
     path('', include('sitrep.fleet.urls')),
+    path('', include('sitrep.catalog.urls')),
 
     path('', views.dashboard_tierra, name='tenant_home'),
     path('fallos/', views.fallos_activos, name='fallos_activos'),
