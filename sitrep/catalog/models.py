@@ -117,9 +117,44 @@ class Recurso(models.Model):
             'Sin regla (null): cantidad=0 y es_visible=True para toda nave.'
         ),
     )
+    naviera = models.ForeignKey(
+        'accounts.Naviera', null=True, blank=True,
+        on_delete=models.PROTECT, related_name='recursos_override',
+        help_text="Null = catálogo central. Seteado = override/independiente de esta naviera.",
+    )
+    nave = models.ForeignKey(
+        'fleet.Nave', null=True, blank=True,
+        on_delete=models.PROTECT, related_name='recursos_override',
+        help_text="Seteado = override/independiente de esta nave específica. naviera se deriva de nave.naviera.",
+    )
+    catalogo_version = models.ForeignKey(
+        'CatalogoVersion', on_delete=models.PROTECT, related_name='recursos',
+        help_text="Versión/scope-chain en la que esta fila exacta fue introducida.",
+    )
+    linaje_raiz = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+        help_text="Null = esta fila ES la raíz de su lineage. Seteado = apunta a la fila raíz "
+                   "que agrupa todas las versiones/overrides históricos de este mismo concepto.",
+    )
+    activo = models.BooleanField(
+        default=True,
+        help_text="False = esta versión de la lineage está 'eliminada'. Nunca se hace DELETE físico.",
+    )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(nave__isnull=True) | models.Q(naviera__isnull=False),
+                name='recurso_nave_implica_naviera',
+            ),
+        ]
 
     def __str__(self):
         return self.nombre
+
+    @property
+    def raiz(self):
+        return self.linaje_raiz or self
 
 
 class CatalogoVersion(models.Model):
