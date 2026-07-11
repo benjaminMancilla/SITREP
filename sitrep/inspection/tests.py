@@ -243,12 +243,14 @@ class TestMotorPeriodosEstados(TestCase):
             categoria="Seguridad",
             tipo="Material",
         )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
         self.recurso_a = Recurso.objects.create(
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Extintor A",
             requerimientos=requerimientos_estandar("vigencia", "presion"),
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
         self.recurso_b = Recurso.objects.create(
             proposito=self.proposito,
@@ -256,6 +258,7 @@ class TestMotorPeriodosEstados(TestCase):
             nombre="Extintor B",
             requerimientos=requerimientos_estandar("sello"),
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
         self.recurso_sin_checklist = Recurso.objects.create(
             proposito=self.proposito,
@@ -263,6 +266,7 @@ class TestMotorPeriodosEstados(TestCase):
             nombre="Radio VHF",
             requerimientos=[],
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
         self.usuario = Usuario.objects.create_user(
             username="marinero_estados",
@@ -1459,6 +1463,7 @@ class TestIntegracionMotorReglas(TestCase):
             nombre="Bote Salvavidas Condición",
             requerimientos=[{"id": "condicion_1", "tipo": "condicion"}],
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
 
         definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
@@ -1477,6 +1482,7 @@ class TestIntegracionMotorReglas(TestCase):
             nombre="Recurso Sin Cantidad En Catalogo",
             requerimientos=requerimientos_estandar("vigencia"),
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
 
         definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=4)
@@ -1491,6 +1497,7 @@ class TestIntegracionMotorReglas(TestCase):
             nombre="Recurso Con Cantidad En Catalogo",
             requerimientos=[{"id": MotorFichas.CANTIDAD_REQUISITO_KEY, "tipo": "cantidad"}],
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
 
         definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
