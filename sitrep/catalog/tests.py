@@ -1,4 +1,6 @@
-from django.db import IntegrityError, transaction as db_transaction
+from unittest import skipUnless
+
+from django.db import IntegrityError, connection, transaction as db_transaction
 from django.test import TestCase
 
 from sitrep.accounts.models import Naviera
@@ -240,6 +242,11 @@ class TestCatalogoVersion(TestCase):
         with self.assertRaises(ValueError):
             CatalogoVersion.crear_para_scope(nave=self.nave, naviera=otra_naviera)
 
+    @skipUnless(
+        connection.features.supports_nulls_distinct_unique_constraints,
+        "nulls_distinct=False solo se enforced a nivel de DB en backends que lo soportan (Postgres 15+); "
+        "SQLite lo acepta pero no lo hace cumplir.",
+    )
     def test_constraint_nulls_distinct_false_bloquea_numero_duplicado_central(self):
         CatalogoVersion.objects.create(naviera=None, nave=None, numero=1)
         with self.assertRaises(IntegrityError):
