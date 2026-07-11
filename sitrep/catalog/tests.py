@@ -348,6 +348,16 @@ class TestCatalogoResolver(TestCase):
         efectivo_otra_nave = CatalogoResolver.catalogo_efectivo(self.otra_nave_misma_naviera)
         self.assertEqual([r.id for r in efectivo_otra_nave], [central.id])
 
+    def test_activo_false_en_naviera_oculta_la_lineage_para_naves_sin_override_propio(self):
+        central = self._recurso("Extintor")
+        v_naviera = CatalogoVersion.crear_para_scope(naviera=self.naviera)
+        self._recurso("Extintor (removido)", naviera=self.naviera, version=v_naviera, linaje_raiz=central, activo=False)
+
+        efectivo_nave1 = CatalogoResolver.catalogo_efectivo(self.nave)
+        efectivo_nave2 = CatalogoResolver.catalogo_efectivo(self.otra_nave_misma_naviera)
+        self.assertEqual(efectivo_nave1, [])
+        self.assertEqual(efectivo_nave2, [])
+
     def test_activo_false_en_central_sin_override_oculta_en_todos_lados(self):
         self._recurso("Extintor", activo=False)
         efectivo = CatalogoResolver.catalogo_efectivo(self.nave)
@@ -453,6 +463,19 @@ class TestCatalogoEditorService(TestCase):
         self.assertEqual(CatalogoResolver.catalogo_efectivo.__self__, CatalogoResolver)  # sanity import
         v3, (r3,) = CatalogoEditorService.revertir_a_version(numero_objetivo=v1.numero)
         self.assertTrue(r3.activo)
+
+    def test_revertir_a_version_restaura_lineage_tombstoneada_incluso_si_esta_activa_ahora(self):
+        base_cambios = {
+            'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+            'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+        }
+        v1, (r1,) = CatalogoEditorService.publicar(filas=[{'base': None, 'cambios': base_cambios}])
+        v2, (r2,) = CatalogoEditorService.publicar(filas=[{'base': r1, 'cambios': {'activo': False}}])
+        v3, (r3,) = CatalogoEditorService.publicar(filas=[{'base': r2, 'cambios': {'activo': True}}])
+
+        self.assertTrue(r3.activo)  # lineage está activa ahora
+        v4, (r4,) = CatalogoEditorService.revertir_a_version(numero_objetivo=v2.numero)
+        self.assertFalse(r4.activo)  # pero al rollback a v2 debe restaurarse tombstoneada
 
 
 class TestLoadRecursosVersionado(TestCase):

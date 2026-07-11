@@ -6,7 +6,7 @@ from django.db.models import Exists, F, OuterRef
 from django.utils import timezone
 
 from sitrep.accounts.services import AccountsQueryService
-from sitrep.catalog.models import Periodicidad, Recurso
+from sitrep.catalog.models import Periodicidad
 from sitrep.catalog.services import CatalogRuleEngine, construir_label_requerimiento, CatalogoResolver
 from sitrep.fleet.models import Nave
 from sitrep.fleet.services import FleetQueryService

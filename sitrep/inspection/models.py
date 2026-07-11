@@ -54,15 +54,18 @@ class PeriodoRevision(models.Model):
 
     catalogo_version_central = models.ForeignKey(
         'catalog.CatalogoVersion', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
-        help_text="Versión central vigente al crear este período. Null si el catálogo era independiente en ese momento.",
+        help_text="Versión central vigente al crear este período. Null si el catálogo era independiente en ese momento. "
+                   "Capturado para reconstrucción histórica futura; nada en la app lo lee todavía.",
     )
     catalogo_version_naviera = models.ForeignKey(
         'catalog.CatalogoVersion', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
-        help_text="Versión del override de la naviera vigente al crear este período. Null si la naviera nunca tuvo overrides.",
+        help_text="Versión del override de la naviera vigente al crear este período. Null si la naviera nunca tuvo overrides. "
+                   "Capturado para reconstrucción histórica futura; nada en la app lo lee todavía.",
     )
     catalogo_version_nave = models.ForeignKey(
         'catalog.CatalogoVersion', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
-        help_text="Versión del override de la nave vigente al crear este período. Null si la nave nunca tuvo overrides.",
+        help_text="Versión del override de la nave vigente al crear este período. Null si la nave nunca tuvo overrides. "
+                   "Capturado para reconstrucción histórica futura; nada en la app lo lee todavía.",
     )
 
     class Meta:

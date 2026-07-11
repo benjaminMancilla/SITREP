@@ -205,11 +205,20 @@ class CatalogoEditorService:
         creando una NUEVA CatalogoVersion + filas Recurso copiadas de ese estado
         histórico (incluido activo=False donde corresponda). Nunca borra ni
         modifica historia — el rollback es, en sí mismo, un commit hacia adelante."""
-        filas_objetivo = CatalogoResolver.filas_vigentes_por_lineage(
-            Recurso.objects.filter(naviera=naviera, nave=nave),
-            numero_maximo=numero_objetivo,
-        )
-        specs = [{'base': fila, 'cambios': {}} for fila in filas_objetivo.values() if fila is not None]
+        # No usamos CatalogoResolver.filas_vigentes_por_lineage acá: ese método
+        # retorna None para lineages tombstoneadas (activo=False), pensado para
+        # "ocultar del catalogo_efectivo" — pero un rollback necesita la fila
+        # real de esas lineages para poder copiarla adelante con activo=False,
+        # no descartarla. Se resuelve la cabeza histórica directamente.
+        queryset = Recurso.objects.filter(naviera=naviera, nave=nave).filter(
+            catalogo_version__numero__lte=numero_objetivo
+        ).select_related('linaje_raiz', 'catalogo_version').order_by('-catalogo_version__numero', '-id')
+        cabezas_por_lineage = {}
+        for fila in queryset:
+            raiz_id = fila.linaje_raiz_id or fila.id
+            if raiz_id not in cabezas_por_lineage:
+                cabezas_por_lineage[raiz_id] = fila
+        specs = [{'base': fila, 'cambios': {}} for fila in cabezas_por_lineage.values()]
         return cls.publicar(
             naviera=naviera, nave=nave, creado_por=creado_por,
             nota=nota or f"Rollback a versión {numero_objetivo}",
