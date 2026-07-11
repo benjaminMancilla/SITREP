@@ -1,7 +1,9 @@
+from django.db import IntegrityError, transaction as db_transaction
 from django.test import TestCase
 
 from sitrep.accounts.models import Naviera
 from sitrep.fleet.models import Nave
+from sitrep.catalog.models import CatalogoVersion
 from sitrep.catalog.services import (
     CatalogRuleEngine,
     construir_label_requerimiento,
@@ -202,3 +204,44 @@ class TestRequerimientosEstandar(TestCase):
                 {"id": "presión", "tipo": "estandar", "texto": "presión"},
             ],
         )
+
+
+class TestCatalogoVersion(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera V", rut="11111111-1", slug="naviera-v")
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave V", matricula="NVV-001",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
+        )
+
+    def test_primera_version_de_scope_es_numero_1(self):
+        version = CatalogoVersion.crear_para_scope()
+        self.assertEqual(version.numero, 1)
+        self.assertIsNone(version.naviera)
+        self.assertIsNone(version.nave)
+
+    def test_versiones_secuenciales_mismo_scope(self):
+        v1 = CatalogoVersion.crear_para_scope()
+        v2 = CatalogoVersion.crear_para_scope()
+        self.assertEqual((v1.numero, v2.numero), (1, 2))
+
+    def test_secuencias_independientes_por_scope(self):
+        central = CatalogoVersion.crear_para_scope()
+        naviera_v = CatalogoVersion.crear_para_scope(naviera=self.naviera)
+        self.assertEqual(central.numero, 1)
+        self.assertEqual(naviera_v.numero, 1)
+
+    def test_crear_para_scope_deriva_naviera_desde_nave(self):
+        version = CatalogoVersion.crear_para_scope(nave=self.nave)
+        self.assertEqual(version.naviera_id, self.naviera.id)
+
+    def test_crear_para_scope_rechaza_naviera_nave_inconsistentes(self):
+        otra_naviera = Naviera.objects.create(nombre="Otra", rut="22222222-2", slug="otra")
+        with self.assertRaises(ValueError):
+            CatalogoVersion.crear_para_scope(nave=self.nave, naviera=otra_naviera)
+
+    def test_constraint_nulls_distinct_false_bloquea_numero_duplicado_central(self):
+        CatalogoVersion.objects.create(naviera=None, nave=None, numero=1)
+        with self.assertRaises(IntegrityError):
+            with db_transaction.atomic():
+                CatalogoVersion.objects.create(naviera=None, nave=None, numero=1)
