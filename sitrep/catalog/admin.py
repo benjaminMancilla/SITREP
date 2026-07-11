@@ -21,16 +21,20 @@ class AreaAdmin(admin.ModelAdmin):
 @admin.register(Recurso)
 class RecursoAdmin(admin.ModelAdmin):
     list_display = (
-        "codigo", "nombre", "area", "proposito",
-        "periodicidad", "created_at", "tiene_regla", "num_requerimientos",
+        "codigo", "nombre", "area", "proposito", "periodicidad",
+        "naviera", "nave", "catalogo_version", "activo",
+        "created_at", "tiene_regla", "num_requerimientos",
     )
-    list_filter = ("proposito", "periodicidad", "area")
+    list_filter = ("proposito", "periodicidad", "area", "activo", "naviera")
     search_fields = ("codigo", "nombre")
-    readonly_fields = ("created_at", "resumen_requerimientos_especiales")
+    readonly_fields = (
+        "nombre", "codigo", "area", "proposito", "periodicidad", "descripcion", "created_at",
+        "naviera", "nave", "catalogo_version", "linaje_raiz", "activo",
+        "requerimientos", "regla_aplicacion", "resumen_requerimientos_especiales",
+    )
     fieldsets = (
-        (None, {
-            "fields": ("nombre", "codigo", "area", "proposito", "periodicidad", "descripcion", "created_at"),
-        }),
+        (None, {"fields": ("nombre", "codigo", "area", "proposito", "periodicidad", "descripcion", "created_at")}),
+        ("Versionado", {"fields": ("naviera", "nave", "catalogo_version", "linaje_raiz", "activo")}),
         ("Requerimientos especiales", {
             "description": (
                 "Cantidad y condición son requerimientos tipados dentro de "
@@ -41,6 +45,12 @@ class RecursoAdmin(admin.ModelAdmin):
             "fields": ("requerimientos", "regla_aplicacion", "resumen_requerimientos_especiales"),
         }),
     )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     def tiene_regla(self, obj):
         return bool(obj.regla_aplicacion)

@@ -47,9 +47,20 @@ def ejecutar_carga(json_data: list, dry_run: bool = False) -> dict:
         stats["log"].append((nivel, msg))
         logger.debug(msg) if nivel == "info" else logger.error(msg)
 
+    version_import = {"obj": None}
+
+    def obtener_version_import():
+        if version_import["obj"] is None:
+            from sitrep.catalog.models import CatalogoVersion
+
+            version_import["obj"] = CatalogoVersion.crear_para_scope(
+                nota="Importación bulk vía load_recursos",
+            )
+        return version_import["obj"]
+
     for entrada in json_data:
         try:
-            _procesar_entrada(entrada, dry_run, stats, log)
+            _procesar_entrada(entrada, dry_run, stats, log, obtener_version_import)
         except Exception as e:
             stats["errores"] += 1
             logger.error(
@@ -62,7 +73,7 @@ def ejecutar_carga(json_data: list, dry_run: bool = False) -> dict:
     return stats
 
 
-def _procesar_entrada(entrada, dry_run, stats, log):
+def _procesar_entrada(entrada, dry_run, stats, log, obtener_version_import):
     from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
 
     nombre_area = entrada["area"]
@@ -134,6 +145,7 @@ def _procesar_entrada(entrada, dry_run, stats, log):
                 dry_run=dry_run,
                 stats=stats,
                 log=log,
+                obtener_version_import=obtener_version_import,
             )
         except Exception as e:
             stats["errores"] += 1
@@ -147,7 +159,7 @@ def _procesar_entrada(entrada, dry_run, stats, log):
 
 def _procesar_recurso(
     recurso_data, area, nombre_area, periodicidad,
-    proposito_obj, dry_run, stats, log,
+    proposito_obj, dry_run, stats, log, obtener_version_import,
 ):
     from sitrep.catalog.models import Recurso
     from sitrep.catalog.services import requerimientos_estandar
@@ -182,6 +194,8 @@ def _procesar_recurso(
             proposito=proposito_obj,
             requerimientos=requerimientos_estandar(*requerimientos),
             regla_aplicacion=None,
+            catalogo_version=obtener_version_import(),
+            naviera=None, nave=None, linaje_raiz=None, activo=True,
         )
 
     stats["recursos_creados"] += 1

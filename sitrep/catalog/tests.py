@@ -453,3 +453,33 @@ class TestCatalogoEditorService(TestCase):
         self.assertEqual(CatalogoResolver.catalogo_efectivo.__self__, CatalogoResolver)  # sanity import
         v3, (r3,) = CatalogoEditorService.revertir_a_version(numero_objetivo=v1.numero)
         self.assertTrue(r3.activo)
+
+
+class TestLoadRecursosVersionado(TestCase):
+    def setUp(self):
+        Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
+
+    def test_ejecutar_carga_crea_una_catalogoversion_para_el_batch(self):
+        from sitrep.inspection.management.commands.load_recursos import ejecutar_carga
+        json_data = [{
+            "nave": "N/A", "area": "Salvamento", "periodicidad": "Semanal",
+            "proposito": "MATERIAL DE SEGURIDAD",
+            "recursos": [{"nombre": "Chaleco", "requerimientos": ["Vigencia"]}],
+        }]
+        conteo_antes = CatalogoVersion.objects.count()
+        stats = ejecutar_carga(json_data)
+        self.assertEqual(stats["recursos_creados"], 1)
+        self.assertEqual(CatalogoVersion.objects.count(), conteo_antes + 1)
+        recurso = Recurso.objects.get(nombre="Chaleco")
+        self.assertIsNotNone(recurso.catalogo_version)
+
+    def test_ejecutar_carga_dry_run_no_crea_version(self):
+        from sitrep.inspection.management.commands.load_recursos import ejecutar_carga
+        json_data = [{
+            "nave": "N/A", "area": "Salvamento", "periodicidad": "Semanal",
+            "proposito": "MATERIAL DE SEGURIDAD",
+            "recursos": [{"nombre": "Chaleco", "requerimientos": ["Vigencia"]}],
+        }]
+        conteo_antes = CatalogoVersion.objects.count()
+        ejecutar_carga(json_data, dry_run=True)
+        self.assertEqual(CatalogoVersion.objects.count(), conteo_antes)
