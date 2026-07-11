@@ -67,6 +67,7 @@ class AuditEvent(models.Model):
         ("read", "Lectura"),
         ("export", "Exportación"),
         ("write", "Escritura"),
+        ("blocked", "Bloqueado"),
     ]
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
