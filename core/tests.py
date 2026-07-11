@@ -9,6 +9,7 @@ from django.urls import reverse
 
 from core.forms import ArcoForm
 from core.services import enviar_email_arco
+from sitrep.accounts.models import AuditEvent, Naviera, Usuario
 
 
 class HealthCheckDbTests(TestCase):
@@ -172,3 +173,45 @@ class ApiRateThrottleRateSelectionTests(TestCase):
 
         # The write budget must be untouched by all those reads.
         self.assertTrue(throttle.allow_request(self._request("POST"), view=None))
+
+
+class ApiRateThrottleIntegrationTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.naviera = Naviera.objects.create(
+            nombre="Naviera Throttle", rut="22222222-2", slug="throttle-test",
+        )
+        self.user = Usuario.objects.create_user(
+            username="tierra_throttle", password="pass-segura-123",
+            naviera=self.naviera, rut="22222222-2", email="throttle@test.com",
+            rol="tierra",
+        )
+        self.client.force_login(self.user)
+        self.url = reverse("inventory:api_urgencia", kwargs={"slug": self.naviera.slug})
+
+    @patch("core.throttling.READ_RATE", "2/min")
+    @patch("core.api_base.report_security_incident")
+    def test_exceeding_read_rate_returns_429_and_reports(self, mock_report):
+        for _ in range(2):
+            response = self.client.get(self.url)
+            self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 429)
+        self.assertIn("Retry-After", response)
+        mock_report.assert_called_once()
+        self.assertEqual(mock_report.call_args.args[0], "rate_limit_exceeded")
+        self.assertEqual(
+            AuditEvent.objects.filter(
+                accion="blocked", recurso="throttle", usuario=self.user,
+            ).count(),
+            1,
+        )
+
+    @patch("core.throttling.READ_RATE", "2/min")
+    def test_requests_within_limit_are_not_blocked(self):
+        for _ in range(2):
+            response = self.client.get(self.url)
+            self.assertEqual(response.status_code, 200)
+        self.assertEqual(AuditEvent.objects.filter(accion="blocked").count(), 0)
