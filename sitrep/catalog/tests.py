@@ -7,6 +7,7 @@ from sitrep.accounts.models import Naviera
 from sitrep.fleet.models import Nave
 from sitrep.catalog.models import CatalogoVersion, Periodicidad, Proposito, Recurso
 from sitrep.catalog.services import (
+    CatalogoEditorService,
     CatalogoResolver,
     CatalogRuleEngine,
     construir_label_requerimiento,
@@ -374,3 +375,81 @@ class TestCatalogoResolver(TestCase):
         efectivo_live = CatalogoResolver.catalogo_efectivo(self.nave)
         self.assertEqual([r.id for r in efectivo_v1], [v1_central.id])
         self.assertEqual([r.id for r in efectivo_live], [v2_central.id])
+
+
+class TestCatalogoEditorService(TestCase):
+    def setUp(self):
+        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
+        self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
+
+    def test_publicar_base_none_crea_raiz_nueva(self):
+        version, filas = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        self.assertEqual(version.numero, 1)
+        self.assertIsNone(filas[0].linaje_raiz_id)
+
+    def test_publicar_con_base_crea_nueva_version_en_misma_lineage(self):
+        v1, (original,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        v2, (editado,) = CatalogoEditorService.publicar(filas=[{'base': original, 'cambios': {'nombre': 'Extintor v2'}}])
+
+        self.assertEqual(editado.raiz.id, original.id)
+        self.assertEqual(editado.nombre, 'Extintor v2')
+        original.refresh_from_db()
+        self.assertEqual(original.nombre, 'Extintor')  # fila vieja intacta
+
+    def test_publicar_override_naviera_desde_central(self):
+        naviera = Naviera.objects.create(nombre="N", rut="55555555-5", slug="n")
+        _, (central,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        _, (override,) = CatalogoEditorService.publicar(
+            naviera=naviera, filas=[{'base': central, 'cambios': {'nombre': 'Extintor (naviera)'}}],
+        )
+        self.assertEqual(override.naviera_id, naviera.id)
+        self.assertEqual(override.raiz.id, central.id)
+
+    def test_revertir_a_version_crea_version_nueva_sin_borrar_historia(self):
+        base_cambios = {
+            'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+            'nombre': 'Extintor v1', 'requerimientos': [], 'regla_aplicacion': None,
+        }
+        v1, (r1,) = CatalogoEditorService.publicar(filas=[{'base': None, 'cambios': base_cambios}])
+        v2, (r2,) = CatalogoEditorService.publicar(filas=[{'base': r1, 'cambios': {'nombre': 'Extintor v2'}}])
+        v3, (r3,) = CatalogoEditorService.publicar(filas=[{'base': r2, 'cambios': {'nombre': 'Extintor v3'}}])
+
+        conteo_antes = Recurso.objects.count()
+        v4, (r4,) = CatalogoEditorService.revertir_a_version(numero_objetivo=v1.numero)
+
+        self.assertEqual(v4.numero, 4)
+        self.assertEqual(r4.nombre, 'Extintor v1')
+        self.assertEqual(Recurso.objects.count(), conteo_antes + 1)
+        for r in (r1, r2, r3):
+            r.refresh_from_db()  # nada fue tocado
+        self.assertEqual(r3.nombre, 'Extintor v3')
+
+    def test_revertir_a_version_restaura_activo_false(self):
+        base_cambios = {
+            'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+            'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+        }
+        v1, (r1,) = CatalogoEditorService.publicar(filas=[{'base': None, 'cambios': base_cambios}])
+        v2, (r2,) = CatalogoEditorService.publicar(filas=[{'base': r1, 'cambios': {'activo': False}}])
+
+        self.assertEqual(CatalogoResolver.catalogo_efectivo.__self__, CatalogoResolver)  # sanity import
+        v3, (r3,) = CatalogoEditorService.revertir_a_version(numero_objetivo=v1.numero)
+        self.assertTrue(r3.activo)

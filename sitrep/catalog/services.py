@@ -1,5 +1,7 @@
 import operator
 
+from django.db import transaction
+
 from .models import CatalogoVersion, Recurso
 
 
@@ -156,3 +158,60 @@ class CatalogoResolver:
             'naviera': CatalogoVersion.objects.filter(naviera=naviera, nave__isnull=True).order_by('-numero').first(),
             'nave': CatalogoVersion.objects.filter(nave=nave).order_by('-numero').first(),
         }
+
+
+_CAMPOS_COPIABLES = (
+    'proposito_id', 'periodicidad_id', 'area_id', 'nombre', 'codigo',
+    'descripcion', 'requerimientos', 'regla_aplicacion', 'activo',
+)
+
+
+class CatalogoEditorService:
+    """Capa de escritura versionada. Nunca hace UPDATE in-place sobre Recurso:
+    cada edición/override/rollback es una fila nueva en la misma lineage."""
+
+    @classmethod
+    def _fila_desde_base(cls, *, version, base, naviera, nave, cambios):
+        campos = {campo: getattr(base, campo) for campo in _CAMPOS_COPIABLES} if base else {}
+        campos.update(cambios)
+        campos['naviera'] = naviera
+        campos['nave'] = nave
+        campos['catalogo_version'] = version
+        campos['linaje_raiz_id'] = (base.linaje_raiz_id or base.id) if base is not None else None
+        return Recurso.objects.create(**campos)
+
+    @classmethod
+    def publicar(cls, *, naviera=None, nave=None, creado_por=None, nota="", filas):
+        """filas: [{'base': Recurso|None, 'cambios': dict}, ...]. Crea UNA
+        CatalogoVersion nueva para (naviera, nave) y una fila Recurso por
+        elemento, todo atómico. `base=None` = recurso totalmente nuevo
+        (cambios debe traer todos los campos obligatorios)."""
+        with transaction.atomic():
+            version = CatalogoVersion.crear_para_scope(
+                naviera=naviera, nave=nave, creado_por=creado_por, nota=nota,
+            )
+            creadas = [
+                cls._fila_desde_base(
+                    version=version, base=f.get('base'),
+                    naviera=naviera, nave=nave, cambios=f.get('cambios', {}),
+                )
+                for f in filas
+            ]
+            return version, creadas
+
+    @classmethod
+    def revertir_a_version(cls, *, naviera=None, nave=None, numero_objetivo, creado_por=None, nota=""):
+        """Restaura el scope (naviera, nave) al estado que tenía en numero_objetivo,
+        creando una NUEVA CatalogoVersion + filas Recurso copiadas de ese estado
+        histórico (incluido activo=False donde corresponda). Nunca borra ni
+        modifica historia — el rollback es, en sí mismo, un commit hacia adelante."""
+        filas_objetivo = CatalogoResolver.filas_vigentes_por_lineage(
+            Recurso.objects.filter(naviera=naviera, nave=nave),
+            numero_maximo=numero_objetivo,
+        )
+        specs = [{'base': fila, 'cambios': {}} for fila in filas_objetivo.values() if fila is not None]
+        return cls.publicar(
+            naviera=naviera, nave=nave, creado_por=creado_por,
+            nota=nota or f"Rollback a versión {numero_objetivo}",
+            filas=specs,
+        )
