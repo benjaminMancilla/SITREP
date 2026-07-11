@@ -157,3 +157,16 @@ class ApiRateThrottleRateSelectionTests(TestCase):
         throttle = ApiRateThrottle()
         throttle.allow_request(self._request("DELETE"), view=None)
         self.assertEqual(throttle.rate, WRITE_RATE)
+
+    def test_read_and_write_budgets_are_independent(self):
+        from core.throttling import ApiRateThrottle, WRITE_RATE
+
+        throttle = ApiRateThrottle()
+        write_num_requests, _ = throttle.parse_rate(WRITE_RATE)
+        for _ in range(write_num_requests):
+            self.assertTrue(throttle.allow_request(self._request("POST"), view=None))
+
+        # Write budget is now exhausted...
+        self.assertFalse(throttle.allow_request(self._request("POST"), view=None))
+        # ...but GET (separate bucket) is unaffected.
+        self.assertTrue(throttle.allow_request(self._request("GET"), view=None))
