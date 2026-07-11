@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from sitrep.accounts.models import Naviera, Usuario
 from sitrep.fleet.models import Nave
-from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
+from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso, CatalogoVersion
 from sitrep.catalog.services import requerimientos_estandar
 from .models import (
     FichaRegistro,
@@ -43,6 +43,7 @@ class TestMotorReglasSITREP(TestCase):
             responsabilidad="mar",
             visibilidad="todos",
         )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
         self.regla_semanal = {
             "atributo": "eslora",
             "condiciones": [
@@ -76,6 +77,7 @@ class TestMotorReglasSITREP(TestCase):
             nombre=nombre,
             requerimientos=[],
             regla_aplicacion=regla_aplicacion,
+            catalogo_version=self.catalogo_version,
         )
 
     def test_sincronizar_matriz_nave_crea_entradas(self):
@@ -604,6 +606,7 @@ class TestIntegracionMotorReglas(TestCase):
             email="marinero_integracion@example.com",
             rol="mar",
         )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
 
     def _crear_nave(self, nombre, matricula, eslora, naviera=None):
         return Nave.objects.create(
@@ -639,6 +642,7 @@ class TestIntegracionMotorReglas(TestCase):
             codigo=codigo,
             requerimientos=requerimientos_tipados,
             regla_aplicacion=regla_aplicacion,
+            catalogo_version=self.catalogo_version,
         )
 
     def _get_matriz(self, nave, recurso):
