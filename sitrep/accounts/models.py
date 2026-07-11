@@ -8,6 +8,10 @@ class Naviera(models.Model):
     rut = models.CharField(max_length=10, unique=True)
     slug = models.SlugField(max_length=50, unique=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    catalogo_independiente = models.BooleanField(
+        default=False,
+        help_text="Si es True, esta naviera ignora el catálogo central: solo ve recursos scoped a ella o a sus naves.",
+    )
 
     def __str__(self):
         return self.nombre

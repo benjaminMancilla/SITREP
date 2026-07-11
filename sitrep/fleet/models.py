@@ -17,6 +17,10 @@ class Nave(models.Model):
     capacidad_personas = models.IntegerField()
     is_active = models.BooleanField(default=True, help_text='Si es False, la nave fue vendida o dada de baja')
     agregado_en = models.DateTimeField(auto_now_add=True)
+    catalogo_independiente = models.BooleanField(
+        default=False,
+        help_text="Si es True (o si su naviera lo es), esta nave ignora el catálogo central.",
+    )
 
     objects = TenantManager()
 
