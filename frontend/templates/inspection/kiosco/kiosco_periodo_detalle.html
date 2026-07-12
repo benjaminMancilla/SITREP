@@ -47,7 +47,16 @@
 
 {% block layout %}
 <div
-    x-data="periodoFichaDetalle({ saveUrl: '{% url "inventory:api_guardar_fichas_periodo" slug=slug periodo_id=periodo.id %}', csrfToken: '{{ csrf_token }}' })"
+    x-data="periodoFichaDetalle({
+        saveUrl: '{% url "inventory:api_guardar_fichas_periodo" slug=slug periodo_id=periodo.id %}',
+        csrfToken: '{{ csrf_token }}',
+        pdfBaseUrl: '{% url "inventory:kiosco_periodo_pdf" slug=slug periodo_id=periodo.id %}',
+        areasImprimibles: [
+            {% for grupo in areas_grupos %}
+            { id: '{% if grupo.area %}{{ grupo.area.id }}{% else %}none{% endif %}', nombre: '{{ grupo.nombre_display|escapejs }}' }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+    })"
     @recurso-modificado.window="registrarCambio($event.detail.recursoId, $event.detail.payload)"
     class="min-h-screen bg-surface"
 >
@@ -62,9 +71,9 @@
                 </svg>
                 Volver
             </a>
-            <a
-                href="{% url 'inventory:kiosco_periodo_pdf' slug=slug periodo_id=periodo.id %}"
-                target="_blank"
+            <button
+                type="button"
+                @click="abrirModalImprimir()"
                 class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
             >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -74,7 +83,7 @@
                           stroke-linecap="round"/>
                 </svg>
                 Imprimir
-            </a>
+            </button>
 
             <div class="min-w-0 flex-1">
                 <div class="truncate text-base font-bold text-navy">
@@ -608,6 +617,86 @@
     </main>
 
     <div
+        x-show="printModal"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @keydown.escape.window="printModal = false"
+    >
+        <div class="modal-backdrop absolute inset-0" @click="printModal = false"></div>
+
+        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div class="border-b border-surface-border px-6 py-4">
+                <h2 class="text-[15px] font-bold text-navy">Opciones de impresión</h2>
+            </div>
+
+            <div class="space-y-5 px-6 py-5">
+                <div>
+                    <p class="mb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-muted">Modo</p>
+                    <div class="flex gap-2">
+                        <label
+                            class="flex-1 cursor-pointer rounded-lg border px-3 py-2 text-center text-[13px] font-medium transition"
+                            :class="printModo === 'color' ? 'border-brand bg-brand/10 text-navy' : 'border-surface-border text-ink-muted hover:bg-neutral-bg'"
+                        >
+                            <input type="radio" name="printModo" value="color" x-model="printModo" class="sr-only">
+                            Color
+                        </label>
+                        <label
+                            class="flex-1 cursor-pointer rounded-lg border px-3 py-2 text-center text-[13px] font-medium transition"
+                            :class="printModo === 'bn' ? 'border-brand bg-brand/10 text-navy' : 'border-surface-border text-ink-muted hover:bg-neutral-bg'"
+                        >
+                            <input type="radio" name="printModo" value="bn" x-model="printModo" class="sr-only">
+                            Blanco y negro
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="mb-2 flex items-center justify-between">
+                        <p class="text-[12px] font-semibold uppercase tracking-wide text-ink-muted">Áreas a incluir</p>
+                        <button
+                            type="button"
+                            @click="toggleTodasAreasImprimir()"
+                            class="text-[12px] font-semibold text-brand hover:underline"
+                            x-text="todasAreasSeleccionadas() ? 'Quitar todas' : 'Seleccionar todas'"
+                        ></button>
+                    </div>
+                    <div class="max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-surface-border p-2">
+                        <template x-for="area in areasImprimibles" :key="area.id">
+                            <label class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink hover:bg-neutral-bg">
+                                <input
+                                    type="checkbox"
+                                    :checked="printAreasSeleccionadas.includes(area.id)"
+                                    @change="toggleAreaImprimir(area.id)"
+                                    class="h-3.5 w-3.5 shrink-0 rounded border-surface-border"
+                                >
+                                <span x-text="area.nombre"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 border-t border-surface-border px-6 py-4">
+                <button
+                    type="button"
+                    @click="printModal = false"
+                    class="rounded-lg border border-surface-border bg-white px-4 py-2 text-[13px] font-semibold text-ink-secondary transition hover:bg-surface"
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="button"
+                    @click="confirmarImprimir()"
+                    :disabled="printAreasSeleccionadas.length === 0"
+                    class="rounded-lg bg-navy px-4 py-2 text-[13px] font-bold text-white transition hover:bg-navy-light disabled:opacity-60"
+                >
+                    Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div
         x-show="_mostrarModalErrores"
         x-cloak
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -677,6 +766,12 @@
             _mostrarModalErrores: false,
             _stickyAreaOffset: 64,
 
+            pdfBaseUrl: config.pdfBaseUrl,
+            areasImprimibles: config.areasImprimibles || [],
+            printModal: false,
+            printModo: 'color',
+            printAreasSeleccionadas: [],
+
             init() {
                 const self = this;
                 window.addEventListener('beforeunload', function(e) {
@@ -694,6 +789,45 @@
                     this._mostrarContenidoFicha();
                     this._recalcularOffsetSticky();
                 });
+                this.printAreasSeleccionadas = this.areasImprimibles.map(area => area.id);
+            },
+
+            abrirModalImprimir() {
+                this.printAreasSeleccionadas = this.areasImprimibles.map(area => area.id);
+                this.printModo = 'color';
+                this.printModal = true;
+            },
+
+            todasAreasSeleccionadas() {
+                return this.printAreasSeleccionadas.length === this.areasImprimibles.length;
+            },
+
+            toggleTodasAreasImprimir() {
+                this.printAreasSeleccionadas = this.todasAreasSeleccionadas()
+                    ? []
+                    : this.areasImprimibles.map(area => area.id);
+            },
+
+            toggleAreaImprimir(id) {
+                const idx = this.printAreasSeleccionadas.indexOf(id);
+                if (idx === -1) {
+                    this.printAreasSeleccionadas.push(id);
+                } else {
+                    this.printAreasSeleccionadas.splice(idx, 1);
+                }
+            },
+
+            confirmarImprimir() {
+                const params = new URLSearchParams();
+                if (this.printAreasSeleccionadas.length < this.areasImprimibles.length) {
+                    params.set('areas', this.printAreasSeleccionadas.join(','));
+                }
+                if (this.printModo === 'bn') {
+                    params.set('modo', 'bn');
+                }
+                const query = params.toString();
+                window.open(this.pdfBaseUrl + (query ? '?' + query : ''), '_blank');
+                this.printModal = false;
             },
 
             _normalizarTextoBusqueda(texto) {

@@ -203,6 +203,16 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     recursos_lista = presenters.construir_recursos_lista_periodo(nave, periodo, slug=slug)
     areas_grupos = presenters.agrupar_recursos_por_area(recursos_lista)
 
+    areas_param = request.GET.get("areas", "").strip()
+    if areas_param:
+        areas_seleccionadas = set(areas_param.split(","))
+        areas_grupos = [
+            grupo for grupo in areas_grupos
+            if (str(grupo["area"].id) if grupo["area"] else "none") in areas_seleccionadas
+        ]
+
+    modo_bn = request.GET.get("modo") == "bn"
+
     presenters.adjuntar_colores_pdf(areas_grupos)
 
     html_string = render_to_string(
@@ -212,6 +222,7 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
             "periodo": periodo,
             "areas_grupos": areas_grupos,
             "naviera": request.naviera,
+            "modo_bn": modo_bn,
         },
         request=request,
     )
