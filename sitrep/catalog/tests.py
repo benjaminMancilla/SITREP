@@ -692,3 +692,128 @@ class TestCatalogoApiViews(TestCase):
         self.assertEqual(len(data["recursos"]), 1)
         self.assertEqual(data["recursos"][0]["nombre"], "Extintor")
         self.assertIsNotNone(data["versiones_vigentes"]["central"])
+
+
+class TestImportarVersionCompletaCentral(TestCase):
+    def setUp(self):
+        Periodicidad.objects.create(
+            nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos",
+        )
+
+    def _json_valido(self, nombre="Chaleco Salvavidas"):
+        return [{
+            "area": "Salvamento", "periodicidad": "Semanal", "proposito": "MATERIAL DE SEGURIDAD",
+            "recursos": [{"nombre": nombre, "codigo": "3.3-Q", "requerimientos": ["Vigencia", "Talla"]}],
+        }]
+
+    def test_importa_recursos_nuevos_desde_json_vacio_de_central(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        resumen = importar_version_completa_central(self._json_valido())
+        self.assertEqual(resumen["errores"], [])
+        self.assertEqual(resumen["recursos_nuevos"], 1)
+        self.assertEqual(resumen["recursos_desactivados"], 0)
+
+        recurso = Recurso.objects.get(nombre="Chaleco Salvavidas")
+        self.assertIsNone(recurso.naviera_id)
+        self.assertIsNone(recurso.linaje_raiz_id)
+        self.assertEqual(recurso.requerimientos[0]["tipo"], "estandar")
+
+    def test_reemplazo_tombstonea_lo_activo_y_publica_lo_nuevo(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        importar_version_completa_central(self._json_valido("Chaleco v1"))
+        viejo = Recurso.objects.get(nombre="Chaleco v1")
+
+        resumen = importar_version_completa_central(self._json_valido("Chaleco v2"))
+        self.assertEqual(resumen["recursos_desactivados"], 1)
+        self.assertEqual(resumen["recursos_nuevos"], 1)
+
+        # append-only: la fila vieja nunca se muta, el tombstone es una fila
+        # nueva en su misma lineage con activo=False
+        viejo.refresh_from_db()
+        self.assertTrue(viejo.activo)
+        tombstone = Recurso.objects.get(linaje_raiz_id=viejo.id, activo=False)
+        self.assertEqual(tombstone.nombre, "Chaleco v1")
+
+        nuevo = Recurso.objects.get(nombre="Chaleco v2")
+        self.assertTrue(nuevo.activo)
+
+        naviera = Naviera.objects.create(nombre="N", rut="88888888-8", slug="n-import")
+        nave = Nave.objects.create(
+            naviera=naviera, nombre="Nave", matricula="NV-1",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
+        )
+        efectivo = CatalogoResolver.catalogo_efectivo(nave)
+        self.assertEqual([r.nombre for r in efectivo], ["Chaleco v2"])
+
+    def test_dry_run_no_escribe_nada(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        importar_version_completa_central(self._json_valido("Existente"))
+        conteo_antes = Recurso.objects.count()
+        versiones_antes = CatalogoVersion.objects.count()
+
+        resumen = importar_version_completa_central(self._json_valido("Nuevo"), dry_run=True)
+        self.assertEqual(resumen["recursos_nuevos"], 1)
+        self.assertEqual(resumen["recursos_desactivados"], 1)
+        self.assertEqual(Recurso.objects.count(), conteo_antes)
+        self.assertEqual(CatalogoVersion.objects.count(), versiones_antes)
+
+    def test_periodicidad_inexistente_aborta_sin_escribir(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        json_data = self._json_valido()
+        json_data[0]["periodicidad"] = "No Existe"
+        conteo_antes = Recurso.objects.count()
+
+        resumen = importar_version_completa_central(json_data)
+        self.assertEqual(len(resumen["errores"]), 1)
+        self.assertEqual(Recurso.objects.count(), conteo_antes)
+
+    def test_un_error_en_un_grupo_aborta_todo_el_import(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        json_data = self._json_valido("Chaleco OK") + [{
+            "area": "Otra", "periodicidad": "Semanal", "proposito": "CATEGORIA INVALIDA",
+            "recursos": [{"nombre": "X", "requerimientos": []}],
+        }]
+        resumen = importar_version_completa_central(json_data)
+        self.assertEqual(len(resumen["errores"]), 1)
+        self.assertFalse(Recurso.objects.filter(nombre="Chaleco OK").exists())
+
+
+class TestImportarVersionCompletaAdminView(TestCase):
+    def setUp(self):
+        Periodicidad.objects.create(
+            nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos",
+        )
+        self.superuser = Usuario.objects.create_user(
+            username="super-import", rut="19191919-1", rol="admin_sitrep",
+            email="super-import@test.com", is_superuser=True, is_staff=True,
+        )
+        self.no_superuser = Usuario.objects.create_user(
+            username="staff-import", rut="20202020-2", rol="admin_sitrep",
+            email="staff-import@test.com", is_staff=True,
+        )
+        self.url = "/admin/catalog/proposito/importar-version-completa/"
+
+    def _archivo(self, nombre="Chaleco Salvavidas"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        contenido = json.dumps([{
+            "area": "Salvamento", "periodicidad": "Semanal", "proposito": "MATERIAL DE SEGURIDAD",
+            "recursos": [{"nombre": nombre, "requerimientos": ["Vigencia"]}],
+        }]).encode("utf-8")
+        return SimpleUploadedFile("catalogo.json", contenido, content_type="application/json")
+
+    def test_no_superuser_no_puede_acceder(self):
+        self.client.force_login(self.no_superuser)
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_superuser_puede_reemplazar_via_admin(self):
+        self.client.force_login(self.superuser)
+        resp = self.client.post(self.url, {"json_file": self._archivo(), "dry_run": ""})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(Recurso.objects.filter(nombre="Chaleco Salvavidas").exists())

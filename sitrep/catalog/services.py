@@ -2,7 +2,7 @@ import operator
 
 from django.db import transaction
 
-from .models import CatalogoVersion, Recurso
+from .models import Area, CatalogoVersion, Periodicidad, Proposito, Recurso
 
 
 class CatalogRuleEngine:
@@ -224,3 +224,148 @@ class CatalogoEditorService:
             nota=nota or f"Rollback a versión {numero_objetivo}",
             filas=specs,
         )
+
+
+def importar_version_completa_central(json_data, *, creado_por=None, nota="", dry_run=False):
+    """
+    Reemplaza la versión central completa del catálogo a partir de un JSON
+    externo: en un solo commit (una CatalogoVersion central), tombstonea
+    TODO lo que hoy está activo en central y publica el JSON entero como
+    lineages nuevas. Pensado para una carga masiva única — ver
+    inspection/management/commands/load_recursos.py para altas
+    incrementales idempotentes, que es un caso de uso distinto y no toca
+    esto.
+
+    Formato esperado de json_data (lista de grupos, cada uno área+periodicidad
+    +propósito con sus recursos):
+
+        [
+          {
+            "area": "Salvamento",
+            "periodicidad": "Semanal",
+            "proposito": "MATERIAL DE SEGURIDAD",
+            "recursos": [
+              {
+                "nombre": "Chaleco Salvavidas",
+                "codigo": "3.3-Q",
+                "descripcion": "...",
+                "requerimientos": ["Vigencia", "Talla correcta"],
+                "regla_aplicacion": null
+              }
+            ]
+          }
+        ]
+
+    - "periodicidad" debe existir ya (créala en el admin antes de importar).
+    - "proposito" se infiere de "SEGURIDAD"/"OPERACIONAL" en el texto (igual
+      que load_recursos); "area" se crea si no existe.
+    - "requerimientos" acepta lista de strings simples (se convierten con
+      requerimientos_estandar) o ya en formato tipado
+      ({"id", "tipo", "texto"}) si necesitas "condicion"/"cantidad".
+    - "regla_aplicacion" es opcional (mismo schema que CatalogRuleEngine).
+    - "codigo"/"descripcion" son opcionales.
+
+    Validación primero, escritura después: si CUALQUIER grupo/recurso falla
+    al parsear, no se escribe nada — se retorna resumen['errores'] con todo
+    lo encontrado. No es best-effort como load_recursos: un reemplazo total
+    a medias es peor que no reemplazar nada.
+
+    ponytail: el "reemplazo" es ciego — no intenta emparejar recursos nuevos
+    contra los viejos por nombre/código, simplemente tombstonea todo lo
+    activo y publica el JSON como raíces nuevas. Correcto para un reset
+    pre-producción (todavía no hay historial operativo real detrás de esas
+    lineages). Si este comando se reutiliza con el catálogo ya en producción
+    real, hay que reemplazar esto por un diff real (emparejar por 'codigo')
+    para no perder la lineage de recursos que ya tienen historial operativo.
+    """
+    errores = []
+    filas_nuevas = []
+    resumen = {"grupos": 0, "recursos_nuevos": 0, "recursos_desactivados": 0, "errores": []}
+
+    for i, grupo in enumerate(json_data):
+        contexto = f"grupo #{i} (area={grupo.get('area')!r})"
+        try:
+            nombre_area = grupo["area"]
+            nombre_periodicidad = grupo["periodicidad"]
+            proposito_str = grupo["proposito"]
+            recursos_grupo = grupo["recursos"]
+        except KeyError as e:
+            errores.append(f"{contexto}: falta el campo {e}")
+            continue
+
+        try:
+            periodicidad = Periodicidad.objects.get(nombre__iexact=nombre_periodicidad)
+        except Periodicidad.DoesNotExist:
+            errores.append(
+                f"{contexto}: periodicidad {nombre_periodicidad!r} no existe, "
+                "créala en el admin antes de importar"
+            )
+            continue
+
+        proposito_upper = proposito_str.upper()
+        if "SEGURIDAD" in proposito_upper:
+            categoria = "Seguridad"
+        elif "OPERACIONAL" in proposito_upper:
+            categoria = "Operacional"
+        else:
+            errores.append(
+                f"{contexto}: no se pudo inferir categoría de propósito desde "
+                f"{proposito_str!r} (se espera 'SEGURIDAD' u 'OPERACIONAL' en el texto)"
+            )
+            continue
+
+        if not dry_run:
+            area, _ = Area.objects.get_or_create(nombre=nombre_area, defaults={"nombre_tecnico": nombre_area})
+            proposito, _ = Proposito.objects.get_or_create(
+                categoria=categoria, tipo="Material", defaults={"nombre": proposito_str.title()},
+            )
+            area_id, proposito_id = area.id, proposito.id
+        else:
+            area_id = proposito_id = None  # dry-run no publica nada, no hace falta el id real
+
+        resumen["grupos"] += 1
+
+        for j, r in enumerate(recursos_grupo):
+            contexto_r = f"{contexto} / recurso #{j} ({r.get('nombre')!r})"
+            try:
+                nombre = r["nombre"]
+                requerimientos = r["requerimientos"]
+            except KeyError as e:
+                errores.append(f"{contexto_r}: falta el campo {e}")
+                continue
+
+            if requerimientos and isinstance(requerimientos[0], str):
+                requerimientos = requerimientos_estandar(*requerimientos)
+
+            filas_nuevas.append({
+                "base": None,
+                "cambios": {
+                    "nombre": nombre, "codigo": r.get("codigo"), "descripcion": r.get("descripcion"),
+                    "area_id": area_id, "periodicidad_id": periodicidad.id, "proposito_id": proposito_id,
+                    "requerimientos": requerimientos, "regla_aplicacion": r.get("regla_aplicacion"),
+                    "activo": True,
+                },
+            })
+            resumen["recursos_nuevos"] += 1
+
+    if errores:
+        resumen["errores"] = errores
+        return resumen
+
+    central_qs = Recurso.objects.filter(naviera__isnull=True, nave__isnull=True)
+    cabezas_activas = [
+        fila for fila in CatalogoResolver.filas_vigentes_por_lineage(central_qs).values() if fila is not None
+    ]
+    resumen["recursos_desactivados"] = len(cabezas_activas)
+
+    if dry_run:
+        return resumen
+
+    filas = [{"base": cabeza, "cambios": {"activo": False}} for cabeza in cabezas_activas] + filas_nuevas
+    version, _ = CatalogoEditorService.publicar(
+        naviera=None, nave=None, creado_por=creado_por,
+        nota=nota or "Importación de versión completa del catálogo central",
+        filas=filas,
+    )
+    resumen["version_numero"] = version.numero
+    return resumen

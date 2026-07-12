@@ -1,0 +1,90 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Reemplazar versión completa del catálogo{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px;">
+
+  <h1 style="margin-bottom: 24px;">Reemplazar versión completa del catálogo central</h1>
+
+  <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:14px 18px;margin-bottom:20px;color:#9a3412;">
+    <strong>Cuidado:</strong> esto desactiva (soft-delete) TODO lo que hoy está activo en el
+    catálogo central y publica el JSON completo como reemplazo, en una sola versión nueva.
+    No es aditivo — usa "Importar recursos" si solo quieres agregar ítems nuevos sin tocar
+    los existentes. Es reversible vía "Revertir a versión" en la pestaña de catálogo, pero
+    revisa el dry-run primero.
+  </div>
+
+  {% if error %}
+  <div style="background:#fff0f0;border:1px solid #f5c6c6;border-radius:6px;padding:14px 18px;margin-bottom:20px;color:#b91c1c;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  {% if resumen %}
+  <div style="background:{% if resumen.errores %}#fff0f0{% elif dry_run %}#fffbeb{% else %}#f0fdf4{% endif %};border:1px solid {% if resumen.errores %}#f5c6c6{% elif dry_run %}#fde68a{% else %}#bbf7d0{% endif %};border-radius:6px;padding:18px;margin-bottom:28px;">
+    <h2 style="margin-top:0;font-size:15px;color:{% if resumen.errores %}#b91c1c{% elif dry_run %}#b45309{% else %}#15803d{% endif %};">
+      {% if resumen.errores %}No se escribió nada — {{ resumen.errores|length }} error(es){% elif dry_run %}Dry run — nada fue escrito{% else %}Reemplazo completado{% endif %}
+    </h2>
+
+    {% if resumen.errores %}
+    <ul style="margin:8px 0 0;padding-left:20px;color:#b91c1c;font-size:13px;">
+      {% for err in resumen.errores %}<li>{{ err }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <table style="border-collapse:collapse;width:100%;">
+      <tr><td style="padding:4px 0;color:#475569;">Grupos procesados</td>
+          <td style="padding:4px 0;font-weight:600;">{{ resumen.grupos }}</td></tr>
+      <tr><td style="padding:4px 0;color:#475569;">Recursos nuevos</td>
+          <td style="padding:4px 0;font-weight:600;color:#15803d;">{{ resumen.recursos_nuevos }}</td></tr>
+      <tr><td style="padding:4px 0;color:#475569;">Recursos desactivados</td>
+          <td style="padding:4px 0;font-weight:600;color:#b45309;">{{ resumen.recursos_desactivados }}</td></tr>
+      {% if resumen.version_numero %}
+      <tr><td style="padding:4px 0;color:#475569;">Nueva versión central</td>
+          <td style="padding:4px 0;font-weight:600;">v{{ resumen.version_numero }}</td></tr>
+      {% endif %}
+    </table>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Formulario ──────────────────────────────────────────────────────── #}
+  <form method="post" enctype="multipart/form-data"
+        onsubmit="return this.dry_run.checked || confirm('Esto va a desactivar todo el catálogo central activo y reemplazarlo por el JSON. ¿Continuar?');"
+        style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:24px;">
+    {% csrf_token %}
+
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;">
+        Archivo JSON del catálogo completo
+      </label>
+      <input type="file" name="json_file" accept=".json" required
+             style="display:block;width:100%;font-size:13px;">
+      <p style="margin:6px 0 0;font-size:12px;color:#94a3b8;">
+        Ver formato esperado en <code>catalog/services.py::importar_version_completa_central</code>
+        o <code>python manage.py importar_catalogo_completo --help</code>.
+      </p>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" name="dry_run" value="on" checked>
+        <span style="font-size:13px;">
+          <strong>Dry run</strong> — mostrar qué se crearía/desactivaría sin escribir en la BD
+        </span>
+      </label>
+    </div>
+
+    <button type="submit"
+            style="background:#9a3412;color:#fff;border:none;border-radius:6px;padding:10px 22px;font-size:14px;font-weight:600;cursor:pointer;">
+      Reemplazar versión completa
+    </button>
+  </form>
+
+  <p style="margin-top:16px;font-size:12px;color:#94a3b8;">
+    Esta vista solo es accesible para superusuarios. Pensada para una carga masiva única —
+    no la reutilices para cambios chicos, para eso está la importación aditiva.
+  </p>
+</div>
+{% endblock %}

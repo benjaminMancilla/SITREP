@@ -93,6 +93,11 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.importar_view),
                 name="inventory_importar_recursos",
             ),
+            path(
+                "importar-version-completa/",
+                self.admin_site.admin_view(self.importar_version_completa_view),
+                name="catalog_importar_version_completa",
+            ),
         ]
         return custom + urls
 
@@ -130,6 +135,42 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
 
         return TemplateResponse(request, "admin/inventory/importar_recursos.html", context)
 
+    def importar_version_completa_view(self, request):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        if not request.user.is_superuser:
+            return HttpResponseForbidden("Solo superusuarios pueden reemplazar la versión completa del catálogo.")
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Reemplazar versión completa del catálogo central",
+            "resumen": None,
+            "opts": self.model._meta,
+        }
+
+        if request.method == "POST":
+            archivo = request.FILES.get("json_file")
+            dry_run = request.POST.get("dry_run") == "on"
+
+            if not archivo:
+                context["error"] = "Debes seleccionar un archivo JSON."
+                return TemplateResponse(request, "admin/catalog/importar_version_completa.html", context)
+
+            try:
+                contenido = archivo.read().decode("utf-8")
+                json_data = json.loads(contenido)
+            except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                context["error"] = f"Archivo inválido: {e}"
+                return TemplateResponse(request, "admin/catalog/importar_version_completa.html", context)
+
+            resumen = importar_version_completa_central(
+                json_data, creado_por=request.user, dry_run=dry_run,
+            )
+            context["resumen"] = resumen
+            context["dry_run"] = dry_run
+
+        return TemplateResponse(request, "admin/catalog/importar_version_completa.html", context)
+
     def has_module_perms(self, user):
         return user.is_superuser
 
@@ -148,6 +189,7 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         extra_context["importar_url"] = "/admin/catalog/proposito/importar-json/"
+        extra_context["importar_version_completa_url"] = "/admin/catalog/proposito/importar-version-completa/"
         return super().changelist_view(request, extra_context=extra_context)
 
 
