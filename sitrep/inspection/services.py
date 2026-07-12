@@ -6,8 +6,8 @@ from django.db.models import Exists, F, OuterRef
 from django.utils import timezone
 
 from sitrep.accounts.services import AccountsQueryService
-from sitrep.catalog.models import Periodicidad, Recurso
-from sitrep.catalog.services import CatalogRuleEngine, construir_label_requerimiento
+from sitrep.catalog.models import Periodicidad
+from sitrep.catalog.services import CatalogRuleEngine, construir_label_requerimiento, CatalogoResolver
 from sitrep.fleet.models import Nave
 from sitrep.fleet.services import FleetQueryService
 from .models import (
@@ -198,58 +198,63 @@ class MotorReglasSITREP:
     @classmethod
     def sincronizar_matriz_nave(cls, nave, crear_nuevos=True):
         """
-        Genera o actualiza la matriz de la nave a partir del catálogo único.
-        El motor de reglas es la única fuente de verdad: siempre recalcula
-        cantidad/es_visible, sin excepciones manuales.
+        Genera o actualiza la matriz de la nave a partir del catálogo resuelto
+        (nave > naviera > central). El motor de reglas es la única fuente de
+        verdad: siempre recalcula cantidad/es_visible, sin excepciones manuales.
         Con crear_nuevos=False solo actualiza entradas existentes (útil en señales reactivas).
         """
-        stats = {
-            'recursos_creados': 0,
-            'recursos_actualizados': 0,
-            'recursos_omitidos': 0,
-            'recursos_con_error': 0,
+        stats = {'recursos_creados': 0, 'recursos_actualizados': 0, 'recursos_omitidos': 0, 'recursos_con_error': 0}
+
+        recursos_efectivos = CatalogoResolver.catalogo_efectivo(nave)
+
+        matrices_existentes = MatrizNaveRecurso.objects.filter(nave=nave).select_related('recurso')
+        matriz_por_raiz = {
+            (m.recurso.linaje_raiz_id or m.recurso_id): m for m in matrices_existentes
         }
 
-        for recurso in Recurso.objects.all():
+        raices_efectivas = set()
+        for recurso in recursos_efectivos:
+            raiz_id = recurso.linaje_raiz_id or recurso.id
+            raices_efectivas.add(raiz_id)
             try:
                 with transaction.atomic():
                     cantidad_calc, visible_calc = cls.evaluar_regla(nave, recurso.regla_aplicacion)
+                    matriz_existente = matriz_por_raiz.get(raiz_id)
+
+                    if matriz_existente is not None:
+                        campos = []
+                        if matriz_existente.recurso_id != recurso.id:
+                            matriz_existente.recurso = recurso
+                            campos.append('recurso')
+                        if matriz_existente.cantidad != cantidad_calc:
+                            matriz_existente.cantidad = cantidad_calc
+                            campos.append('cantidad')
+                        if matriz_existente.es_visible != visible_calc:
+                            matriz_existente.es_visible = visible_calc
+                            campos.append('es_visible')
+                        if campos:
+                            matriz_existente.save(update_fields=campos)
+                        stats['recursos_actualizados'] += 1
+                        continue
 
                     if not crear_nuevos:
-                        updated = MatrizNaveRecurso.objects.filter(
-                            nave=nave,
-                            recurso=recurso,
-                        ).update(cantidad=cantidad_calc, es_visible=visible_calc)
-                        if updated:
-                            stats['recursos_actualizados'] += 1
-                        else:
-                            stats['recursos_omitidos'] += 1
+                        stats['recursos_omitidos'] += 1
                         continue
 
-                    matriz_obj, created = MatrizNaveRecurso.objects.get_or_create(
-                        nave=nave,
-                        recurso=recurso,
-                        defaults={
-                            'cantidad': cantidad_calc,
-                            'es_visible': visible_calc,
-                        }
+                    MatrizNaveRecurso.objects.create(
+                        nave=nave, recurso=recurso, cantidad=cantidad_calc, es_visible=visible_calc,
                     )
-
-                    if created:
-                        stats['recursos_creados'] += 1
-                        continue
-
-                    matriz_obj.cantidad = cantidad_calc
-                    matriz_obj.es_visible = visible_calc
-                    matriz_obj.save(update_fields=['cantidad', 'es_visible'])
-                    stats['recursos_actualizados'] += 1
+                    stats['recursos_creados'] += 1
             except Exception:
-                logger.error(
-                    "Error processing recurso %s for nave %s (Naviera: %s)",
-                    recurso.id, nave.id, nave.naviera_id,
-                    exc_info=True,
-                )
+                logger.error("Error processing recurso %s for nave %s (Naviera: %s)",
+                              recurso.id, nave.id, nave.naviera_id, exc_info=True)
                 stats['recursos_con_error'] += 1
+
+        for raiz_id, matriz in matriz_por_raiz.items():
+            if raiz_id not in raices_efectivas and matriz.es_visible:
+                matriz.es_visible = False
+                matriz.save(update_fields=['es_visible'])
+                stats['recursos_actualizados'] += 1
 
         return stats
 
@@ -258,12 +263,16 @@ class MotorPeriodos:
     @classmethod
     def _crear_periodo_abierto(cls, nave, periodicidad, fecha_inicio):
         fecha_termino = fecha_inicio + timedelta(days=periodicidad.duracion_dias - 1)
+        versiones = CatalogoResolver.versiones_vigentes(nave)
         return PeriodoRevision.objects.create(
             nave=nave,
             periodicidad=periodicidad,
             fecha_inicio=fecha_inicio,
             fecha_termino=fecha_termino,
             estado='pendiente',
+            catalogo_version_central=versiones['central'],
+            catalogo_version_naviera=versiones['naviera'],
+            catalogo_version_nave=versiones['nave'],
         )
 
     @classmethod

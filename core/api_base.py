@@ -2,6 +2,9 @@ from rest_framework.views import APIView
 
 from sitrep.fleet.services import FleetQueryService
 
+from core.security_alerts import report_security_incident
+from core.throttling import ApiRateThrottle
+
 from .permissions import EsKiosco, EsTierra
 
 
@@ -10,10 +13,15 @@ class _AuditingAPIView(APIView):
     Deja un AuditEvent por cada respuesta exitosa de un endpoint marcado con
     audit_resource. Opt-in (no todo endpoint toca PII) para no llenar la
     tabla ni gastar un INSERT donde no aporta.
+
+    También aplica ApiRateThrottle a todo endpoint que herede de esta clase
+    (heredado, nunca instanciado a mano) y reporta cualquier bloqueo a
+    Sentry + AuditEvent antes de que DRF devuelva el 429.
     """
 
     audit_resource = None  # ej. "usuarios" — si se define, se audita
     audit_accion = "read"
+    throttle_classes = [ApiRateThrottle]
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
@@ -31,6 +39,20 @@ class _AuditingAPIView(APIView):
 
             registrar_acceso(request, self.audit_accion, self.audit_resource, detalle)
         return response
+
+    def throttled(self, request, wait):
+        report_security_incident(
+            "rate_limit_exceeded", request=request, level="warning",
+            wait_seconds=wait, method=request.method,
+        )
+        if getattr(request.user, "is_authenticated", False):
+            from sitrep.accounts.audit import registrar_acceso
+
+            registrar_acceso(
+                request, "blocked", "throttle",
+                detalle=f"method={request.method} wait={wait}s",
+            )
+        super().throttled(request, wait)
 
 
 class TierraAPIView(_AuditingAPIView):

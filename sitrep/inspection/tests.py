@@ -5,9 +5,9 @@ from django.utils import timezone
 from unittest.mock import patch
 
 from sitrep.accounts.models import Naviera, Usuario
-from sitrep.fleet.models import Nave
-from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
-from sitrep.catalog.services import requerimientos_estandar
+from sitrep.fleet.models import Nave, Tripulacion
+from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso, CatalogoVersion
+from sitrep.catalog.services import requerimientos_estandar, CatalogoEditorService, CatalogoResolver
 from .models import (
     FichaRegistro,
     MatrizNaveRecurso,
@@ -43,6 +43,7 @@ class TestMotorReglasSITREP(TestCase):
             responsabilidad="mar",
             visibilidad="todos",
         )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
         self.regla_semanal = {
             "atributo": "eslora",
             "condiciones": [
@@ -76,6 +77,7 @@ class TestMotorReglasSITREP(TestCase):
             nombre=nombre,
             requerimientos=[],
             regla_aplicacion=regla_aplicacion,
+            catalogo_version=self.catalogo_version,
         )
 
     def test_sincronizar_matriz_nave_crea_entradas(self):
@@ -194,17 +196,17 @@ class TestMotorReglasSITREP(TestCase):
             regla_aplicacion=self.regla_semanal,
         )
 
-        original_get_or_create = MatrizNaveRecurso.objects.get_or_create
+        original_create = MatrizNaveRecurso.objects.create
 
-        def get_or_create_con_fallo(*args, **kwargs):
+        def create_con_fallo(*args, **kwargs):
             if kwargs.get("recurso") == recurso_falla:
                 raise RuntimeError("fallo simulado de recurso")
-            return original_get_or_create(*args, **kwargs)
+            return original_create(*args, **kwargs)
 
         with patch.object(
             MatrizNaveRecurso.objects,
-            "get_or_create",
-            side_effect=get_or_create_con_fallo,
+            "create",
+            side_effect=create_con_fallo,
         ):
             with self.assertLogs("sitrep.inspection.services", level="ERROR") as logs:
                 stats = MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
@@ -220,6 +222,70 @@ class TestMotorReglasSITREP(TestCase):
             MatrizNaveRecurso.objects.filter(nave=self.nave, recurso=recurso_falla).exists()
         )
         self.assertTrue(any("Error processing recurso" in linea for linea in logs.output))
+
+
+class TestSincronizarMatrizNaveVersionado(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera S", rut="66666666-6", slug="naviera-s")
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave S", matricula="NVS-001",
+            eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
+        )
+        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
+        self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
+
+    def test_pk_drift_actualiza_recurso_fk_preserva_historial_operativo(self):
+        _, (r1,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+        matriz = MatrizNaveRecurso.objects.get(nave=self.nave, recurso=r1)
+        matriz_pk = matriz.pk
+        matriz.ultimo_estado_operativo = True
+        matriz.save(update_fields=['ultimo_estado_operativo'])
+
+        _, (r2,) = CatalogoEditorService.publicar(filas=[{'base': r1, 'cambios': {'nombre': 'Extintor v2'}}])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        matriz.refresh_from_db()
+        self.assertEqual(matriz.pk, matriz_pk)  # misma fila, no recreada
+        self.assertEqual(matriz.recurso_id, r2.id)  # apunta al PK nuevo
+        self.assertTrue(matriz.ultimo_estado_operativo)  # historial preservado
+
+    def test_lineage_removida_oculta_matriz_sin_borrarla(self):
+        _, (r1,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+        CatalogoEditorService.publicar(filas=[{'base': r1, 'cambios': {'activo': False}}])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        matriz = MatrizNaveRecurso.objects.get(nave=self.nave, recurso=r1)
+        self.assertFalse(matriz.es_visible)
+
+    def test_catalogo_independiente_oculta_matrices_centrales(self):
+        _, (r1,) = CatalogoEditorService.publicar(filas=[{
+            'base': None,
+            'cambios': {
+                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
+            },
+        }])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+        self.nave.catalogo_independiente = True
+        self.nave.save(update_fields=['catalogo_independiente'])
+        MotorReglasSITREP.sincronizar_matriz_nave(self.nave)
+
+        matriz = MatrizNaveRecurso.objects.get(nave=self.nave, recurso=r1)
+        self.assertFalse(matriz.es_visible)
 
 
 class TestMotorPeriodosEstados(TestCase):
@@ -241,12 +307,14 @@ class TestMotorPeriodosEstados(TestCase):
             categoria="Seguridad",
             tipo="Material",
         )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
         self.recurso_a = Recurso.objects.create(
             proposito=self.proposito,
             periodicidad=self.periodicidad,
             nombre="Extintor A",
             requerimientos=requerimientos_estandar("vigencia", "presion"),
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
         self.recurso_b = Recurso.objects.create(
             proposito=self.proposito,
@@ -254,6 +322,7 @@ class TestMotorPeriodosEstados(TestCase):
             nombre="Extintor B",
             requerimientos=requerimientos_estandar("sello"),
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
         self.recurso_sin_checklist = Recurso.objects.create(
             proposito=self.proposito,
@@ -261,6 +330,7 @@ class TestMotorPeriodosEstados(TestCase):
             nombre="Radio VHF",
             requerimientos=[],
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
         self.usuario = Usuario.objects.create_user(
             username="marinero_estados",
@@ -604,6 +674,7 @@ class TestIntegracionMotorReglas(TestCase):
             email="marinero_integracion@example.com",
             rol="mar",
         )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
 
     def _crear_nave(self, nombre, matricula, eslora, naviera=None):
         return Nave.objects.create(
@@ -639,6 +710,7 @@ class TestIntegracionMotorReglas(TestCase):
             codigo=codigo,
             requerimientos=requerimientos_tipados,
             regla_aplicacion=regla_aplicacion,
+            catalogo_version=self.catalogo_version,
         )
 
     def _get_matriz(self, nave, recurso):
@@ -1455,6 +1527,7 @@ class TestIntegracionMotorReglas(TestCase):
             nombre="Bote Salvavidas Condición",
             requerimientos=[{"id": "condicion_1", "tipo": "condicion"}],
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
 
         definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
@@ -1473,6 +1546,7 @@ class TestIntegracionMotorReglas(TestCase):
             nombre="Recurso Sin Cantidad En Catalogo",
             requerimientos=requerimientos_estandar("vigencia"),
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
 
         definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=4)
@@ -1487,6 +1561,7 @@ class TestIntegracionMotorReglas(TestCase):
             nombre="Recurso Con Cantidad En Catalogo",
             requerimientos=[{"id": MotorFichas.CANTIDAD_REQUISITO_KEY, "tipo": "cantidad"}],
             regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
         )
 
         definicion = MotorFichas.construir_definicion_checklist(recurso, cantidad=0)
@@ -1898,3 +1973,223 @@ class TestIntegracionMotorReglas(TestCase):
         )
         matriz.refresh_from_db()
         self.assertFalse(matriz.ultimo_estado_operativo)
+
+
+class TestPeriodoRevisionVersionPinning(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera P", rut="77777777-7", slug="naviera-p")
+        # ponytail: brief's setUp omitted this — versiones_vigentes() legitimately
+        # returns central=None when no central CatalogoVersion row exists at all
+        # (verified against sitrep/catalog/services.py), so without a central
+        # version the "primer periodo pinnea version central" test is untestable.
+        # Matches the fixture pattern already used by TestMotorPeriodosEstados /
+        # TestIntegracionMotorReglas in this same file.
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave P", matricula="NVP-001",
+            eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
+        )
+        self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
+
+    def test_primer_periodo_pinnea_version_central_1(self):
+        MotorPeriodos.sincronizar_periodos_nave(self.nave)
+        periodo = PeriodoRevision.objects.get(nave=self.nave, periodicidad=self.periodicidad)
+        self.assertIsNotNone(periodo.catalogo_version_central)
+        self.assertIsNone(periodo.catalogo_version_naviera)
+        self.assertIsNone(periodo.catalogo_version_nave)
+
+    def test_periodo_en_naviera_independiente_no_pinnea_central(self):
+        self.naviera.catalogo_independiente = True
+        self.naviera.save(update_fields=['catalogo_independiente'])
+        MotorPeriodos.sincronizar_periodos_nave(self.nave)
+        periodo = PeriodoRevision.objects.get(nave=self.nave, periodicidad=self.periodicidad)
+        self.assertIsNone(periodo.catalogo_version_central)
+
+
+class TestFichaPdfTemplate(TestCase):
+    """ponytail: DB-free render_to_string check — catches the requerimientos-dict-repr
+    regression (template must read checklist_items, not raw recurso.requerimientos)."""
+
+    def test_renderiza_labels_numerados_en_orden_o_f_p_obs(self):
+        from django.template.loader import render_to_string
+
+        areas_grupos = [{
+            "nombre_display": "Salvamento",
+            "area_color": {"bg": "#000", "text": "#fff", "bg_light": "#eee"},
+            "recursos": [{
+                "recurso": {"codigo": "3.3", "nombre": "Balsa salvavidas"},
+                "checklist_items": [
+                    {"key": "vigencia", "label": "Vigencia vigente"},
+                    {"key": "condicion_1", "label": "Condición."},
+                ],
+            }],
+        }]
+        html = render_to_string(
+            "inspection/kiosco/ficha_pdf.html",
+            {
+                "nave": {"nombre": "Nave Test", "matricula": "NVT-1"},
+                "naviera": {"nombre": "Naviera Test"},
+                "periodo": {
+                    "periodicidad": {"nombre": "Semanal"},
+                    "fecha_inicio": date(2026, 1, 1),
+                    "fecha_termino": date(2026, 1, 8),
+                },
+                "areas_grupos": areas_grupos,
+            },
+        )
+
+        self.assertIn("3.3.1", html)
+        self.assertIn("3.3.2", html)
+        self.assertIn("Vigencia vigente", html)
+        self.assertIn("Condición.", html)
+        # el bug viejo imprimía el repr del dict crudo de requerimientos
+        self.assertNotIn("'tipo':", html)
+
+        pos_o = html.index(">O<")
+        pos_f = html.index(">F<")
+        pos_p = html.index(">P<")
+        pos_obs = html.index("Observación")
+        self.assertTrue(pos_o < pos_f < pos_p < pos_obs)
+
+
+class _FakeSession(dict):
+    session_key = "test-session"
+
+
+class TestKioscoPeriodoPdfView(TestCase):
+    """Cubre la lógica nueva de kiosco_periodo_pdf: filtro de áreas por
+    query param y flag modo_bn. Mockea weasyprint.HTML para no depender
+    de las librerías nativas ni pagar el costo de un render real."""
+
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera PDF", rut="88888888-8", slug="naviera-pdf")
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Semanal PDF", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos"
+        )
+        self.proposito = Proposito.objects.create(nombre="Seguridad PDF", categoria="Seguridad", tipo="Material")
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        self.area_a = Area.objects.create(nombre="Salvamento PDF")
+        self.area_b = Area.objects.create(nombre="Incendio PDF")
+        Recurso.objects.create(
+            proposito=self.proposito, periodicidad=self.periodicidad, area=self.area_a,
+            nombre="Balsa", codigo="1.1", requerimientos=requerimientos_estandar("Vigencia"),
+            catalogo_version=self.catalogo_version,
+        )
+        Recurso.objects.create(
+            proposito=self.proposito, periodicidad=self.periodicidad, area=self.area_b,
+            nombre="Extintor", codigo="2.1", requerimientos=requerimientos_estandar("Vigencia"),
+            catalogo_version=self.catalogo_version,
+        )
+        self.usuario = Usuario.objects.create_user(
+            username="capitan_pdf", password="password-segura-123", naviera=self.naviera,
+            rut="88888888-8", email="capitan_pdf@example.com", rol="capitan",
+        )
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave PDF", matricula="PDF-001",
+            eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
+        )
+        self.periodo = PeriodoRevision.objects.get(nave=self.nave, periodicidad=self.periodicidad)
+
+    def _llamar_vista(self, query):
+        from django.test import RequestFactory
+        from sitrep.inspection.views.kiosco import kiosco_periodo_pdf
+
+        request = RequestFactory().get(
+            f"/naviera-pdf/kiosco/periodos/{self.periodo.id}/pdf/", query
+        )
+        request.user = self.usuario
+        request.naviera = self.naviera
+        request.session = _FakeSession({"nave_id": self.nave.id})
+
+        captured = {}
+        with patch("sitrep.inspection.views.pdf.render_to_string") as mock_render, \
+                patch("sitrep.inspection.views.pdf.HTML") as mock_html_cls:
+            mock_render.return_value = "<html></html>"
+            mock_html_cls.return_value.write_pdf.return_value = None
+            response = kiosco_periodo_pdf(request, slug="naviera-pdf", periodo_id=self.periodo.id)
+            captured["context"] = mock_render.call_args[0][1]
+        return response, captured["context"]
+
+    def test_sin_filtro_incluye_todas_las_areas_en_color(self):
+        response, context = self._llamar_vista({})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context["areas_grupos"]), 2)
+        self.assertFalse(context["modo_bn"])
+
+    def test_filtro_areas_deja_solo_la_seleccionada(self):
+        response, context = self._llamar_vista({"areas": str(self.area_a.id)})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(context["areas_grupos"]), 1)
+        self.assertEqual(context["areas_grupos"][0]["area"].id, self.area_a.id)
+
+    def test_modo_bn_activa_flag_en_contexto(self):
+        response, context = self._llamar_vista({"modo": "bn"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(context["modo_bn"])
+
+
+class TestNavePeriodoPdfView(TestCase):
+    """Cubre nave_periodo_pdf: el mismo PDF de kiosco_periodo_pdf pero invocado
+    desde tierra (sin sesión de nave), con el scoping de capitán."""
+
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera PDF Tierra", rut="77777777-7", slug="naviera-pdf-tierra")
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Semanal PDF Tierra", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos"
+        )
+        self.proposito = Proposito.objects.create(nombre="Seguridad PDF Tierra", categoria="Seguridad", tipo="Material")
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        Recurso.objects.create(
+            proposito=self.proposito, periodicidad=self.periodicidad,
+            nombre="Balsa", codigo="1.1", requerimientos=requerimientos_estandar("Vigencia"),
+            catalogo_version=self.catalogo_version,
+        )
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave PDF Tierra", matricula="PDFT-001",
+            eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
+        )
+        self.otra_nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Otra Nave", matricula="PDFT-002",
+            eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
+        )
+        self.periodo = PeriodoRevision.objects.get(nave=self.nave, periodicidad=self.periodicidad)
+        self.admin = Usuario.objects.create_user(
+            username="admin_pdf_tierra", password="password-segura-123", naviera=self.naviera,
+            rut="77777777-7", email="admin_pdf_tierra@example.com", rol="admin_naviera",
+        )
+        self.capitan = Usuario.objects.create_user(
+            username="capitan_pdf_tierra", password="password-segura-123", naviera=self.naviera,
+            rut="77777777-8", email="capitan_pdf_tierra@example.com", rol="capitan",
+        )
+        Tripulacion.objects.create(usuario=self.capitan, nave=self.otra_nave)
+
+    def _llamar_vista(self, usuario, nave):
+        from django.test import RequestFactory
+        from sitrep.inspection.views.tierra import nave_periodo_pdf
+
+        periodo = PeriodoRevision.objects.get(nave=nave, periodicidad=self.periodicidad)
+        request = RequestFactory().get(
+            f"/naviera-pdf-tierra/naves/{nave.id}/periodos/{periodo.id}/pdf/"
+        )
+        request.user = usuario
+        request.naviera = self.naviera
+        request.session = _FakeSession()
+
+        with patch("sitrep.inspection.views.pdf.render_to_string") as mock_render, \
+                patch("sitrep.inspection.views.pdf.HTML") as mock_html_cls:
+            mock_render.return_value = "<html></html>"
+            mock_html_cls.return_value.write_pdf.return_value = None
+            return nave_periodo_pdf(request, slug="naviera-pdf-tierra", nave_id=nave.id, periodo_id=periodo.id)
+
+    def test_admin_naviera_puede_imprimir_cualquier_nave(self):
+        response = self._llamar_vista(self.admin, self.nave)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+
+    def test_capitan_sin_la_nave_recibe_403(self):
+        response = self._llamar_vista(self.capitan, self.nave)
+        self.assertEqual(response.status_code, 403)
+
+    def test_capitan_con_la_nave_puede_imprimir(self):
+        response = self._llamar_vista(self.capitan, self.otra_nave)
+        self.assertEqual(response.status_code, 200)

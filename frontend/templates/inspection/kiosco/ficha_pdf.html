@@ -40,11 +40,11 @@
   .doc-header-meta {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #94a3b8;
   }
   .doc-header-meta-item {
     padding: 4px 10px;
-    border-right: 1px solid #e2e8f0;
+    border-right: 1px solid #94a3b8;
   }
   .doc-header-meta-item:last-child { border-right: none; }
   .meta-label {
@@ -72,7 +72,7 @@
     border-radius: 3px 3px 0 0;
   }
   .area-table-wrapper {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #334155;
     border-top: none;
     border-radius: 0 0 3px 3px;
     overflow: hidden;
@@ -85,12 +85,12 @@
     table-layout: fixed;
   }
 
-  col.col-codigo      { width: 44px; }
-  col.col-descripcion { width: 39%; }
-  col.col-obs         { width: 45%; }
+  col.col-codigo      { width: 60px; }
+  col.col-descripcion { width: 44% ; }
   col.col-o           { width: 3.3%; }
   col.col-f           { width: 3.3%; }
   col.col-p           { width: 3.4%; }
+  col.col-obs         { width: 39%; }
 
   thead th {
     background: #f1f5f9;
@@ -100,7 +100,7 @@
     letter-spacing: 0.07em;
     color: #475569;
     padding: 3px 4px;
-    border-bottom: 1px solid #cbd5e1;
+    border-bottom: 1px solid #334155;
     text-align: left;
   }
   thead th.col-o,
@@ -113,7 +113,7 @@
     font-size: 7.5pt;
     color: #0f2d4a;
     padding: 4px 4px 3px 4px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #64748b;
     vertical-align: top;
     page-break-inside: avoid;
     page-break-before: auto;
@@ -130,7 +130,7 @@
   }
   tr.req-row td {
     padding: 2px 4px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #94a3b8;
     font-size: 7pt;
     vertical-align: top;
     word-break: normal;
@@ -138,16 +138,18 @@
   }
   tr.req-row:last-child td { border-bottom: none; }
 
-  td.req-obs {
-    border-left: 1px solid #e2e8f0;
-    border-right: 1px solid #e2e8f0;
-    min-height: 14px;
+  td.req-codigo {
+    font-family: 'Courier New', monospace;
+    color: #475569;
   }
   td.req-ofp {
     text-align: center;
-    border-right: 1px solid #f1f5f9;
+    border-left: 1px solid #94a3b8;
   }
-  td.req-ofp:last-child { border-right: none; }
+  td.req-obs {
+    border-left: 1px solid #94a3b8;
+    min-height: 14px;
+  }
 
   .firmas {
     margin-top: 20mm;
@@ -201,41 +203,50 @@
 
 {% for grupo in areas_grupos %}
 <div>
+  {% if modo_bn %}
+  <div class="area-header" style="background: #e2e8f0; color: #0f2d4a; border: 1px solid #334155;">{{ grupo.nombre_display }}</div>
+  {% else %}
   <div class="area-header" style="background: {{ grupo.area_color.bg }}; color: {{ grupo.area_color.text }};">{{ grupo.nombre_display }}</div>
+  {% endif %}
   <div class="area-table-wrapper">
     <table>
       <colgroup>
         <col class="col-codigo">
         <col class="col-descripcion">
-        <col class="col-obs">
         <col class="col-o">
         <col class="col-f">
         <col class="col-p">
+        <col class="col-obs">
       </colgroup>
       <thead>
         <tr>
           <th>Código</th>
           <th>Recurso / Requisito</th>
-          <th>Observación</th>
           <th class="col-o">O</th>
           <th class="col-f">F</th>
           <th class="col-p">P</th>
+          <th>Observación</th>
         </tr>
       </thead>
       {% for item in grupo.recursos %}
       <tbody class="recurso-block">
         <tr class="recurso-row">
+          {% if modo_bn %}
+          <td class="codigo-cell">{{ item.recurso.codigo|default:"—" }}</td>
+          <td colspan="5">{{ item.recurso.nombre }}</td>
+          {% else %}
           <td class="codigo-cell" style="background: {{ grupo.area_color.bg_light }} !important;">{{ item.recurso.codigo|default:"—" }}</td>
           <td colspan="5" style="background: {{ grupo.area_color.bg_light }} !important;">{{ item.recurso.nombre }}</td>
+          {% endif %}
         </tr>
-        {% for req in item.recurso.requerimientos %}
+        {% for req in item.checklist_items %}
         <tr class="req-row">
-          <td></td>
-          <td>{{ req }}</td>
+          <td class="req-codigo">{{ item.recurso.codigo|default:"—" }}.{{ forloop.counter }}</td>
+          <td>{{ req.label }}</td>
+          <td class="req-ofp"></td>
+          <td class="req-ofp"></td>
+          <td class="req-ofp"></td>
           <td class="req-obs"></td>
-          <td class="req-ofp"></td>
-          <td class="req-ofp"></td>
-          <td class="req-ofp"></td>
         </tr>
         {% empty %}
         <tr class="req-row">

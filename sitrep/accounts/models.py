@@ -8,6 +8,10 @@ class Naviera(models.Model):
     rut = models.CharField(max_length=10, unique=True)
     slug = models.SlugField(max_length=50, unique=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    catalogo_independiente = models.BooleanField(
+        default=False,
+        help_text="Si es True, esta naviera ignora el catálogo central: solo ve recursos scoped a ella o a sus naves.",
+    )
 
     def __str__(self):
         return self.nombre
@@ -51,6 +55,12 @@ class Usuario(AbstractUser):
             return False
         return check_password(raw_pin, self.pin_kiosco)
 
+    @property
+    def es_admin_sitrep_global(self):
+        """admin_sitrep sin naviera propia: cuenta de soporte, entra (login y
+        vistas) a cualquier tenant en vez de quedar scoped a uno solo."""
+        return self.naviera_id is None and self.rol == "admin_sitrep"
+
     def __str__(self):
         nombre_tenant = self.naviera.nombre if self.naviera else "SITREP Global"
         return f"{self.rut} - {nombre_tenant} [{self.rol}]"
@@ -63,6 +73,7 @@ class AuditEvent(models.Model):
         ("read", "Lectura"),
         ("export", "Exportación"),
         ("write", "Escritura"),
+        ("blocked", "Bloqueado"),
     ]
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
