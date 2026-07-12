@@ -1,18 +1,17 @@
 import logging
 from urllib.parse import urlencode
 
-from django.http import Http404, HttpResponse, HttpResponseNotAllowed
+from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
-from django.template.loader import render_to_string
 from django.utils import timezone
 
-from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.catalog.models import Periodicidad
 
 from ..models import MatrizNaveRecurso, PeriodoRevision
 from .. import presenters, repositories
 from ..services import TenantQueryService, MotorFichas, contar_fichas_completas_por_periodo
+from .pdf import generar_pdf_periodo
 from .tierra import _obtener_filtros_historial_desde_request
 
 logger = logging.getLogger(__name__)
@@ -184,9 +183,6 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
 @tenant_member_required
 @requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
 def kiosco_periodo_pdf(request, slug, periodo_id):
-    import io
-    from weasyprint import HTML
-
     nave, redir = _get_nave_kiosco_o_redirect(request, slug)
     if redir:
         return redir
@@ -200,34 +196,7 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
     except PeriodoRevision.DoesNotExist:
         return redirect(f"/{slug}/kiosco/")
 
-    recursos_lista = presenters.construir_recursos_lista_periodo(nave, periodo, slug=slug)
-    areas_grupos = presenters.agrupar_recursos_por_area(recursos_lista)
-
-    presenters.adjuntar_colores_pdf(areas_grupos)
-
-    html_string = render_to_string(
-        "inspection/kiosco/ficha_pdf.html",
-        {
-            "nave": nave,
-            "periodo": periodo,
-            "areas_grupos": areas_grupos,
-            "naviera": request.naviera,
-        },
-        request=request,
-    )
-
-    pdf_file = io.BytesIO()
-    HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf(pdf_file)
-    pdf_file.seek(0)
-
-    nombre_archivo = f"ficha_{nave.matricula}_{periodo.periodicidad.nombre}_{periodo.fecha_inicio}.pdf"
-    registrar_acceso(
-        request, "export", "ficha_pdf",
-        detalle=f"nave={nave.matricula} periodo_id={periodo.id}",
-    )
-    response = HttpResponse(pdf_file.read(), content_type="application/pdf")
-    response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
-    return response
+    return generar_pdf_periodo(request, nave, periodo, slug)
 
 
 @tenant_member_required

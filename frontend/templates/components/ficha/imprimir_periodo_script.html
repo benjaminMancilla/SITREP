@@ -1,0 +1,57 @@
+{% comment %}
+Componente Alpine que respalda 'components/ficha/imprimir_periodo_boton.html'.
+Incluir una sola vez por página (en extra_scripts), aunque el botón se use varias veces.
+{% endcomment %}
+<script>
+    function imprimirPeriodo(config) {
+        return {
+            pdfBaseUrl: config.pdfBaseUrl,
+            areasImprimibles: config.areasImprimibles || [],
+            printModal: false,
+            printModo: 'color',
+            printAreasSeleccionadas: [],
+
+            init() {
+                this.printAreasSeleccionadas = this.areasImprimibles.map(area => area.id);
+            },
+
+            abrirModalImprimir() {
+                this.printAreasSeleccionadas = this.areasImprimibles.map(area => area.id);
+                this.printModo = 'color';
+                this.printModal = true;
+            },
+
+            todasAreasSeleccionadas() {
+                return this.printAreasSeleccionadas.length === this.areasImprimibles.length;
+            },
+
+            toggleTodasAreasImprimir() {
+                this.printAreasSeleccionadas = this.todasAreasSeleccionadas()
+                    ? []
+                    : this.areasImprimibles.map(area => area.id);
+            },
+
+            toggleAreaImprimir(id) {
+                const idx = this.printAreasSeleccionadas.indexOf(id);
+                if (idx === -1) {
+                    this.printAreasSeleccionadas.push(id);
+                } else {
+                    this.printAreasSeleccionadas.splice(idx, 1);
+                }
+            },
+
+            confirmarImprimir() {
+                const params = new URLSearchParams();
+                if (this.printAreasSeleccionadas.length < this.areasImprimibles.length) {
+                    params.set('areas', this.printAreasSeleccionadas.join(','));
+                }
+                if (this.printModo === 'bn') {
+                    params.set('modo', 'bn');
+                }
+                const query = params.toString();
+                window.open(this.pdfBaseUrl + (query ? '?' + query : ''), '_blank');
+                this.printModal = false;
+            },
+        };
+    }
+</script>
