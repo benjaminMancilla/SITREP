@@ -3,7 +3,7 @@ from datetime import date
 from django.db.models import Count, F, IntegerField, Max, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce, Greatest
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from core.utils import paginate
@@ -15,6 +15,7 @@ from sitrep.fleet.services import FleetQueryService
 from ..models import FichaRegistro, MatrizNaveRecurso, PeriodoRevision
 from .. import presenters
 from ..services import TenantQueryService
+from .pdf import generar_pdf_periodo
 
 
 def _obtener_filtros_historial_desde_request(request):
@@ -618,3 +619,25 @@ def nave_detalle(request, slug, nave_id):
             "periodicidad_id_filtro": filtros_historial["periodicidad_id_filtro"],
         },
     )
+
+
+@tenant_member_required
+@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+def nave_periodo_pdf(request, slug, nave_id, periodo_id):
+    if request.method != "GET":
+        return HttpResponseNotAllowed(["GET"])
+
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
+        return HttpResponseForbidden("Acceso denegado.")
+
+    try:
+        periodo = PeriodoRevision.objects.select_related("periodicidad").get(
+            id=periodo_id,
+            nave=nave,
+            estado__in=TenantQueryService.ESTADOS_ABIERTOS,
+        )
+    except PeriodoRevision.DoesNotExist:
+        return redirect(f"/{slug}/naves/{nave.id}/detalle/")
+
+    return generar_pdf_periodo(request, nave, periodo, slug)
