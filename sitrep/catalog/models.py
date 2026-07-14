@@ -2,25 +2,6 @@ from django.conf import settings
 from django.db import models, transaction
 
 
-class Proposito(models.Model):
-    nombre = models.CharField(max_length=100)
-    categoria = models.CharField(
-        max_length=50,
-        choices=[('Seguridad', 'Seguridad'), ('Operacional', 'Operacional')]
-    )
-    tipo = models.CharField(
-        max_length=50,
-        choices=[('Documentacion', 'Documentación'), ('Material', 'Material')]
-    )
-
-    class Meta:
-        verbose_name = "Propósito"
-        verbose_name_plural = "Propósitos"
-
-    def __str__(self):
-        return f" {self.tipo} de {self.nombre} ({self.categoria})"
-
-
 class Area(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     nombre_tecnico = models.CharField(max_length=100, null=True, blank=True)
@@ -80,7 +61,11 @@ class Periodicidad(models.Model):
 
 
 class Recurso(models.Model):
-    proposito = models.ForeignKey(Proposito, on_delete=models.PROTECT)
+    CATEGORIA_CHOICES = [('Seguridad', 'Seguridad'), ('Operacional', 'Operacional')]
+    TIPO_CHOICES = [('Documentacion', 'Documentación'), ('Material', 'Material')]
+
+    categoria = models.CharField(max_length=50, choices=CATEGORIA_CHOICES)
+    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES)
     periodicidad = models.ForeignKey(Periodicidad, on_delete=models.PROTECT)
     area = models.ForeignKey(
         Area, on_delete=models.SET_NULL, null=True, blank=True, related_name="recursos",

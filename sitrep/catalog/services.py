@@ -2,7 +2,7 @@ import operator
 
 from django.db import transaction
 
-from .models import Area, CatalogoVersion, Periodicidad, Proposito, Recurso
+from .models import Area, CatalogoVersion, Periodicidad, Recurso
 
 
 class CatalogRuleEngine:
@@ -162,7 +162,7 @@ class CatalogoResolver:
 
 
 _CAMPOS_COPIABLES = (
-    'proposito_id', 'periodicidad_id', 'area_id', 'nombre', 'codigo',
+    'categoria', 'tipo', 'periodicidad_id', 'area_id', 'nombre', 'codigo',
     'descripcion', 'requerimientos', 'regla_aplicacion', 'activo',
 )
 
@@ -317,12 +317,9 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
 
         if not dry_run:
             area, _ = Area.objects.get_or_create(nombre=nombre_area, defaults={"nombre_tecnico": nombre_area})
-            proposito, _ = Proposito.objects.get_or_create(
-                categoria=categoria, tipo="Material", defaults={"nombre": proposito_str.title()},
-            )
-            area_id, proposito_id = area.id, proposito.id
+            area_id = area.id
         else:
-            area_id = proposito_id = None  # dry-run no publica nada, no hace falta el id real
+            area_id = None  # dry-run no publica nada, no hace falta el id real
 
         resumen["grupos"] += 1
 
@@ -342,7 +339,8 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
                 "base": None,
                 "cambios": {
                     "nombre": nombre, "codigo": r.get("codigo"), "descripcion": r.get("descripcion"),
-                    "area_id": area_id, "periodicidad_id": periodicidad.id, "proposito_id": proposito_id,
+                    "area_id": area_id, "periodicidad_id": periodicidad.id,
+                    "categoria": categoria, "tipo": "Material",
                     "requerimientos": requerimientos, "regla_aplicacion": r.get("regla_aplicacion"),
                     "activo": True,
                 },

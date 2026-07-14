@@ -268,7 +268,6 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
     try:
         matriz = MatrizNaveRecurso.objects.select_related(
             "recurso",
-            "recurso__proposito",
         ).get(
             nave=nave,
             recurso_id=recurso_id,

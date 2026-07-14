@@ -3,7 +3,7 @@ from django.shortcuts import render
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.fleet.services import FleetQueryService
 
-from .models import Area, Periodicidad, Proposito
+from .models import Area, Periodicidad, Recurso
 
 
 @tenant_member_required
@@ -12,7 +12,8 @@ def catalogo_admin(request, slug):
     context = {
         "slug": slug,
         "naves": FleetQueryService.get_naves_activas(request.naviera),
-        "propositos": Proposito.objects.all(),
+        "categorias": Recurso.CATEGORIA_CHOICES,
+        "tipos": Recurso.TIPO_CHOICES,
         "periodicidades": Periodicidad.objects.all(),
         "areas": Area.objects.all(),
     }

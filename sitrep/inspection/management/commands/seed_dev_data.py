@@ -127,7 +127,7 @@ class Command(BaseCommand):
 
 
     def _seed_catalog(self):
-        from sitrep.catalog.models import Area, Periodicidad, Proposito
+        from sitrep.catalog.models import Area, Periodicidad
 
         for nombre, token, orden in _AREAS:
             Area.objects.get_or_create(
@@ -144,18 +144,11 @@ class Command(BaseCommand):
                 },
             )
 
-        for cat in ('Seguridad', 'Operacional'):
-            for tipo in ('Material', 'Documentacion'):
-                Proposito.objects.get_or_create(
-                    categoria=cat, tipo=tipo,
-                    defaults={'nombre': f'{tipo} de {cat}'},
-                )
-
         self._seed_recursos()
         self.stdout.write('  Catálogo OK')
 
     def _seed_recursos(self):
-        from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
+        from sitrep.catalog.models import Area, Periodicidad, Recurso
         from sitrep.catalog.services import requerimientos_estandar
 
         periodicidades = {p.nombre: p for p in Periodicidad.objects.all()}
@@ -164,13 +157,13 @@ class Command(BaseCommand):
         for area_nombre, period_nombre, prop_cat, recursos in _RECURSOS:
             area = areas[area_nombre]
             period = periodicidades[period_nombre]
-            prop = Proposito.objects.get(categoria=prop_cat, tipo='Material')
             for nombre, codigo, reqs in recursos:
                 Recurso.objects.get_or_create(
                     nombre=nombre, periodicidad=period, area=area, naviera=None,
                     defaults={
                         'codigo': codigo,
-                        'proposito': prop,
+                        'categoria': prop_cat,
+                        'tipo': 'Material',
                         'requerimientos': requerimientos_estandar(*reqs),
                     },
                 )

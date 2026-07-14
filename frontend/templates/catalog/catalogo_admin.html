@@ -109,10 +109,17 @@
                 <input type="text" x-model="form.codigo" class="h-9 rounded-md border border-surface-border px-2">
             </label>
             <label class="flex flex-col gap-1">
-                <span class="text-[11px] text-ink-muted">Propósito</span>
-                <select x-model="form.proposito_id" class="h-9 rounded-md border border-surface-border px-2">
+                <span class="text-[11px] text-ink-muted">Categoría</span>
+                <select x-model="form.categoria" class="h-9 rounded-md border border-surface-border px-2">
                     <option value="">—</option>
-                    {% for p in propositos %}<option value="{{ p.id }}">{{ p }}</option>{% endfor %}
+                    {% for value, label in categorias %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-ink-muted">Tipo</span>
+                <select x-model="form.tipo" class="h-9 rounded-md border border-surface-border px-2">
+                    <option value="">—</option>
+                    {% for value, label in tipos %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                 </select>
             </label>
             <label class="flex flex-col gap-1">
@@ -228,7 +235,7 @@
         function formVacio(navieraId) {
             return {
                 base: null, nombre: '', codigo: '', descripcion: '',
-                proposito_id: '', periodicidad_id: '', area_id: '',
+                categoria: '', tipo: '', periodicidad_id: '', area_id: '',
                 requerimientos: '[]', regla_aplicacion: 'null',
                 activo: true, naviera_id: navieraId, nave_id: '', nota: '',
             };
@@ -255,7 +262,7 @@
             cargarParaEditar(r) {
                 this.form = {
                     base: r.id, nombre: r.nombre, codigo: r.codigo || '', descripcion: r.descripcion || '',
-                    proposito_id: r.proposito || '', periodicidad_id: r.periodicidad || '', area_id: r.area || '',
+                    categoria: r.categoria || '', tipo: r.tipo || '', periodicidad_id: r.periodicidad || '', area_id: r.area || '',
                     requerimientos: JSON.stringify(r.requerimientos ?? []),
                     regla_aplicacion: JSON.stringify(r.regla_aplicacion ?? null),
                     activo: r.activo, naviera_id: r.naviera || '', nave_id: r.nave || '', nota: '',
@@ -299,7 +306,8 @@
                 const cambios = {
                     nombre: this.form.nombre, codigo: this.form.codigo || null,
                     descripcion: this.form.descripcion || null,
-                    proposito_id: this.form.proposito_id || null,
+                    categoria: this.form.categoria || null,
+                    tipo: this.form.tipo || null,
                     periodicidad_id: this.form.periodicidad_id || null,
                     area_id: this.form.area_id || null,
                     requerimientos: requerimientos, regla_aplicacion: reglaAplicacion,
