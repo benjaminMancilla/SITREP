@@ -196,6 +196,10 @@ class TestConstruirLabelRequerimiento(TestCase):
         spec = {"id": "__cantidad__", "tipo": "cantidad"}
         self.assertEqual(construir_label_requerimiento(spec, cantidad=4), "Cantidad: 4")
 
+    def test_tipo_empty_es_fijo_sin_texto(self):
+        spec = {"id": "sin_req", "tipo": "empty", "texto": "un texto default"}
+        self.assertEqual(construir_label_requerimiento(spec), "Verificación.")
+
     def test_tipo_desconocido_cae_al_texto_por_compatibilidad_forward(self):
         spec = {"id": "futuro", "tipo": "algo_que_no_existe_aun", "texto": "texto de respaldo"}
         self.assertEqual(construir_label_requerimiento(spec), "texto de respaldo")

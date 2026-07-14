@@ -75,6 +75,7 @@ _EVALUADORES_DE_REGLA = {
 _CONSTRUCTORES_LABEL_REQUERIMIENTO = {
     'cantidad': lambda spec, cantidad: f"Cantidad: {cantidad}",
     'condicion': lambda spec, cantidad: "Condición.",
+    'empty': lambda spec, cantidad: "Verificación.",
 }
 
 

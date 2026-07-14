@@ -101,7 +101,8 @@ class Recurso(models.Model):
             '{"id": "condicion_1", "tipo": "condicion"}, '
             '{"id": "__cantidad__", "tipo": "cantidad"}]. '
             'Tipos: "estandar" (texto fijo del editor), "condicion" (label fijo "Condición."), '
-            '"cantidad" (label calculado por el motor de reglas, sin texto).'
+            '"cantidad" (label calculado por el motor de reglas, sin texto), '
+            '"empty" (label fijo "Verificación.", para recursos de documentación sin condición/cantidad).'
         ),
     )
     regla_aplicacion = models.JSONField(
