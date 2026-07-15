@@ -11,7 +11,7 @@ Uso:
 
 Comportamiento:
 - Idempotente: si el recurso ya existe (mismo nombre + periodicidad + área), lo omite.
-- Crea Area y Proposito si no existen (ambos son globales en el modelo).
+- Crea Area si no existe (global en el modelo).
 - Busca Periodicidad por nombre (global, no tenant-scoped).
 - NO crea naves ni fichas — solo la estructura de recursos.
 - Filosofía de robustez: errores por ítem no detienen el batch.
@@ -32,11 +32,10 @@ def ejecutar_carga(json_data: list, dry_run: bool = False) -> dict:
     Núcleo de carga. Acepta los datos ya parseados como lista de dicts.
     Retorna estadísticas: {areas_creadas, recursos_creados, recursos_omitidos, errores, log}.
     """
-    from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
+    from sitrep.catalog.models import Area, Periodicidad, Recurso
 
     stats = {
         "areas_creadas": 0,
-        "propositos_creados": 0,
         "recursos_creados": 0,
         "recursos_omitidos": 0,
         "errores": 0,
@@ -74,7 +73,7 @@ def ejecutar_carga(json_data: list, dry_run: bool = False) -> dict:
 
 
 def _procesar_entrada(entrada, dry_run, stats, log, obtener_version_import):
-    from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso
+    from sitrep.catalog.models import Area, Periodicidad, Recurso
 
     nombre_area = entrada["area"]
     nombre_periodicidad = entrada["periodicidad"]
@@ -90,33 +89,19 @@ def _procesar_entrada(entrada, dry_run, stats, log, obtener_version_import):
             "Créala en el admin antes de importar."
         )
 
-    # ── Proposito (global) ────────────────────────────────────────────────
+    # ── Categoría/tipo del recurso ──────────────────────────────────────────
     # "MATERIAL DE SEGURIDAD" → tipo=Material, categoria=Seguridad
     # "MATERIAL OPERACIONAL"  → tipo=Material, categoria=Operacional
     proposito_upper = proposito_str.upper()
     if "SEGURIDAD" in proposito_upper:
-        cat = "Seguridad"
+        categoria = "Seguridad"
     elif "OPERACIONAL" in proposito_upper:
-        cat = "Operacional"
+        categoria = "Operacional"
     else:
         raise ValueError(
             f"No se pudo inferir categoría de propósito desde {proposito_str!r}. "
             "Esperado 'SEGURIDAD' u 'OPERACIONAL' en el texto."
         )
-
-    if not dry_run:
-        proposito_obj, prop_creado = Proposito.objects.get_or_create(
-            categoria=cat,
-            tipo="Material",
-            defaults={"nombre": proposito_str.title()},
-        )
-    else:
-        prop_creado = not Proposito.objects.filter(categoria=cat, tipo="Material").exists()
-        proposito_obj = None
-
-    if prop_creado:
-        stats["propositos_creados"] += 1
-        log("info", f"  + Propósito creado: Material / {cat}")
 
     # ── Area (global — unique por nombre) ─────────────────────────────────
     if not dry_run:
@@ -141,7 +126,7 @@ def _procesar_entrada(entrada, dry_run, stats, log, obtener_version_import):
                 area=area,
                 nombre_area=nombre_area,
                 periodicidad=periodicidad,
-                proposito_obj=proposito_obj,
+                categoria=categoria,
                 dry_run=dry_run,
                 stats=stats,
                 log=log,
@@ -159,7 +144,7 @@ def _procesar_entrada(entrada, dry_run, stats, log, obtener_version_import):
 
 def _procesar_recurso(
     recurso_data, area, nombre_area, periodicidad,
-    proposito_obj, dry_run, stats, log, obtener_version_import,
+    categoria, dry_run, stats, log, obtener_version_import,
 ):
     from sitrep.catalog.models import Recurso
     from sitrep.catalog.services import requerimientos_estandar
@@ -191,7 +176,8 @@ def _procesar_recurso(
             descripcion=recurso_data.get("descripcion"),
             periodicidad=periodicidad,
             area=area,
-            proposito=proposito_obj,
+            categoria=categoria,
+            tipo="Material",
             requerimientos=requerimientos_estandar(*requerimientos),
             regla_aplicacion=None,
             catalogo_version=obtener_version_import(),
@@ -233,7 +219,6 @@ class Command(BaseCommand):
         self.stdout.write("\n" + "─" * 50)
         self.stdout.write(self.style.SUCCESS(
             f"  Áreas creadas:      {stats['areas_creadas']}\n"
-            f"  Propósitos creados: {stats['propositos_creados']}\n"
             f"  Recursos creados:   {stats['recursos_creados']}\n"
             f"  Recursos omitidos:  {stats['recursos_omitidos']}\n"
             f"  Errores:            {stats['errores']}"

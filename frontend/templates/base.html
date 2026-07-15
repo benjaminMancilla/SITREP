@@ -37,6 +37,21 @@
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script>
+        function sitrepToast(mensaje, tipo = 'ok', duracion = 3200) {
+            window.dispatchEvent(new CustomEvent('sitrep:toast', { detail: { mensaje, tipo, duracion } }));
+        }
+
+        function sitrepToastDesdeQuery(param, mensaje, tipo = 'ok') {
+            const url = new URL(window.location.href);
+            if (url.searchParams.get(param) !== '1') {
+                return;
+            }
+            url.searchParams.delete(param);
+            window.history.replaceState({}, '', url.pathname + url.search);
+            sitrepToast(mensaje, tipo);
+        }
+    </script>
     <style>
         [x-cloak] { display: none !important; }
         .btn-ghost-info:hover  { border-color: #2563eb; background: #2563eb; color: #fff; }
@@ -46,6 +61,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}min-h-screen bg-surface text-ink font-sans antialiased{% endblock %}">
+    {% include 'components/toast.html' %}
     {% block layout %}
         {% block content %}{% endblock %}
     {% endblock %}

@@ -122,7 +122,6 @@ class TenantQueryService:
         Incluye select_related(
             'recurso',
             'recurso__area',
-            'recurso__proposito',
             'recurso__periodicidad',
         ).
         """
@@ -133,7 +132,6 @@ class TenantQueryService:
         ).select_related(
             "recurso",
             "recurso__area",
-            "recurso__proposito",
             "recurso__periodicidad",
         )
 

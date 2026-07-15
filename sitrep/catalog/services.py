@@ -2,7 +2,7 @@ import operator
 
 from django.db import transaction
 
-from .models import Area, CatalogoVersion, Periodicidad, Proposito, Recurso
+from .models import Area, CatalogoVersion, Periodicidad, Recurso
 
 
 class CatalogRuleEngine:
@@ -75,6 +75,7 @@ _EVALUADORES_DE_REGLA = {
 _CONSTRUCTORES_LABEL_REQUERIMIENTO = {
     'cantidad': lambda spec, cantidad: f"Cantidad: {cantidad}",
     'condicion': lambda spec, cantidad: "Condición.",
+    'empty': lambda spec, cantidad: "Verificación.",
 }
 
 
@@ -161,7 +162,7 @@ class CatalogoResolver:
 
 
 _CAMPOS_COPIABLES = (
-    'proposito_id', 'periodicidad_id', 'area_id', 'nombre', 'codigo',
+    'categoria', 'tipo', 'periodicidad_id', 'area_id', 'nombre', 'codigo',
     'descripcion', 'requerimientos', 'regla_aplicacion', 'activo',
 )
 
@@ -244,6 +245,7 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
             "area": "Salvamento",
             "periodicidad": "Semanal",
             "proposito": "MATERIAL DE SEGURIDAD",
+            "tipo": "Material",
             "recursos": [
               {
                 "nombre": "Chaleco Salvavidas",
@@ -259,6 +261,8 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
     - "periodicidad" debe existir ya (créala en el admin antes de importar).
     - "proposito" se infiere de "SEGURIDAD"/"OPERACIONAL" en el texto (igual
       que load_recursos); "area" se crea si no existe.
+    - "tipo" es opcional, default "Material" (compatibilidad con JSON viejos
+      sin la clave); si se especifica debe ser "Material" o "Documentacion".
     - "requerimientos" acepta lista de strings simples (se convierten con
       requerimientos_estandar) o ya en formato tipado
       ({"id", "tipo", "texto"}) si necesitas "condicion"/"cantidad".
@@ -314,14 +318,19 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
             )
             continue
 
+        tipo = grupo.get("tipo", "Material")
+        if tipo not in dict(Recurso.TIPO_CHOICES):
+            errores.append(
+                f"{contexto}: tipo {tipo!r} inválido "
+                f"(se espera uno de {list(dict(Recurso.TIPO_CHOICES))})"
+            )
+            continue
+
         if not dry_run:
             area, _ = Area.objects.get_or_create(nombre=nombre_area, defaults={"nombre_tecnico": nombre_area})
-            proposito, _ = Proposito.objects.get_or_create(
-                categoria=categoria, tipo="Material", defaults={"nombre": proposito_str.title()},
-            )
-            area_id, proposito_id = area.id, proposito.id
+            area_id = area.id
         else:
-            area_id = proposito_id = None  # dry-run no publica nada, no hace falta el id real
+            area_id = None  # dry-run no publica nada, no hace falta el id real
 
         resumen["grupos"] += 1
 
@@ -341,7 +350,8 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
                 "base": None,
                 "cambios": {
                     "nombre": nombre, "codigo": r.get("codigo"), "descripcion": r.get("descripcion"),
-                    "area_id": area_id, "periodicidad_id": periodicidad.id, "proposito_id": proposito_id,
+                    "area_id": area_id, "periodicidad_id": periodicidad.id,
+                    "categoria": categoria, "tipo": tipo,
                     "requerimientos": requerimientos, "regla_aplicacion": r.get("regla_aplicacion"),
                     "activo": True,
                 },

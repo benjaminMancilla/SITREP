@@ -1,11 +1,11 @@
-﻿from django.contrib import admin
+from django.contrib import admin
 from django.db.models import F
 from django.http import HttpResponseForbidden
 from django.template.response import TemplateResponse
 from django.urls import path
 import json
 
-from .models import Area, Periodicidad, Proposito, Recurso
+from .models import Area, Periodicidad, Recurso
 
 
 @admin.register(Area)
@@ -21,19 +21,19 @@ class AreaAdmin(admin.ModelAdmin):
 @admin.register(Recurso)
 class RecursoAdmin(admin.ModelAdmin):
     list_display = (
-        "codigo", "nombre", "area", "proposito", "periodicidad",
+        "codigo", "nombre", "area", "categoria", "tipo", "periodicidad",
         "naviera", "nave", "catalogo_version", "activo",
         "created_at", "tiene_regla", "num_requerimientos",
     )
-    list_filter = ("proposito", "periodicidad", "area", "activo", "naviera")
+    list_filter = ("categoria", "tipo", "periodicidad", "area", "activo", "naviera")
     search_fields = ("codigo", "nombre")
     readonly_fields = (
-        "nombre", "codigo", "area", "proposito", "periodicidad", "descripcion", "created_at",
+        "nombre", "codigo", "area", "categoria", "tipo", "periodicidad", "descripcion", "created_at",
         "naviera", "nave", "catalogo_version", "linaje_raiz", "activo",
         "requerimientos", "regla_aplicacion", "resumen_requerimientos_especiales",
     )
     fieldsets = (
-        (None, {"fields": ("nombre", "codigo", "area", "proposito", "periodicidad", "descripcion", "created_at")}),
+        (None, {"fields": ("nombre", "codigo", "area", "categoria", "tipo", "periodicidad", "descripcion", "created_at")}),
         ("Versionado", {"fields": ("naviera", "nave", "catalogo_version", "linaje_raiz", "activo")}),
         ("Requerimientos especiales", {
             "description": (
@@ -83,8 +83,7 @@ class RecursoAdmin(admin.ModelAdmin):
         return " · ".join(partes)
     resumen_requerimientos_especiales.short_description = "Resumen (calculado, no editable)"
 
-
-class ImportarRecursosAdmin(admin.ModelAdmin):
+    # ── Importación masiva (superusuarios) ──────────────────────────────────
     def get_urls(self):
         urls = super().get_urls()
         custom = [
@@ -171,27 +170,11 @@ class ImportarRecursosAdmin(admin.ModelAdmin):
 
         return TemplateResponse(request, "admin/catalog/importar_version_completa.html", context)
 
-    def has_module_perms(self, user):
-        return user.is_superuser
-
-    def has_add_permission(self, request):
-        return request.user.is_superuser
-
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context["importar_url"] = "/admin/catalog/proposito/importar-json/"
-        extra_context["importar_version_completa_url"] = "/admin/catalog/proposito/importar-version-completa/"
+        extra_context["importar_url"] = "/admin/catalog/recurso/importar-json/"
+        extra_context["importar_version_completa_url"] = "/admin/catalog/recurso/importar-version-completa/"
         return super().changelist_view(request, extra_context=extra_context)
 
 
-admin.site.register(Proposito, ImportarRecursosAdmin)
 admin.site.register(Periodicidad)

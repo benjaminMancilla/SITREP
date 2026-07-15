@@ -1,14 +1,48 @@
-﻿from django.core.management.base import BaseCommand
+﻿from datetime import timedelta
+
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.db import connections
 from django.db import OperationalError
+from django.utils import timezone
 import time
 
+from sitrep.inspection.models import PeriodoRevision
 from sitrep.inspection.services import MotorPeriodos
 
 class Command(BaseCommand):
     help = "Sincroniza periodos de revision para todas las naves activas."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--forzar-nave', type=int, default=None,
+            help='Dev only: vence ahora el periodo abierto de esta nave (por id) antes de sincronizar.',
+        )
+        parser.add_argument(
+            '--forzar-todas', action='store_true',
+            help='Dev only: vence ahora el periodo abierto de TODAS las naves antes de sincronizar.',
+        )
+
+    def _forzar_vencimiento(self, *, nave_id):
+        if not settings.DEBUG:
+            raise CommandError("--forzar-nave/--forzar-todas solo son ejecutables en entornos locales")
+        abiertos = PeriodoRevision.objects.filter(estado__in=PeriodoRevision.ESTADOS_ABIERTOS).select_related('periodicidad')
+        if nave_id is not None:
+            abiertos = abiertos.filter(nave_id=nave_id)
+        hoy = timezone.localdate()
+        forzados = 0
+        for periodo in abiertos:
+            periodo.fecha_termino = hoy - timedelta(days=periodo.periodicidad.offset_dias + 1)
+            periodo.save(update_fields=['fecha_termino'])
+            forzados += 1
+        self.stdout.write(f"Periodos forzados a vencimiento: {forzados}")
+
     def handle(self, *args, **options):
+        if options['forzar_todas']:
+            self._forzar_vencimiento(nave_id=None)
+        elif options['forzar_nave'] is not None:
+            self._forzar_vencimiento(nave_id=options['forzar_nave'])
+
         for attempt in range(6):
             try:
                 connections['default'].ensure_connection()

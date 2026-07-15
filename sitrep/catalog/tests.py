@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from sitrep.accounts.models import Naviera, Usuario
 from sitrep.fleet.models import Nave
-from sitrep.catalog.models import CatalogoVersion, Periodicidad, Proposito, Recurso
+from sitrep.catalog.models import CatalogoVersion, Periodicidad, Recurso
 from sitrep.catalog.services import (
     CatalogoEditorService,
     CatalogoResolver,
@@ -196,6 +196,10 @@ class TestConstruirLabelRequerimiento(TestCase):
         spec = {"id": "__cantidad__", "tipo": "cantidad"}
         self.assertEqual(construir_label_requerimiento(spec, cantidad=4), "Cantidad: 4")
 
+    def test_tipo_empty_es_fijo_sin_texto(self):
+        spec = {"id": "sin_req", "tipo": "empty", "texto": "un texto default"}
+        self.assertEqual(construir_label_requerimiento(spec), "Verificación.")
+
     def test_tipo_desconocido_cae_al_texto_por_compatibilidad_forward(self):
         spec = {"id": "futuro", "tipo": "algo_que_no_existe_aun", "texto": "texto de respaldo"}
         self.assertEqual(construir_label_requerimiento(spec), "texto de respaldo")
@@ -270,13 +274,12 @@ class TestCatalogoResolver(TestCase):
             naviera=self.naviera, nombre="Nave R2", matricula="NVR-002",
             eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
         )
-        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
         self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
         self.v_central = CatalogoVersion.crear_para_scope()
 
     def _recurso(self, nombre, *, naviera=None, nave=None, version=None, linaje_raiz=None, activo=True):
         return Recurso.objects.create(
-            proposito=self.proposito, periodicidad=self.periodicidad, nombre=nombre,
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad, nombre=nombre,
             requerimientos=[], regla_aplicacion=None,
             naviera=naviera, nave=nave, catalogo_version=version or self.v_central,
             linaje_raiz=linaje_raiz, activo=activo,
@@ -391,14 +394,13 @@ class TestCatalogoResolver(TestCase):
 
 class TestCatalogoEditorService(TestCase):
     def setUp(self):
-        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
         self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
 
     def test_publicar_base_none_crea_raiz_nueva(self):
         version, filas = CatalogoEditorService.publicar(filas=[{
             'base': None,
             'cambios': {
-                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
                 'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
             },
         }])
@@ -409,7 +411,7 @@ class TestCatalogoEditorService(TestCase):
         v1, (original,) = CatalogoEditorService.publicar(filas=[{
             'base': None,
             'cambios': {
-                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
                 'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
             },
         }])
@@ -425,7 +427,7 @@ class TestCatalogoEditorService(TestCase):
         _, (central,) = CatalogoEditorService.publicar(filas=[{
             'base': None,
             'cambios': {
-                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
                 'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
             },
         }])
@@ -437,7 +439,7 @@ class TestCatalogoEditorService(TestCase):
 
     def test_revertir_a_version_crea_version_nueva_sin_borrar_historia(self):
         base_cambios = {
-            'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+            'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
             'nombre': 'Extintor v1', 'requerimientos': [], 'regla_aplicacion': None,
         }
         v1, (r1,) = CatalogoEditorService.publicar(filas=[{'base': None, 'cambios': base_cambios}])
@@ -456,7 +458,7 @@ class TestCatalogoEditorService(TestCase):
 
     def test_revertir_a_version_restaura_activo_false(self):
         base_cambios = {
-            'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+            'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
             'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
         }
         v1, (r1,) = CatalogoEditorService.publicar(filas=[{'base': None, 'cambios': base_cambios}])
@@ -468,7 +470,7 @@ class TestCatalogoEditorService(TestCase):
 
     def test_revertir_a_version_restaura_lineage_tombstoneada_incluso_si_esta_activa_ahora(self):
         base_cambios = {
-            'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+            'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
             'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
         }
         v1, (r1,) = CatalogoEditorService.publicar(filas=[{'base': None, 'cambios': base_cambios}])
@@ -518,7 +520,6 @@ class TestCatalogoApiViews(TestCase):
             naviera=self.naviera, nombre="Nave API", matricula="NVA-001",
             eslora=20.0, arqueo_bruto=200, capacidad_personas=10,
         )
-        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
         self.periodicidad = Periodicidad.objects.create(
             nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos",
         )
@@ -540,7 +541,7 @@ class TestCatalogoApiViews(TestCase):
 
     def _cambios_base(self, nombre="Extintor"):
         return {
-            "nombre": nombre, "proposito_id": self.proposito.id, "periodicidad_id": self.periodicidad.id,
+            "nombre": nombre, "categoria": "Seguridad", "tipo": "Material", "periodicidad_id": self.periodicidad.id,
             "requerimientos": [], "regla_aplicacion": None,
         }
 
@@ -782,6 +783,29 @@ class TestImportarVersionCompletaCentral(TestCase):
         self.assertEqual(len(resumen["errores"]), 1)
         self.assertFalse(Recurso.objects.filter(nombre="Chaleco OK").exists())
 
+    def test_tipo_se_lee_del_grupo_y_default_es_material(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        json_data = self._json_valido("Chaleco")
+        json_data[0]["tipo"] = "Documentacion"
+        resumen = importar_version_completa_central(json_data)
+        self.assertEqual(resumen["errores"], [])
+        self.assertEqual(Recurso.objects.get(nombre="Chaleco").tipo, "Documentacion")
+        self.assertEqual(Recurso.objects.get(nombre="Chaleco").categoria, "Seguridad")
+
+        resumen = importar_version_completa_central(self._json_valido("Chaleco default"))
+        self.assertEqual(resumen["errores"], [])
+        self.assertEqual(Recurso.objects.get(nombre="Chaleco default").tipo, "Material")
+
+    def test_tipo_invalido_aborta_sin_escribir(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        json_data = self._json_valido("Chaleco")
+        json_data[0]["tipo"] = "NoExiste"
+        resumen = importar_version_completa_central(json_data)
+        self.assertEqual(len(resumen["errores"]), 1)
+        self.assertFalse(Recurso.objects.filter(nombre="Chaleco").exists())
+
 
 class TestImportarVersionCompletaAdminView(TestCase):
     def setUp(self):
@@ -796,7 +820,7 @@ class TestImportarVersionCompletaAdminView(TestCase):
             username="staff-import", rut="20202020-2", rol="admin_sitrep",
             email="staff-import@test.com", is_staff=True,
         )
-        self.url = "/admin/catalog/proposito/importar-version-completa/"
+        self.url = "/admin/catalog/recurso/importar-version-completa/"
 
     def _archivo(self, nombre="Chaleco Salvavidas"):
         from django.core.files.uploadedfile import SimpleUploadedFile

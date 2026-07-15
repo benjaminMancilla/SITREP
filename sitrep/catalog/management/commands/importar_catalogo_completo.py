@@ -42,8 +42,9 @@ cada uno con sus recursos:
   se crea sola si no existe.
 - "requerimientos" acepta lista de strings simples (formato legado, se
   convierten a requerimientos tipados "estandar") o ya en formato tipado
-  ([{"id": ..., "tipo": "estandar"|"condicion"|"cantidad", "texto": ...}])
-  si necesitas requerimientos de condición/cantidad.
+  ([{"id": ..., "tipo": "estandar"|"condicion"|"cantidad"|"empty", "texto": ...}])
+  si necesitas requerimientos de condición/cantidad, o "empty" para
+  recursos de documentación sin condición/cantidad.
 - "regla_aplicacion" es opcional — mismo schema que CatalogRuleEngine
   (ver catalog/services.py).
 - "codigo" y "descripcion" son opcionales.

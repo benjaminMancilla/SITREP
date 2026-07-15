@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from sitrep.accounts.models import Naviera, Usuario
 from sitrep.fleet.models import Nave, Tripulacion
-from sitrep.catalog.models import Area, Periodicidad, Proposito, Recurso, CatalogoVersion
+from sitrep.catalog.models import Area, Periodicidad, Recurso, CatalogoVersion
 from sitrep.catalog.services import requerimientos_estandar, CatalogoEditorService, CatalogoResolver
 from .models import (
     FichaRegistro,
@@ -30,11 +30,6 @@ class TestMotorReglasSITREP(TestCase):
             eslora=25.0,
             arqueo_bruto=300,
             capacidad_personas=20,
-        )
-        self.proposito = Proposito.objects.create(
-            nombre="Seguridad Base",
-            categoria="Seguridad",
-            tipo="Material",
         )
         self.periodicidad = Periodicidad.objects.create(
             nombre="Semanal",
@@ -72,7 +67,8 @@ class TestMotorReglasSITREP(TestCase):
 
     def _crear_recurso(self, nombre, regla_aplicacion):
         return Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad",
+            tipo="Material",
             periodicidad=self.periodicidad,
             nombre=nombre,
             requerimientos=[],
@@ -231,14 +227,13 @@ class TestSincronizarMatrizNaveVersionado(TestCase):
             naviera=self.naviera, nombre="Nave S", matricula="NVS-001",
             eslora=25.0, arqueo_bruto=300, capacidad_personas=20,
         )
-        self.proposito = Proposito.objects.create(nombre="P", categoria="Seguridad", tipo="Material")
         self.periodicidad = Periodicidad.objects.create(nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos")
 
     def test_pk_drift_actualiza_recurso_fk_preserva_historial_operativo(self):
         _, (r1,) = CatalogoEditorService.publicar(filas=[{
             'base': None,
             'cambios': {
-                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
                 'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
             },
         }])
@@ -260,7 +255,7 @@ class TestSincronizarMatrizNaveVersionado(TestCase):
         _, (r1,) = CatalogoEditorService.publicar(filas=[{
             'base': None,
             'cambios': {
-                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
                 'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
             },
         }])
@@ -275,7 +270,7 @@ class TestSincronizarMatrizNaveVersionado(TestCase):
         _, (r1,) = CatalogoEditorService.publicar(filas=[{
             'base': None,
             'cambios': {
-                'proposito_id': self.proposito.id, 'periodicidad_id': self.periodicidad.id,
+                'categoria': 'Seguridad', 'tipo': 'Material', 'periodicidad_id': self.periodicidad.id,
                 'nombre': 'Extintor', 'requerimientos': [], 'regla_aplicacion': None,
             },
         }])
@@ -302,14 +297,9 @@ class TestMotorPeriodosEstados(TestCase):
             responsabilidad="mar",
             visibilidad="todos",
         )
-        self.proposito = Proposito.objects.create(
-            nombre="Seguridad Operativa",
-            categoria="Seguridad",
-            tipo="Material",
-        )
         self.catalogo_version = CatalogoVersion.crear_para_scope()
         self.recurso_a = Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad", tipo="Material",
             periodicidad=self.periodicidad,
             nombre="Extintor A",
             requerimientos=requerimientos_estandar("vigencia", "presion"),
@@ -317,7 +307,7 @@ class TestMotorPeriodosEstados(TestCase):
             catalogo_version=self.catalogo_version,
         )
         self.recurso_b = Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad", tipo="Material",
             periodicidad=self.periodicidad,
             nombre="Extintor B",
             requerimientos=requerimientos_estandar("sello"),
@@ -325,7 +315,7 @@ class TestMotorPeriodosEstados(TestCase):
             catalogo_version=self.catalogo_version,
         )
         self.recurso_sin_checklist = Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad", tipo="Material",
             periodicidad=self.periodicidad,
             nombre="Radio VHF",
             requerimientos=[],
@@ -661,11 +651,6 @@ class TestIntegracionMotorReglas(TestCase):
             responsabilidad="mar",
             visibilidad="todos",
         )
-        self.proposito = Proposito.objects.create(
-            nombre="Seguridad Integración",
-            categoria="Seguridad",
-            tipo="Material",
-        )
         self.usuario = Usuario.objects.create_user(
             username="marinero_integracion",
             password="password-seguro-123",
@@ -703,7 +688,7 @@ class TestIntegracionMotorReglas(TestCase):
                 {"id": MotorFichas.CANTIDAD_REQUISITO_KEY, "tipo": "cantidad"}
             )
         return Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad", tipo="Material",
             periodicidad=periodicidad or self.periodicidad,
             area=area,
             nombre=nombre,
@@ -1522,7 +1507,7 @@ class TestIntegracionMotorReglas(TestCase):
         """Un requerimiento tipo 'condicion' se valida como cualquier otro,
         pero su label es fijo ('Condición.') y no depende del texto del editor."""
         recurso = Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad", tipo="Material",
             periodicidad=self.periodicidad,
             nombre="Bote Salvavidas Condición",
             requerimientos=[{"id": "condicion_1", "tipo": "condicion"}],
@@ -1541,7 +1526,7 @@ class TestIntegracionMotorReglas(TestCase):
         calculado por el motor de reglas — aunque cantidad>1, si el recurso no
         declaró el requerimiento 'cantidad' en su catálogo, no aparece."""
         recurso = Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad", tipo="Material",
             periodicidad=self.periodicidad,
             nombre="Recurso Sin Cantidad En Catalogo",
             requerimientos=requerimientos_estandar("vigencia"),
@@ -1556,7 +1541,7 @@ class TestIntegracionMotorReglas(TestCase):
 
     def test_cantidad_aparece_si_esta_marcada_en_el_catalogo(self):
         recurso = Recurso.objects.create(
-            proposito=self.proposito,
+            categoria="Seguridad", tipo="Material",
             periodicidad=self.periodicidad,
             nombre="Recurso Con Cantidad En Catalogo",
             requerimientos=[{"id": MotorFichas.CANTIDAD_REQUISITO_KEY, "tipo": "cantidad"}],
@@ -2066,17 +2051,16 @@ class TestKioscoPeriodoPdfView(TestCase):
         self.periodicidad = Periodicidad.objects.create(
             nombre="Semanal PDF", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos"
         )
-        self.proposito = Proposito.objects.create(nombre="Seguridad PDF", categoria="Seguridad", tipo="Material")
         self.catalogo_version = CatalogoVersion.crear_para_scope()
         self.area_a = Area.objects.create(nombre="Salvamento PDF")
         self.area_b = Area.objects.create(nombre="Incendio PDF")
         Recurso.objects.create(
-            proposito=self.proposito, periodicidad=self.periodicidad, area=self.area_a,
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad, area=self.area_a,
             nombre="Balsa", codigo="1.1", requerimientos=requerimientos_estandar("Vigencia"),
             catalogo_version=self.catalogo_version,
         )
         Recurso.objects.create(
-            proposito=self.proposito, periodicidad=self.periodicidad, area=self.area_b,
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad, area=self.area_b,
             nombre="Extintor", codigo="2.1", requerimientos=requerimientos_estandar("Vigencia"),
             catalogo_version=self.catalogo_version,
         )
@@ -2137,10 +2121,9 @@ class TestNavePeriodoPdfView(TestCase):
         self.periodicidad = Periodicidad.objects.create(
             nombre="Semanal PDF Tierra", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos"
         )
-        self.proposito = Proposito.objects.create(nombre="Seguridad PDF Tierra", categoria="Seguridad", tipo="Material")
         self.catalogo_version = CatalogoVersion.crear_para_scope()
         Recurso.objects.create(
-            proposito=self.proposito, periodicidad=self.periodicidad,
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad,
             nombre="Balsa", codigo="1.1", requerimientos=requerimientos_estandar("Vigencia"),
             catalogo_version=self.catalogo_version,
         )

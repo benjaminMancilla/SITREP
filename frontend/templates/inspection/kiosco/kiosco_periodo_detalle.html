@@ -681,6 +681,7 @@
                 this.$watch('_mostrarBannerRecuperacion', () => {
                     this.$nextTick(() => this._recalcularOffsetSticky());
                 });
+                sitrepToastDesdeQuery('guardado', 'Cambios guardados');
                 this._cargarBorradorSiExiste();
                 this.$nextTick(() => {
                     this._restaurarEstadoVista();
@@ -997,7 +998,7 @@
                     this._guardarEstadoVista();
                     this._limpiarBorrador();
                     this._guardadoExitoso = true;
-                    window.location.reload();
+                    window.location.href = window.location.pathname + '?guardado=1';
                 } catch (error) {
                     alert('Error de conexión. Intenta nuevamente.');
                     this.guardandoTodo = false;
