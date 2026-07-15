@@ -245,6 +245,7 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
             "area": "Salvamento",
             "periodicidad": "Semanal",
             "proposito": "MATERIAL DE SEGURIDAD",
+            "tipo": "Material",
             "recursos": [
               {
                 "nombre": "Chaleco Salvavidas",
@@ -260,6 +261,8 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
     - "periodicidad" debe existir ya (créala en el admin antes de importar).
     - "proposito" se infiere de "SEGURIDAD"/"OPERACIONAL" en el texto (igual
       que load_recursos); "area" se crea si no existe.
+    - "tipo" es opcional, default "Material" (compatibilidad con JSON viejos
+      sin la clave); si se especifica debe ser "Material" o "Documentacion".
     - "requerimientos" acepta lista de strings simples (se convierten con
       requerimientos_estandar) o ya en formato tipado
       ({"id", "tipo", "texto"}) si necesitas "condicion"/"cantidad".
@@ -315,6 +318,14 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
             )
             continue
 
+        tipo = grupo.get("tipo", "Material")
+        if tipo not in dict(Recurso.TIPO_CHOICES):
+            errores.append(
+                f"{contexto}: tipo {tipo!r} inválido "
+                f"(se espera uno de {list(dict(Recurso.TIPO_CHOICES))})"
+            )
+            continue
+
         if not dry_run:
             area, _ = Area.objects.get_or_create(nombre=nombre_area, defaults={"nombre_tecnico": nombre_area})
             area_id = area.id
@@ -340,7 +351,7 @@ def importar_version_completa_central(json_data, *, creado_por=None, nota="", dr
                 "cambios": {
                     "nombre": nombre, "codigo": r.get("codigo"), "descripcion": r.get("descripcion"),
                     "area_id": area_id, "periodicidad_id": periodicidad.id,
-                    "categoria": categoria, "tipo": "Material",
+                    "categoria": categoria, "tipo": tipo,
                     "requerimientos": requerimientos, "regla_aplicacion": r.get("regla_aplicacion"),
                     "activo": True,
                 },

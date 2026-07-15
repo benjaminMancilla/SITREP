@@ -783,6 +783,29 @@ class TestImportarVersionCompletaCentral(TestCase):
         self.assertEqual(len(resumen["errores"]), 1)
         self.assertFalse(Recurso.objects.filter(nombre="Chaleco OK").exists())
 
+    def test_tipo_se_lee_del_grupo_y_default_es_material(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        json_data = self._json_valido("Chaleco")
+        json_data[0]["tipo"] = "Documentacion"
+        resumen = importar_version_completa_central(json_data)
+        self.assertEqual(resumen["errores"], [])
+        self.assertEqual(Recurso.objects.get(nombre="Chaleco").tipo, "Documentacion")
+        self.assertEqual(Recurso.objects.get(nombre="Chaleco").categoria, "Seguridad")
+
+        resumen = importar_version_completa_central(self._json_valido("Chaleco default"))
+        self.assertEqual(resumen["errores"], [])
+        self.assertEqual(Recurso.objects.get(nombre="Chaleco default").tipo, "Material")
+
+    def test_tipo_invalido_aborta_sin_escribir(self):
+        from sitrep.catalog.services import importar_version_completa_central
+
+        json_data = self._json_valido("Chaleco")
+        json_data[0]["tipo"] = "NoExiste"
+        resumen = importar_version_completa_central(json_data)
+        self.assertEqual(len(resumen["errores"]), 1)
+        self.assertFalse(Recurso.objects.filter(nombre="Chaleco").exists())
+
 
 class TestImportarVersionCompletaAdminView(TestCase):
     def setUp(self):
