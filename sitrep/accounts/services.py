@@ -4,6 +4,12 @@ from django.http import Http404
 Usuario = get_user_model()
 
 
+def solicitar_recuperacion(email, naviera):
+    # ponytail: no envía correo aún, solo valida el punto de entrada —
+    # cablear envío real (token, email) cuando se defina el proveedor.
+    pass
+
+
 class AccountsQueryService:
     @staticmethod
     def _get_or_404(model, **kwargs):

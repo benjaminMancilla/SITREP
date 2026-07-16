@@ -9,6 +9,7 @@ from core.permissions import ROLES_TIERRA
 from core.utils import paginate
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from sitrep.accounts.services import solicitar_recuperacion
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
 Usuario = get_user_model()
@@ -109,6 +110,24 @@ def logout_kiosco(request, slug):
 
 def redirect_kiosco_login(request, slug):
     return redirect(f"/{slug}/login/?modo=mar")
+
+
+def solicitar_recuperacion_password(request, slug):
+    tenant = getattr(request, "naviera", None)
+    enviado = False
+    email = ""
+
+    if request.method == "POST":
+        email = (request.POST.get("email") or "").strip()
+        if email:
+            solicitar_recuperacion(email, tenant)
+            enviado = True
+
+    return render(
+        request,
+        "accounts/recuperar_password.html",
+        {"slug": slug, "naviera": tenant, "email": email, "enviado": enviado},
+    )
 
 
 @tenant_member_required
