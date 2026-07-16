@@ -34,6 +34,7 @@
         const token = localStorage.getItem('sitrep_kiosco_token');
         tokenOk = Boolean(token);
         $nextTick(() => { $refs.dispositivoToken.value = token || ''; });
+        sitrepToastDesdeQuery('pin_help', 'Se notificó a tu capitán y al equipo de tierra.', 'ok');
     "
     class="flex min-h-screen flex-col lg:flex-row"
 >
@@ -258,7 +259,11 @@
                     </div>
                 </div>
 
-                <div class="col-start-1 row-start-1 transition-opacity duration-150" :class="modo === 'mar' ? 'opacity-100' : 'pointer-events-none opacity-0 invisible'">
+                <div
+                    class="col-start-1 row-start-1 transition-opacity duration-150"
+                    :class="modo === 'mar' ? 'opacity-100' : 'pointer-events-none opacity-0 invisible'"
+                    x-data="{ showPinHelp: false }"
+                >
                     {% if modo == 'mar' and error %}
                         <div class="mb-5 rounded border border-fail-border bg-fail-bg px-4 py-3 text-sm font-medium text-fail">
                             {{ error }}
@@ -329,6 +334,61 @@
 
                         <input x-ref="dispositivoToken" id="dispositivo_token" name="dispositivo_token" type="hidden">
                     </form>
+
+                    <button
+                        type="button"
+                        @click="showPinHelp = true"
+                        class="mt-4 text-sm font-semibold text-brand transition hover:text-brand-dark"
+                    >
+                        ¿No recuerdas tu PIN?
+                    </button>
+
+                    <div
+                        x-show="showPinHelp"
+                        x-cloak
+                        x-transition.opacity
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
+                        @click.self="showPinHelp = false"
+                    >
+                        <div class="w-full max-w-[420px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]" role="dialog" aria-modal="true" aria-labelledby="pin-help-title">
+                            <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
+                                <p id="pin-help-title" class="text-[15px] font-bold text-navy">¿No recuerdas tu PIN?</p>
+                                <button type="button" @click="showPinHelp = false" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
+                            </div>
+                            <div class="px-5 py-4">
+                                <p class="text-[13px] leading-relaxed text-ink-muted">
+                                    Tu PIN solo lo puede restablecer tu capitán o el equipo de tierra. Deja tu RUT y les avisaremos para que lo restablezcan contigo.
+                                </p>
+                                <form method="POST" action="{% url 'inventory:solicitar_ayuda_pin' slug=slug %}" class="mt-4">
+                                    {% csrf_token %}
+                                    <label for="pin-help-rut" class="text-xs font-semibold uppercase tracking-[0.07em] text-ink-muted">RUT</label>
+                                    <input
+                                        id="pin-help-rut"
+                                        name="rut"
+                                        type="text"
+                                        required
+                                        placeholder="12.345.678-9"
+                                        class="mt-1.5 w-full rounded border border-ink-muted bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
+                                    >
+                                    <div class="mt-4 flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            @click="showPinHelp = false"
+                                            class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            class="rounded-md bg-navy px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+                                        >
+                                            Avisar a tierra
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
