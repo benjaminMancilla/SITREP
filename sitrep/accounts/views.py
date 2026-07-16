@@ -12,6 +12,7 @@ from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
 Usuario = get_user_model()
+SESSION_COOKIE_AGE_RECORDADO = 1209600  # 2 semanas, igual al default de Django
 
 
 def _normalizar_rut(rut: str) -> str:
@@ -88,6 +89,8 @@ def login_unificado(request, slug, modo_default="tierra"):
 
         usuario = authenticate(request, email=email, password=password)
         if usuario is not None:
+            recordar = bool(request.POST.get("recordar"))
+            request.session.set_expiry(SESSION_COOKIE_AGE_RECORDADO if recordar else 0)
             login(request, usuario)
             return redirect(f"/{slug}/")
 
