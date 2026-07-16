@@ -6,9 +6,10 @@ from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from core.permissions import ROLES_TIERRA
-from core.utils import paginate
+from core.utils import get_client_ip, paginate
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from sitrep.accounts.models import AuditEvent
 from sitrep.accounts.services import solicitar_recuperacion
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
@@ -128,6 +129,24 @@ def solicitar_recuperacion_password(request, slug):
         "accounts/recuperar_password.html",
         {"slug": slug, "naviera": tenant, "email": email, "enviado": enviado},
     )
+
+
+def solicitar_ayuda_pin(request, slug):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    rut = _normalizar_rut(request.POST.get("rut") or "")
+    if rut:
+        AuditEvent.objects.create(
+            naviera=getattr(request, "naviera", None),
+            accion="write",
+            recurso="solicitud_pin",
+            detalle=rut,
+            ip=get_client_ip(request),
+            endpoint=request.path,
+        )
+
+    return redirect(f"/{slug}/login/?modo=mar&pin_help=1")
 
 
 @tenant_member_required

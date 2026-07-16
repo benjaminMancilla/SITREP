@@ -8,6 +8,7 @@ urlpatterns = [
     path('kiosco/login/', views.redirect_kiosco_login, name='login_kiosco'),
     path('kiosco/logout/', views.logout_kiosco, name='logout_kiosco'),
     path('recuperar/', views.solicitar_recuperacion_password, name='recuperar_password'),
+    path('ayuda-pin/', views.solicitar_ayuda_pin, name='solicitar_ayuda_pin'),
 
     # Usuarios
     path('usuarios/', views.listar_usuarios, name='listar_usuarios'),
