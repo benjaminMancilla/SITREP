@@ -32,8 +32,23 @@
             localStorage.removeItem('sitrep_kiosco_token');
         }
         const token = localStorage.getItem('sitrep_kiosco_token');
-        tokenOk = Boolean(token);
-        $nextTick(() => { $refs.dispositivoToken.value = token || ''; });
+        if (token) {
+            fetch('/{{ slug }}/api/v1/dispositivos/verificar/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token }),
+            })
+            .then(r => r.ok ? r.json() : { valido: false })
+            .then(d => {
+                tokenOk = Boolean(d.valido);
+                if (!d.valido) localStorage.removeItem('sitrep_kiosco_token');
+                $nextTick(() => { $refs.dispositivoToken.value = tokenOk ? token : ''; });
+            })
+            .catch(() => { tokenOk = false; });
+        } else {
+            tokenOk = false;
+            $nextTick(() => { $refs.dispositivoToken.value = ''; });
+        }
         sitrepToastDesdeQuery('pin_help', 'Se notificó a tu capitán y al equipo de tierra.', 'ok');
     "
     class="flex min-h-screen flex-col lg:flex-row"
