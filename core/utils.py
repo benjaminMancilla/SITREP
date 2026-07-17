@@ -43,24 +43,26 @@ def get_client_ip(request):
     return request.META.get("REMOTE_ADDR")
 
 
-def throttle(key_prefix, limit, window_seconds):
-    """Máx `limit` requests cada `window_seconds` por IP a la vista decorada.
-
-    Usa el cache de Django (ventana fija, no distribuida entre procesos si el
-    backend es LocMemCache — suficiente para frenar abuso de un endpoint
-    público de bajo tráfico; cambiar a un cache compartido si hace falta
-    consistencia entre workers).
+def hit_rate_limit(key_prefix, request, limit, window_seconds):
+    """True si esta IP ya superó `limit` requests en la ventana. Ventana fija
+    sobre el cache de Django. Sirve tanto para el decorador `throttle` como para
+    limitar una rama puntual de una vista (ej. solo el POST de mar en el login).
     """
+    cache_key = f"throttle:{key_prefix}:{get_client_ip(request)}"
+    try:
+        count = cache.incr(cache_key)
+    except ValueError:
+        cache.set(cache_key, 1, window_seconds)
+        count = 1
+    return count > limit
+
+
+def throttle(key_prefix, limit, window_seconds):
+    """Máx `limit` requests cada `window_seconds` por IP a la vista decorada."""
     def decorator(view_func):
         @wraps(view_func)
         def wrapped(request, *args, **kwargs):
-            cache_key = f"throttle:{key_prefix}:{get_client_ip(request)}"
-            try:
-                count = cache.incr(cache_key)
-            except ValueError:
-                cache.set(cache_key, 1, window_seconds)
-                count = 1
-            if count > limit:
+            if hit_rate_limit(key_prefix, request, limit, window_seconds):
                 return HttpResponse("Demasiadas solicitudes, intenta más tarde.", status=429)
             return view_func(request, *args, **kwargs)
         return wrapped
