@@ -1,7 +1,8 @@
 ﻿from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
-from sitrep.fleet.models import Dispositivo, Tripulacion
+from sitrep.fleet.models import Tripulacion
+from sitrep.fleet.services import FleetQueryService
 
 Usuario = get_user_model()
 
@@ -31,17 +32,14 @@ class KioscoTenantBackend(ModelBackend):
         if not rut or not pin or not naviera_id or not dispositivo_token:
             return None
 
-        dispositivo_autenticado = None
-        for dispositivo in Dispositivo.objects.filter(naviera_id=naviera_id).order_by("-is_active"):
-            if dispositivo.verificar_token(dispositivo_token):
-                if not dispositivo.is_active:
-                    if request is not None:
-                        request._dispositivo_revocado = True
-                    return None
-                dispositivo_autenticado = dispositivo
-                break
-
+        dispositivo_autenticado = FleetQueryService.buscar_dispositivo_por_token(
+            naviera_id, dispositivo_token
+        )
         if not dispositivo_autenticado:
+            return None
+        if not dispositivo_autenticado.is_active:
+            if request is not None:
+                request._dispositivo_revocado = True
             return None
 
         try:

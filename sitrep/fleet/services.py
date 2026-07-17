@@ -36,6 +36,19 @@ class FleetQueryService:
         return Dispositivo.objects.filter(naviera=naviera).select_related("nave")
 
     @staticmethod
+    def buscar_dispositivo_por_token(naviera_id, token_plano):
+        """Dispositivo (activo O revocado) cuyo token coincide, o None. El
+        llamador decide qué hacer con is_active. Un solo lugar corre el loop
+        de verificación — lo comparten el login de mar y el endpoint de
+        verificación del frontend."""
+        if not naviera_id or not token_plano:
+            return None
+        for d in Dispositivo.objects.filter(naviera_id=naviera_id).order_by("-is_active"):
+            if d.verificar_token(token_plano):
+                return d
+        return None
+
+    @staticmethod
     def get_tripulacion_de_nave(naviera, nave_id):
         nave = FleetQueryService.get_nave_activa(naviera, nave_id)
         return Tripulacion.objects.filter(nave=nave)
