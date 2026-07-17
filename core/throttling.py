@@ -1,4 +1,6 @@
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+
+from core.utils import get_client_ip
 
 READ_RATE = "120/min"
 WRITE_RATE = "30/min"
@@ -33,3 +35,16 @@ class ApiRateThrottle(UserRateThrottle):
             self.rate = WRITE_RATE
         self.num_requests, self.duration = self.parse_rate(self.rate)
         return super().allow_request(request, view)
+
+
+class AnonIPRateThrottle(AnonRateThrottle):
+    """Límite por IP para endpoints DRF anónimos (sin usuario). ApiRateThrottle
+    es por usuario y no sirve acá; y un APIView crudo que no herede de
+    TierraAPIView/KioscoAPIView no queda limitado por defecto. Usa el IP
+    Cloudflare-aware del proyecto en vez del REMOTE_ADDR crudo de DRF."""
+
+    scope = "anon_ip"
+    THROTTLE_RATES = {"anon_ip": "20/min"}
+
+    def get_ident(self, request):
+        return get_client_ip(request)
