@@ -15,6 +15,7 @@
     x-data="{
         modo: '{{ modo|escapejs }}',
         tokenOk: false,
+        showPinHelp: false,
         setModo(value) {
             this.modo = value;
             history.replaceState(null, '', '?modo=' + value);
@@ -283,7 +284,6 @@
                 <div
                     class="col-start-1 row-start-1 transition-opacity duration-150"
                     :class="modo === 'mar' ? 'opacity-100' : 'pointer-events-none opacity-0 invisible'"
-                    x-data="{ showPinHelp: false }"
                 >
                     {% if modo == 'mar' and error %}
                         <div class="mb-5 rounded border border-fail-border bg-fail-bg px-4 py-3 text-sm font-medium text-fail">
@@ -383,7 +383,7 @@
                                 </p>
                                 <form method="POST" action="{% url 'inventory:solicitar_ayuda_pin' slug=slug %}" class="mt-4">
                                     {% csrf_token %}
-                                    <input x-ref="pinHelpToken" name="dispositivo_token" type="hidden">
+                                    <input x-ref="pinHelpToken" name="dispositivo_token" type="hidden" value="">
                                     <label for="pin-help-rut" class="text-xs font-semibold uppercase tracking-[0.07em] text-ink-muted">RUT</label>
                                     <input
                                         id="pin-help-rut"
