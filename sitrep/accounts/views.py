@@ -13,7 +13,13 @@ from core.utils import get_client_ip, hit_rate_limit, paginate, throttle, verify
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.accounts.models import AuditEvent
-from sitrep.accounts.services import resolver_usuario_reset, solicitar_recuperacion
+from sitrep.accounts.services import (
+    notificar_ayuda_pin,
+    resolver_usuario_reset,
+    solicitar_recuperacion,
+)
+from sitrep.fleet.models import Tripulacion
+from sitrep.fleet.services import FleetQueryService
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
 Usuario = get_user_model()
@@ -194,6 +200,7 @@ def confirmar_recuperacion_password(request, slug, uidb64, token):
     )
 
 
+@throttle("ayuda_pin", limit=5, window_seconds=600)
 def solicitar_ayuda_pin(request, slug):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -208,6 +215,7 @@ def solicitar_ayuda_pin(request, slug):
             ip=get_client_ip(request),
             endpoint=request.path,
         )
+        notificar_ayuda_pin(request, rut)
 
     return redirect(f"/{slug}/login/?modo=mar&pin_help=1")
 
@@ -381,7 +389,13 @@ def desactivar_usuario(request, slug, id):
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan")
 def cambiar_pin(request, slug, id):
     if request.user.rol == "capitan" and request.user.id != id:
-        return HttpResponseForbidden("Acceso denegado.")
+        # El capitán puede resetear el PIN de la tripulación de sus propias naves.
+        es_tripulante_propio = Tripulacion.objects.filter(
+            usuario_id=id,
+            nave__in=FleetQueryService.get_naves_capitan(request.user, request.naviera),
+        ).exists()
+        if not es_tripulante_propio:
+            return HttpResponseForbidden("Acceso denegado.")
 
     usuario = TenantQueryService.get_usuario_activo_del_tenant(request.naviera, id)
 
