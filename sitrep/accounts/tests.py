@@ -17,7 +17,7 @@ from sitrep.accounts.views import (
     _rut_valido,
     _normalizar_modo_login,
 )
-from sitrep.fleet.models import Nave, Tripulacion
+from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
 
 
 # ---------------------------------------------------------------------------
@@ -660,6 +660,9 @@ class TestCambiarPinCapitanCrew(TestCase):
 
 
 class TestAyudaPinNotifica(TestCase):
+    """El aviso de PIN solo procede desde un kiosco autorizado y activo cuyo
+    tripulante sea el del rut. Sin eso no se notifica a nadie."""
+
     def setUp(self):
         cache.clear()
         self.naviera = Naviera.objects.create(nombre="NavPin", rut="27272727-2", slug="navpin")
@@ -667,6 +670,15 @@ class TestAyudaPinNotifica(TestCase):
             naviera=self.naviera, nombre="N", matricula="N-1",
             eslora=10, arqueo_bruto=100, capacidad_personas=5,
         )
+        self.otra_nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Otra", matricula="N-2",
+            eslora=10, arqueo_bruto=100, capacidad_personas=5,
+        )
+        self.dispositivo = Dispositivo.objects.create(
+            naviera=self.naviera, nave=self.nave, nombre="Kiosco N",
+        )
+        self.token = self.dispositivo.generar_nuevo_token()
+        self.dispositivo.save()
         self.capitan = Usuario.objects.create_user(
             username="capn", password="pass-seguro-123", naviera=self.naviera,
             rut="28282828-2", email="capn@x.com", rol="capitan",
@@ -678,20 +690,47 @@ class TestAyudaPinNotifica(TestCase):
         self.crew = Usuario.objects.create_user(
             username="crewp", naviera=self.naviera, rut="31313131-3", email="crewp@x.com", rol="mar",
         )
+        self.crew_otra_nave = Usuario.objects.create_user(
+            username="crewp2", naviera=self.naviera, rut="32323232-3", email="crewp2@x.com", rol="mar",
+        )
         Tripulacion.objects.create(usuario=self.capitan, nave=self.nave)
         Tripulacion.objects.create(usuario=self.crew, nave=self.nave)
+        Tripulacion.objects.create(usuario=self.crew_otra_nave, nave=self.otra_nave)
 
-    def _url(self):
-        return reverse("inventory:solicitar_ayuda_pin", kwargs={"slug": self.naviera.slug})
+    def _post(self, rut, token):
+        return self.client.post(
+            reverse("inventory:solicitar_ayuda_pin", kwargs={"slug": self.naviera.slug}),
+            {"rut": rut, "dispositivo_token": token},
+        )
 
-    def test_rut_conocido_notifica_capitan_y_admin(self):
-        resp = self.client.post(self._url(), {"rut": "31313131-3"})
+    def test_rut_de_la_nave_desde_kiosco_valido_notifica_capitan_y_admin(self):
+        resp = self._post("31313131-3", self.token)
         self.assertEqual(resp.status_code, 302)
         destinatarios = {addr for m in mail.outbox for addr in m.to}
         self.assertIn("capn@x.com", destinatarios)
         self.assertIn("adm@x.com", destinatarios)
+        self.assertTrue(AuditEvent.objects.filter(recurso="solicitud_pin").exists())
+
+    def test_sin_token_no_notifica(self):
+        self._post("31313131-3", "")
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(AuditEvent.objects.filter(recurso="solicitud_pin").exists())
+
+    def test_token_invalido_no_notifica(self):
+        self._post("31313131-3", "token-que-no-existe")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_kiosco_revocado_no_notifica(self):
+        self.dispositivo.is_active = False
+        self.dispositivo.save()
+        self._post("31313131-3", self.token)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_rut_no_tripulante_de_la_nave_del_kiosco_no_notifica(self):
+        # crew_otra_nave es mar del tenant, pero no de la nave de este kiosco.
+        self._post("32323232-3", self.token)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_rut_desconocido_no_notifica(self):
-        resp = self.client.post(self._url(), {"rut": "99999999-9"})
-        self.assertEqual(resp.status_code, 302)
+        self._post("99999999-9", self.token)
         self.assertEqual(len(mail.outbox), 0)

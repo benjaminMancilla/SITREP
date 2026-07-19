@@ -12,7 +12,6 @@ from core.permissions import ROLES_TIERRA
 from core.utils import get_client_ip, hit_rate_limit, paginate, throttle, verify_turnstile
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
-from sitrep.accounts.models import AuditEvent
 from sitrep.accounts.services import (
     notificar_ayuda_pin,
     resolver_usuario_reset,
@@ -206,16 +205,11 @@ def solicitar_ayuda_pin(request, slug):
         return HttpResponseNotAllowed(["POST"])
 
     rut = _normalizar_rut(request.POST.get("rut") or "")
+    dispositivo_token = request.POST.get("dispositivo_token")
     if rut:
-        AuditEvent.objects.create(
-            naviera=getattr(request, "naviera", None),
-            accion="write",
-            recurso="solicitud_pin",
-            detalle=rut,
-            ip=get_client_ip(request),
-            endpoint=request.path,
-        )
-        notificar_ayuda_pin(request, rut)
+        # El aviso solo procede desde un kiosco autorizado cuyo tripulante sea el
+        # del rut; el gate y la auditoría viven en el servicio.
+        notificar_ayuda_pin(request, rut, dispositivo_token)
 
     return redirect(f"/{slug}/login/?modo=mar&pin_help=1")
 

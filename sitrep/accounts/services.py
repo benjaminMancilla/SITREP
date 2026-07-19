@@ -12,7 +12,10 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from core.permissions import ROLES_TIERRA
 from core.services import enviar_email
+from core.utils import get_client_ip
+from sitrep.accounts.models import AuditEvent
 from sitrep.fleet.models import Tripulacion
+from sitrep.fleet.services import FleetQueryService
 
 logger = logging.getLogger(__name__)
 
@@ -72,26 +75,46 @@ def resolver_usuario_reset(request, uidb64, token):
     return usuario
 
 
-def notificar_ayuda_pin(request, rut):
-    """Avisa por correo a quienes pueden resetear el PIN (capitanes de las naves
-    del tripulante + admins de la naviera) que este rut pidió ayuda, con un enlace
-    directo a cambiar_pin. Silencioso si el rut no es un tripulante mar del tenant
-    (anti-enumeración) y ante fallos de SMTP."""
+def notificar_ayuda_pin(request, rut, dispositivo_token):
+    """Avisa por correo a quienes pueden resetear el PIN (capitán de la nave del
+    kiosco + admins de la naviera) que este rut pidió ayuda, con un enlace directo
+    a cambiar_pin.
+
+    El pedido SOLO se procesa si viene de un kiosco autorizado y activo de la
+    naviera y el rut es tripulante de la nave de ese kiosco. Así, la única forma de
+    gatillar el aviso es teniendo acceso físico a un kiosco válido y sabiendo el rut
+    de un tripulante real de esa nave — no se puede pedir desde un navegador
+    cualquiera. Silencioso ante cualquier fallo de validación o de SMTP.
+    """
     naviera = getattr(request, "naviera", None)
+    dispositivo = FleetQueryService.buscar_dispositivo_por_token(
+        getattr(naviera, "id", None), dispositivo_token
+    )
+    if dispositivo is None or not dispositivo.is_active:
+        return
+
     solicitante = Usuario.objects.filter(
         naviera=naviera, rut=rut, is_active=True, rol="mar"
     ).first()
     if solicitante is None:
         return
+    if not Tripulacion.objects.filter(usuario=solicitante, nave=dispositivo.nave).exists():
+        return
 
-    naves_ids = list(
-        Tripulacion.objects.filter(usuario=solicitante).values_list("nave_id", flat=True)
+    # Pedido legítimo: dejar rastro y avisar a quienes pueden resetear.
+    AuditEvent.objects.create(
+        naviera=naviera,
+        accion="write",
+        recurso="solicitud_pin",
+        detalle=rut,
+        ip=get_client_ip(request),
+        endpoint=request.path,
     )
     correos = list(
         Usuario.objects.filter(naviera=naviera, is_active=True)
         .filter(
             Q(rol="admin_naviera")
-            | Q(rol="capitan", asignaciones_naves__nave_id__in=naves_ids)
+            | Q(rol="capitan", asignaciones_naves__nave=dispositivo.nave)
         )
         .exclude(email__isnull=True)
         .exclude(email="")
@@ -108,6 +131,9 @@ def notificar_ayuda_pin(request, rut):
     html = render_to_string("emails/pin_reset_request.html", contexto)
     texto = (
         f"El tripulante {solicitante.rut} solicitó ayuda para restablecer su PIN de kiosco.\n\n"
+        "IMPORTANTE: verifica que la solicitud sea real antes de restablecer el PIN. "
+        "Confirma la identidad del tripulante en persona o por un canal de confianza; "
+        "el pedido salió de un kiosco autorizado, pero eso no prueba quién lo envió.\n\n"
         f"Puedes resetearlo aquí:\n{reset_url}"
     )
     try:

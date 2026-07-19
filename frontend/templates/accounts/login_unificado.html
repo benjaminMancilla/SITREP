@@ -42,12 +42,18 @@
             .then(d => {
                 tokenOk = Boolean(d.valido);
                 if (!d.valido) localStorage.removeItem('sitrep_kiosco_token');
-                $nextTick(() => { $refs.dispositivoToken.value = tokenOk ? token : ''; });
+                $nextTick(() => {
+                    $refs.dispositivoToken.value = tokenOk ? token : '';
+                    $refs.pinHelpToken.value = tokenOk ? token : '';
+                });
             })
             .catch(() => { tokenOk = false; });
         } else {
             tokenOk = false;
-            $nextTick(() => { $refs.dispositivoToken.value = ''; });
+            $nextTick(() => {
+                $refs.dispositivoToken.value = '';
+                $refs.pinHelpToken.value = '';
+            });
         }
         sitrepToastDesdeQuery('pin_help', 'Se notificó a tu capitán y al equipo de tierra.', 'ok');
     "
@@ -352,6 +358,7 @@
 
                     <button
                         type="button"
+                        x-show="tokenOk"
                         @click="showPinHelp = true"
                         class="mt-4 text-sm font-semibold text-brand transition hover:text-brand-dark"
                     >
@@ -376,6 +383,7 @@
                                 </p>
                                 <form method="POST" action="{% url 'inventory:solicitar_ayuda_pin' slug=slug %}" class="mt-4">
                                     {% csrf_token %}
+                                    <input x-ref="pinHelpToken" name="dispositivo_token" type="hidden">
                                     <label for="pin-help-rut" class="text-xs font-semibold uppercase tracking-[0.07em] text-ink-muted">RUT</label>
                                     <input
                                         id="pin-help-rut"
