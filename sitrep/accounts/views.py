@@ -1,16 +1,18 @@
 import re
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from core.permissions import ROLES_TIERRA
-from core.utils import get_client_ip, hit_rate_limit, paginate
+from core.utils import get_client_ip, hit_rate_limit, paginate, throttle
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.accounts.models import AuditEvent
-from sitrep.accounts.services import solicitar_recuperacion
+from sitrep.accounts.services import resolver_usuario_reset, solicitar_recuperacion
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
 Usuario = get_user_model()
@@ -138,6 +140,45 @@ def solicitar_recuperacion_password(request, slug):
         request,
         "accounts/recuperar_password.html",
         {"slug": slug, "naviera": tenant, "email": email, "enviado": enviado},
+    )
+
+
+@throttle("confirmar_pass", limit=10, window_seconds=600)
+def confirmar_recuperacion_password(request, slug, uidb64, token):
+    tenant = getattr(request, "naviera", None)
+    usuario = resolver_usuario_reset(request, uidb64, token)
+    if usuario is None:
+        return render(
+            request,
+            "accounts/recuperar_password_confirmar.html",
+            {"slug": slug, "naviera": tenant, "enlace_invalido": True},
+        )
+
+    if request.method == "POST":
+        password = request.POST.get("password") or ""
+        confirmacion = request.POST.get("password_confirmacion") or ""
+        error = None
+        if password != confirmacion:
+            error = "Las contraseñas no coinciden."
+        else:
+            try:
+                validate_password(password, usuario)
+            except ValidationError as exc:
+                error = " ".join(exc.messages)
+        if error:
+            return render(
+                request,
+                "accounts/recuperar_password_confirmar.html",
+                {"slug": slug, "naviera": tenant, "error": error},
+            )
+        usuario.set_password(password)
+        usuario.save(update_fields=["password"])  # invalida el token: embebe el hash anterior
+        return redirect(f"/{slug}/login/?recuperacion=ok")
+
+    return render(
+        request,
+        "accounts/recuperar_password_confirmar.html",
+        {"slug": slug, "naviera": tenant},
     )
 
 
