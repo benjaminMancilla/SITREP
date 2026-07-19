@@ -131,7 +131,7 @@ def solicitar_recuperacion_password(request, slug):
     if request.method == "POST":
         email = (request.POST.get("email") or "").strip()
         if email:
-            solicitar_recuperacion(email, tenant)
+            solicitar_recuperacion(request, email)
             enviado = True
 
     return render(
