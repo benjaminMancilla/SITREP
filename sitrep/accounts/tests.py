@@ -1,8 +1,14 @@
 from io import StringIO
+from unittest.mock import patch
 
+from django.contrib.auth.tokens import default_token_generator
+from django.core import mail
+from django.core.cache import cache
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from sitrep.accounts.models import AuditEvent, Naviera, Usuario
 from sitrep.accounts.views import (
@@ -11,6 +17,7 @@ from sitrep.accounts.views import (
     _rut_valido,
     _normalizar_modo_login,
 )
+from sitrep.fleet.models import Nave, Tripulacion
 
 
 # ---------------------------------------------------------------------------
@@ -497,3 +504,194 @@ class TestWebTenantBackendLogin(TestCase):
         resp = self._login("asl@test.com", "clave-segura-2")
         self.assertTrue(resp.wsgi_request.user.is_authenticated)
         self.assertEqual(resp.wsgi_request.user, self.admin_sitrep_global)
+
+
+# ---------------------------------------------------------------------------
+# Recuperación de contraseña (tierra)
+# ---------------------------------------------------------------------------
+
+class TestPasswordRecovery(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.naviera = Naviera.objects.create(nombre="Rec", rut="20202020-2", slug="rec")
+        self.otra = Naviera.objects.create(nombre="Otra", rut="21212121-2", slug="otra")
+        self.tierra = Usuario.objects.create_user(
+            username="tierra_rec", password="clave-actual-123", naviera=self.naviera,
+            rut="20202020-2", email="tierra@rec.com", rol="tierra",
+        )
+        self.marinero = Usuario.objects.create_user(
+            username="mar_rec", naviera=self.naviera, rut="30303030-3",
+            email="mar@rec.com", rol="mar",
+        )
+
+    def _request_url(self):
+        return reverse("inventory:recuperar_password", kwargs={"slug": self.naviera.slug})
+
+    def _confirm_url(self, user, naviera=None, token=None):
+        naviera = naviera or self.naviera
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = token or default_token_generator.make_token(user)
+        return reverse(
+            "inventory:confirmar_recuperacion",
+            kwargs={"slug": naviera.slug, "uidb64": uidb64, "token": token},
+        )
+
+    @patch("sitrep.accounts.views.verify_turnstile", return_value=True)
+    def test_email_conocido_envia_enlace(self, _):
+        resp = self.client.post(
+            self._request_url(), {"email": "tierra@rec.com", "cf-turnstile-response": "x"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Revisa tu correo")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("tierra@rec.com", mail.outbox[0].to)
+
+    @patch("sitrep.accounts.views.verify_turnstile", return_value=True)
+    def test_email_desconocido_muestra_enviado_sin_correo(self, _):
+        resp = self.client.post(
+            self._request_url(), {"email": "nadie@rec.com", "cf-turnstile-response": "x"}
+        )
+        self.assertContains(resp, "Revisa tu correo")
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch("sitrep.accounts.views.verify_turnstile", return_value=True)
+    def test_email_de_mar_no_recibe_reset(self, _):
+        resp = self.client.post(
+            self._request_url(), {"email": "mar@rec.com", "cf-turnstile-response": "x"}
+        )
+        self.assertContains(resp, "Revisa tu correo")
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch("sitrep.accounts.views.verify_turnstile", return_value=False)
+    def test_turnstile_fallido_no_envia(self, _):
+        resp = self.client.post(
+            self._request_url(), {"email": "tierra@rec.com", "cf-turnstile-response": "x"}
+        )
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertContains(resp, "robot")
+
+    def test_confirmar_cambia_password_y_es_de_un_solo_uso(self):
+        url = self._confirm_url(self.tierra)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        resp = self.client.post(
+            url, {"password": "clave-nueva-456", "password_confirmacion": "clave-nueva-456"}
+        )
+        self.assertRedirects(
+            resp, f"/{self.naviera.slug}/login/?recuperacion=ok", fetch_redirect_response=False
+        )
+        self.tierra.refresh_from_db()
+        self.assertTrue(self.tierra.check_password("clave-nueva-456"))
+        # El mismo enlace ya no sirve: el token embebe el hash anterior.
+        self.assertContains(self.client.get(url), "Enlace inválido")
+
+    def test_confirmar_token_invalido(self):
+        url = self._confirm_url(self.tierra, token="malo-malo")
+        self.assertContains(self.client.get(url), "Enlace inválido")
+
+    def test_confirmar_password_no_coincide(self):
+        url = self._confirm_url(self.tierra)
+        resp = self.client.post(
+            url, {"password": "clave-nueva-456", "password_confirmacion": "otra-distinta-789"}
+        )
+        self.assertContains(resp, "no coinciden")
+        self.tierra.refresh_from_db()
+        self.assertTrue(self.tierra.check_password("clave-actual-123"))
+
+    def test_confirmar_uid_de_otro_tenant_es_rechazado(self):
+        uidb64 = urlsafe_base64_encode(force_bytes(self.tierra.pk))
+        token = default_token_generator.make_token(self.tierra)
+        url = reverse(
+            "inventory:confirmar_recuperacion",
+            kwargs={"slug": self.otra.slug, "uidb64": uidb64, "token": token},
+        )
+        resp = self.client.post(
+            url, {"password": "clave-nueva-456", "password_confirmacion": "clave-nueva-456"}
+        )
+        self.assertContains(resp, "Enlace inválido")
+        self.tierra.refresh_from_db()
+        self.assertTrue(self.tierra.check_password("clave-actual-123"))
+
+
+# ---------------------------------------------------------------------------
+# Recuperación de PIN: capitán resetea a su tripulación + aviso por correo
+# ---------------------------------------------------------------------------
+
+class TestCambiarPinCapitanCrew(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="NavCap", rut="23232323-2", slug="navcap")
+        self.nave_cap = Nave.objects.create(
+            naviera=self.naviera, nombre="NaveCap", matricula="NC-1",
+            eslora=10, arqueo_bruto=100, capacidad_personas=5,
+        )
+        self.nave_otra = Nave.objects.create(
+            naviera=self.naviera, nombre="NaveOtra", matricula="NO-1",
+            eslora=10, arqueo_bruto=100, capacidad_personas=5,
+        )
+        self.capitan = Usuario.objects.create_user(
+            username="cap", password="pass-seguro-123", naviera=self.naviera,
+            rut="24242424-2", email="cap@x.com", rol="capitan",
+        )
+        self.crew = Usuario.objects.create_user(
+            username="crew", naviera=self.naviera, rut="25252525-2", email="crew@x.com", rol="mar",
+        )
+        self.crew_otra = Usuario.objects.create_user(
+            username="crew2", naviera=self.naviera, rut="26262626-2", email="crew2@x.com", rol="mar",
+        )
+        Tripulacion.objects.create(usuario=self.capitan, nave=self.nave_cap)
+        Tripulacion.objects.create(usuario=self.crew, nave=self.nave_cap)
+        Tripulacion.objects.create(usuario=self.crew_otra, nave=self.nave_otra)
+
+    def _url(self, u):
+        return reverse("inventory:cambiar_pin", kwargs={"slug": self.naviera.slug, "id": u.id})
+
+    def test_capitan_resetea_pin_de_su_tripulacion(self):
+        self.client.force_login(self.capitan)
+        resp = self.client.post(self._url(self.crew), {"pin": "4321"})
+        self.assertRedirects(
+            resp, f"/{self.naviera.slug}/usuarios/", fetch_redirect_response=False
+        )
+        self.crew.refresh_from_db()
+        self.assertTrue(self.crew.check_pin("4321"))
+
+    def test_capitan_no_resetea_tripulacion_de_otra_nave(self):
+        self.client.force_login(self.capitan)
+        resp = self.client.post(self._url(self.crew_otra), {"pin": "4321"})
+        self.assertEqual(resp.status_code, 403)
+
+
+class TestAyudaPinNotifica(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.naviera = Naviera.objects.create(nombre="NavPin", rut="27272727-2", slug="navpin")
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="N", matricula="N-1",
+            eslora=10, arqueo_bruto=100, capacidad_personas=5,
+        )
+        self.capitan = Usuario.objects.create_user(
+            username="capn", password="pass-seguro-123", naviera=self.naviera,
+            rut="28282828-2", email="capn@x.com", rol="capitan",
+        )
+        self.admin = Usuario.objects.create_user(
+            username="adm", password="pass-seguro-123", naviera=self.naviera,
+            rut="29292929-2", email="adm@x.com", rol="admin_naviera",
+        )
+        self.crew = Usuario.objects.create_user(
+            username="crewp", naviera=self.naviera, rut="31313131-3", email="crewp@x.com", rol="mar",
+        )
+        Tripulacion.objects.create(usuario=self.capitan, nave=self.nave)
+        Tripulacion.objects.create(usuario=self.crew, nave=self.nave)
+
+    def _url(self):
+        return reverse("inventory:solicitar_ayuda_pin", kwargs={"slug": self.naviera.slug})
+
+    def test_rut_conocido_notifica_capitan_y_admin(self):
+        resp = self.client.post(self._url(), {"rut": "31313131-3"})
+        self.assertEqual(resp.status_code, 302)
+        destinatarios = {addr for m in mail.outbox for addr in m.to}
+        self.assertIn("capn@x.com", destinatarios)
+        self.assertIn("adm@x.com", destinatarios)
+
+    def test_rut_desconocido_no_notifica(self):
+        resp = self.client.post(self._url(), {"rut": "99999999-9"})
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(len(mail.outbox), 0)
