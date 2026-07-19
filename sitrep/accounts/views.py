@@ -190,7 +190,11 @@ def confirmar_recuperacion_password(request, slug, uidb64, token):
             )
         usuario.set_password(password)
         usuario.save(update_fields=["password"])  # invalida el token: embebe el hash anterior
-        return redirect(f"/{slug}/login/?recuperacion=ok")
+        return render(
+            request,
+            "accounts/recuperacion_password_exito.html",
+            {"slug": slug, "naviera": tenant},
+        )
 
     return render(
         request,
@@ -211,7 +215,11 @@ def solicitar_ayuda_pin(request, slug):
         # del rut; el gate y la auditoría viven en el servicio.
         notificar_ayuda_pin(request, rut, dispositivo_token)
 
-    return redirect(f"/{slug}/login/?modo=mar&pin_help=1")
+    return render(
+        request,
+        "accounts/ayuda_pin_exito.html",
+        {"slug": slug, "naviera": getattr(request, "naviera", None)},
+    )
 
 
 @tenant_member_required
