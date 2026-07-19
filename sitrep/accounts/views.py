@@ -1,5 +1,6 @@
 import re
 
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -8,7 +9,7 @@ from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from core.permissions import ROLES_TIERRA
-from core.utils import get_client_ip, hit_rate_limit, paginate, throttle
+from core.utils import get_client_ip, hit_rate_limit, paginate, throttle, verify_turnstile
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
 from sitrep.accounts.models import AuditEvent
@@ -125,21 +126,32 @@ def redirect_kiosco_login(request, slug):
     return redirect(f"/{slug}/login/?modo=mar")
 
 
+@throttle("recuperar_pass", limit=5, window_seconds=600)
 def solicitar_recuperacion_password(request, slug):
     tenant = getattr(request, "naviera", None)
     enviado = False
     email = ""
+    error = None
 
     if request.method == "POST":
         email = (request.POST.get("email") or "").strip()
-        if email:
+        if not verify_turnstile(request.POST.get("cf-turnstile-response"), get_client_ip(request)):
+            error = "No pudimos verificar que no eres un robot, intenta de nuevo."
+        elif email:
             solicitar_recuperacion(request, email)
             enviado = True
 
     return render(
         request,
         "accounts/recuperar_password.html",
-        {"slug": slug, "naviera": tenant, "email": email, "enviado": enviado},
+        {
+            "slug": slug,
+            "naviera": tenant,
+            "email": email,
+            "enviado": enviado,
+            "error": error,
+            "turnstile_site_key": settings.TURNSTILE_SITE_KEY,
+        },
     )
 
 
