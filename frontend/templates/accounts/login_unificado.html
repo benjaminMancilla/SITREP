@@ -32,8 +32,30 @@
             localStorage.removeItem('sitrep_kiosco_token');
         }
         const token = localStorage.getItem('sitrep_kiosco_token');
-        tokenOk = Boolean(token);
-        $nextTick(() => { $refs.dispositivoToken.value = token || ''; });
+        if (token) {
+            fetch('/{{ slug }}/api/v1/dispositivos/verificar/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token }),
+            })
+            .then(r => r.ok ? r.json() : { valido: false })
+            .then(d => {
+                tokenOk = Boolean(d.valido);
+                if (!d.valido) localStorage.removeItem('sitrep_kiosco_token');
+                $nextTick(() => {
+                    $refs.dispositivoToken.value = tokenOk ? token : '';
+                    $refs.pinHelpToken.value = tokenOk ? token : '';
+                });
+            })
+            .catch(() => { tokenOk = false; });
+        } else {
+            tokenOk = false;
+            $nextTick(() => {
+                $refs.dispositivoToken.value = '';
+                $refs.pinHelpToken.value = '';
+            });
+        }
+        sitrepToastDesdeQuery('pin_help', 'Se notificó a tu capitán y al equipo de tierra.', 'ok');
     "
     class="flex min-h-screen flex-col lg:flex-row"
 >
@@ -121,7 +143,11 @@
             </div>
 
             <div class="grid" x-cloak>
-                <div class="col-start-1 row-start-1 transition-opacity duration-150" :class="modo === 'tierra' ? 'opacity-100' : 'pointer-events-none opacity-0 invisible'">
+                <div
+                    class="col-start-1 row-start-1 transition-opacity duration-150"
+                    :class="modo === 'tierra' ? 'opacity-100' : 'pointer-events-none opacity-0 invisible'"
+                    x-data="{ showPassword: false, capsOn: false, recordar: false, showDeviceConfirm: false }"
+                >
                     {% if modo == 'tierra' and error %}
                         <div class="mb-5 rounded border border-fail-border bg-fail-bg px-4 py-3 text-sm font-medium text-fail">
                             {{ error }}
@@ -131,6 +157,7 @@
                     <form id="form-tierra" method="POST" action="{% url 'inventory:login_tierra' slug=slug %}">
                         {% csrf_token %}
                         <input type="hidden" name="modo" value="tierra">
+                        <input type="hidden" name="recordar" :value="recordar ? '1' : ''">
 
                         <div class="space-y-4 rounded-lg border border-surface-border bg-surface p-5 sm:p-6">
                             <div class="relative">
@@ -146,23 +173,118 @@
                                 <label for="email" class="pointer-events-none absolute left-3 top-4 z-10 origin-[0] -translate-y-4 scale-75 bg-white px-1 text-sm text-ink-secondary duration-150 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-4 peer-focus:scale-75 peer-focus:text-ink">Email</label>
                             </div>
 
-                            <div class="relative">
-                                <input
-                                    id="password"
-                                    type="password"
-                                    name="password"
-                                    required
-                                    autocomplete="current-password"
-                                    placeholder=" "
-                                    class="peer w-full rounded border border-ink-muted bg-white px-4 pb-2.5 pt-5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
+                            <div>
+                                <div class="relative">
+                                    <input
+                                        id="password"
+                                        :type="showPassword ? 'text' : 'password'"
+                                        name="password"
+                                        required
+                                        autocomplete="current-password"
+                                        placeholder=" "
+                                        @keyup="capsOn = !!($event.getModifierState && $event.getModifierState('CapsLock'))"
+                                        @keydown="capsOn = !!($event.getModifierState && $event.getModifierState('CapsLock'))"
+                                        @blur="capsOn = false"
+                                        class="peer w-full rounded border border-ink-muted bg-white px-4 pb-2.5 pt-5 pr-11 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
+                                    >
+                                    <label for="password" class="pointer-events-none absolute left-3 top-4 z-10 origin-[0] -translate-y-4 scale-75 bg-white px-1 text-sm text-ink-secondary duration-150 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-4 peer-focus:scale-75 peer-focus:text-ink">Contraseña</label>
+                                    <button
+                                        type="button"
+                                        @click="showPassword = !showPassword"
+                                        :aria-pressed="showPassword"
+                                        :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                                        class="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-ink-muted transition hover:text-ink-secondary"
+                                    >
+                                        <svg x-show="!showPassword" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                            <path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                                            <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/>
+                                        </svg>
+                                        <svg x-show="showPassword" x-cloak width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                            <path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                                            <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/>
+                                            <path d="M2.5 13.5l11-11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p
+                                    x-show="capsOn"
+                                    x-cloak
+                                    role="status"
+                                    aria-live="polite"
+                                    class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-warn"
                                 >
-                                <label for="password" class="pointer-events-none absolute left-3 top-4 z-10 origin-[0] -translate-y-4 scale-75 bg-white px-1 text-sm text-ink-secondary duration-150 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-4 peer-focus:scale-75 peer-focus:text-ink">Contraseña</label>
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" class="shrink-0">
+                                        <path d="M6 1L11 10H1L6 1z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+                                        <path d="M6 4.5v2.3M6 8.3h.006" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                                    </svg>
+                                    Bloq Mayús está activado
+                                </p>
                             </div>
                         </div>
+
+                        <div class="mt-4 flex items-center justify-between gap-3">
+                            <label class="flex items-center gap-2 text-sm text-ink-secondary">
+                                <input
+                                    type="checkbox"
+                                    :checked="recordar"
+                                    @change="
+                                        if ($event.target.checked && tokenOk) {
+                                            $event.target.checked = false;
+                                            showDeviceConfirm = true;
+                                        } else {
+                                            recordar = $event.target.checked;
+                                        }
+                                    "
+                                    class="h-4 w-4 rounded border-ink-muted text-brand focus:ring-2 focus:ring-brand/20"
+                                >
+                                Recordarme en este dispositivo
+                            </label>
+                            <a href="{% url 'inventory:recuperar_password' slug=slug %}" class="text-sm font-semibold text-brand transition hover:text-brand-dark">¿Olvidaste tu contraseña?</a>
+                        </div>
                     </form>
+
+                    <div
+                        x-show="showDeviceConfirm"
+                        x-cloak
+                        x-transition.opacity
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
+                        @click.self="showDeviceConfirm = false"
+                    >
+                        <div class="w-full max-w-[420px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]" role="dialog" aria-modal="true" aria-labelledby="device-confirm-title">
+                            <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
+                                <p id="device-confirm-title" class="text-[15px] font-bold text-navy">Este dispositivo tiene acceso a bitácora</p>
+                                <button type="button" @click="showDeviceConfirm = false" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
+                            </div>
+                            <div class="px-5 py-4">
+                                <p class="text-[13px] leading-relaxed text-ink-muted">
+                                    Este dispositivo está autorizado para el acceso de mar. Si recuerdas tu sesión de tierra aquí, cualquier tripulante con acceso físico al dispositivo podría abrir tu sesión sin volver a pedir contraseña.
+                                </p>
+                            </div>
+                            <div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3">
+                                <button
+                                    type="button"
+                                    @click="showDeviceConfirm = false"
+                                    class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="recordar = true; showDeviceConfirm = false"
+                                    class="rounded-md border border-warn-border bg-warn-bg px-3 py-1.5 text-[13px] font-semibold text-warn transition hover:bg-amber-100"
+                                >
+                                    Sí, recordar en este dispositivo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-start-1 row-start-1 transition-opacity duration-150" :class="modo === 'mar' ? 'opacity-100' : 'pointer-events-none opacity-0 invisible'">
+                <div
+                    class="col-start-1 row-start-1 transition-opacity duration-150"
+                    :class="modo === 'mar' ? 'opacity-100' : 'pointer-events-none opacity-0 invisible'"
+                    x-data="{ showPinHelp: false }"
+                >
                     {% if modo == 'mar' and error %}
                         <div class="mb-5 rounded border border-fail-border bg-fail-bg px-4 py-3 text-sm font-medium text-fail">
                             {{ error }}
@@ -233,6 +355,63 @@
 
                         <input x-ref="dispositivoToken" id="dispositivo_token" name="dispositivo_token" type="hidden">
                     </form>
+
+                    <button
+                        type="button"
+                        x-show="tokenOk"
+                        @click="showPinHelp = true"
+                        class="mt-4 text-sm font-semibold text-brand transition hover:text-brand-dark"
+                    >
+                        ¿No recuerdas tu PIN?
+                    </button>
+
+                    <div
+                        x-show="showPinHelp"
+                        x-cloak
+                        x-transition.opacity
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-navy/50 px-4 backdrop-blur-sm"
+                        @click.self="showPinHelp = false"
+                    >
+                        <div class="w-full max-w-[420px] overflow-hidden rounded-[10px] border border-surface-border bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]" role="dialog" aria-modal="true" aria-labelledby="pin-help-title">
+                            <div class="flex items-start justify-between border-b border-surface-border px-5 py-4">
+                                <p id="pin-help-title" class="text-[15px] font-bold text-navy">¿No recuerdas tu PIN?</p>
+                                <button type="button" @click="showPinHelp = false" class="text-ink-muted transition hover:text-ink" aria-label="Cerrar">✕</button>
+                            </div>
+                            <div class="px-5 py-4">
+                                <p class="text-[13px] leading-relaxed text-ink-muted">
+                                    Tu PIN solo lo puede restablecer tu capitán o el equipo de tierra. Deja tu RUT y les avisaremos para que lo restablezcan contigo.
+                                </p>
+                                <form method="POST" action="{% url 'inventory:solicitar_ayuda_pin' slug=slug %}" class="mt-4">
+                                    {% csrf_token %}
+                                    <input x-ref="pinHelpToken" name="dispositivo_token" type="hidden">
+                                    <label for="pin-help-rut" class="text-xs font-semibold uppercase tracking-[0.07em] text-ink-muted">RUT</label>
+                                    <input
+                                        id="pin-help-rut"
+                                        name="rut"
+                                        type="text"
+                                        required
+                                        placeholder="12.345.678-9"
+                                        class="mt-1.5 w-full rounded border border-ink-muted bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
+                                    >
+                                    <div class="mt-4 flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            @click="showPinHelp = false"
+                                            class="rounded-md border border-surface-border px-3 py-1.5 text-[13px] font-medium text-ink-secondary transition hover:bg-surface"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            class="rounded-md bg-navy px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+                                        >
+                                            Avisar a tierra
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -6,13 +6,14 @@ from django.core.mail import send_mail
 logger = logging.getLogger(__name__)
 
 
-def enviar_email(to, subject, body, from_email=None):
+def enviar_email(to, subject, body, from_email=None, html_body=None):
     """Envío genérico, reutilizable por cualquier flujo (reset de password, notificaciones, etc).
 
     from_email por defecto es el no-reply; los flujos que necesitan otro remitente
-    (ej. contacto) lo pasan explícito.
+    (ej. contacto) lo pasan explícito. body es el texto plano (fallback); html_body,
+    si viene, va como alternativa HTML en el mismo correo.
     """
-    send_mail(subject, body, from_email or settings.DEFAULT_FROM_EMAIL, to)
+    send_mail(subject, body, from_email or settings.DEFAULT_FROM_EMAIL, to, html_message=html_body)
 
 
 def _armar_cuerpo_formulario(nombre, email, empresa, mensaje, extra_lines=""):

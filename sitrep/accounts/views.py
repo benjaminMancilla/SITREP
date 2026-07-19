@@ -1,17 +1,28 @@
 import re
 
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from core.permissions import ROLES_TIERRA
-from core.utils import paginate
+from core.utils import get_client_ip, hit_rate_limit, paginate, throttle, verify_turnstile
 from sitrep.accounts.audit import registrar_acceso
 from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from sitrep.accounts.services import (
+    notificar_ayuda_pin,
+    resolver_usuario_reset,
+    solicitar_recuperacion,
+)
+from sitrep.fleet.models import Tripulacion
+from sitrep.fleet.services import FleetQueryService
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to AccountsQueryService after full accounts segregation
 
 Usuario = get_user_model()
+SESSION_COOKIE_AGE_RECORDADO = 1209600  # 2 semanas, igual al default de Django
 
 
 def _normalizar_rut(rut: str) -> str:
@@ -61,6 +72,13 @@ def login_unificado(request, slug, modo_default="tierra"):
 
     if request.method == "POST":
         if modo == "mar":
+            # Cada intento corre check_password por cada dispositivo de la naviera
+            # (KioscoTenantBackend): limitar por IP para que no sea amplificador de DoS.
+            if hit_rate_limit("login_mar", request, limit=10, window_seconds=60):
+                return _render_login_unificado(
+                    request, slug, modo, error="Demasiados intentos. Espera un momento."
+                )
+
             rut = _normalizar_rut(request.POST.get("rut") or "")
             pin = request.POST.get("pin")
             dispositivo_token = request.POST.get("dispositivo_token")
@@ -79,7 +97,10 @@ def login_unificado(request, slug, modo_default="tierra"):
                 return redirect(f"/{slug}/kiosco/")
 
             if getattr(request, "_dispositivo_revocado", False):
-                return _render_login_unificado(request, slug, modo, limpiar_token=True)
+                return _render_login_unificado(
+                    request, slug, modo, limpiar_token=True,
+                    error="Este dispositivo fue revocado. Contacte a su supervisor.",
+                )
 
             return _render_login_unificado(request, slug, modo, error="Acceso denegado.")
 
@@ -88,6 +109,8 @@ def login_unificado(request, slug, modo_default="tierra"):
 
         usuario = authenticate(request, email=email, password=password)
         if usuario is not None:
+            recordar = bool(request.POST.get("recordar"))
+            request.session.set_expiry(SESSION_COOKIE_AGE_RECORDADO if recordar else 0)
             login(request, usuario)
             return redirect(f"/{slug}/")
 
@@ -106,6 +129,89 @@ def logout_kiosco(request, slug):
 
 def redirect_kiosco_login(request, slug):
     return redirect(f"/{slug}/login/?modo=mar")
+
+
+@throttle("recuperar_pass", limit=5, window_seconds=600)
+def solicitar_recuperacion_password(request, slug):
+    tenant = getattr(request, "naviera", None)
+    enviado = False
+    email = ""
+    error = None
+
+    if request.method == "POST":
+        email = (request.POST.get("email") or "").strip()
+        if not verify_turnstile(request.POST.get("cf-turnstile-response"), get_client_ip(request)):
+            error = "No pudimos verificar que no eres un robot, intenta de nuevo."
+        elif email:
+            solicitar_recuperacion(request, email)
+            enviado = True
+
+    return render(
+        request,
+        "accounts/recuperar_password.html",
+        {
+            "slug": slug,
+            "naviera": tenant,
+            "email": email,
+            "enviado": enviado,
+            "error": error,
+            "turnstile_site_key": settings.TURNSTILE_SITE_KEY,
+        },
+    )
+
+
+@throttle("confirmar_pass", limit=10, window_seconds=600)
+def confirmar_recuperacion_password(request, slug, uidb64, token):
+    tenant = getattr(request, "naviera", None)
+    usuario = resolver_usuario_reset(request, uidb64, token)
+    if usuario is None:
+        return render(
+            request,
+            "accounts/recuperar_password_confirmar.html",
+            {"slug": slug, "naviera": tenant, "enlace_invalido": True},
+        )
+
+    if request.method == "POST":
+        password = request.POST.get("password") or ""
+        confirmacion = request.POST.get("password_confirmacion") or ""
+        error = None
+        if password != confirmacion:
+            error = "Las contraseñas no coinciden."
+        else:
+            try:
+                validate_password(password, usuario)
+            except ValidationError as exc:
+                error = " ".join(exc.messages)
+        if error:
+            return render(
+                request,
+                "accounts/recuperar_password_confirmar.html",
+                {"slug": slug, "naviera": tenant, "error": error},
+            )
+        usuario.set_password(password)
+        usuario.save(update_fields=["password"])  # invalida el token: embebe el hash anterior
+        return redirect(f"/{slug}/login/?recuperacion=ok")
+
+    return render(
+        request,
+        "accounts/recuperar_password_confirmar.html",
+        {"slug": slug, "naviera": tenant},
+    )
+
+
+@throttle("ayuda_pin", limit=5, window_seconds=600)
+def solicitar_ayuda_pin(request, slug):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    rut = _normalizar_rut(request.POST.get("rut") or "")
+    dispositivo_token = request.POST.get("dispositivo_token")
+    if rut:
+        # El aviso solo procede desde un kiosco autorizado cuyo tripulante sea el
+        # del rut; el gate y la auditoría viven en el servicio.
+        notificar_ayuda_pin(request, rut, dispositivo_token)
+
+    return redirect(f"/{slug}/login/?modo=mar&pin_help=1")
 
 
 @tenant_member_required
@@ -277,7 +383,13 @@ def desactivar_usuario(request, slug, id):
 @requiere_rol("admin_sitrep", "admin_naviera", "capitan")
 def cambiar_pin(request, slug, id):
     if request.user.rol == "capitan" and request.user.id != id:
-        return HttpResponseForbidden("Acceso denegado.")
+        # El capitán puede resetear el PIN de la tripulación de sus propias naves.
+        es_tripulante_propio = Tripulacion.objects.filter(
+            usuario_id=id,
+            nave__in=FleetQueryService.get_naves_capitan(request.user, request.naviera),
+        ).exists()
+        if not es_tripulante_propio:
+            return HttpResponseForbidden("Acceso denegado.")
 
     usuario = TenantQueryService.get_usuario_activo_del_tenant(request.naviera, id)
 
