@@ -7,7 +7,8 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from core.utils import paginate
-from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from core.decorators import requiere_tierra
+from sitrep.accounts.decorators import tenant_member_required
 from sitrep.catalog.models import Area, Periodicidad
 from sitrep.fleet.models import Dispositivo, Nave
 from sitrep.fleet.services import FleetQueryService
@@ -46,7 +47,7 @@ def _obtener_filtros_historial_desde_request(request):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def dashboard_tierra(request, slug):
     naves_capitan = Nave.objects.none()
     if request.user.rol == "capitan":
@@ -199,7 +200,7 @@ def dashboard_tierra(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def fallos_activos(request, slug):
     naviera = request.naviera
     filtros_base = MatrizNaveRecurso.objects.filter(
@@ -360,7 +361,7 @@ def fallos_activos(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def periodos_vencidos(request, slug):
     naviera = request.naviera
     hoy = timezone.localdate()
@@ -551,7 +552,7 @@ def periodos_vencidos(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def nave_detalle(request, slug, nave_id):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
@@ -622,7 +623,7 @@ def nave_detalle(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def nave_periodo_pdf(request, slug, nave_id, periodo_id):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
