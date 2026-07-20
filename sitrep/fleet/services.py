@@ -63,3 +63,15 @@ class FleetQueryService:
         return Nave.objects.filter(
             naviera=naviera, is_active=True, tripulantes__usuario=user
         ).distinct()
+
+    @staticmethod
+    def get_naves_scope(user, naviera):
+        """None = sin restricción (ve todas las naves de la naviera)."""
+        if user.rol == "capitan":
+            return FleetQueryService.get_naves_capitan(user, naviera)
+        return None
+
+    @staticmethod
+    def nave_en_scope(user, naviera, nave_id):
+        scope = FleetQueryService.get_naves_scope(user, naviera)
+        return scope is None or scope.filter(id=nave_id).exists()
