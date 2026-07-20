@@ -63,9 +63,7 @@ class TierraAPIView(_AuditingAPIView):
     permission_classes = [EsTierra]
 
     def get_naves_scope(self, request):
-        if request.user.rol == "capitan":
-            return FleetQueryService.get_naves_capitan(request.user, request.naviera)
-        return None
+        return FleetQueryService.get_naves_scope(request.user, request.naviera)
 
 
 class KioscoAPIView(_AuditingAPIView):
