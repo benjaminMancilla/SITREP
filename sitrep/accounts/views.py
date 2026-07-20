@@ -8,10 +8,11 @@ from django.db.models import Q
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
-from core.permissions import ROLES_TIERRA
+from core.decorators import requiere_admin, requiere_admin_capitan, requiere_rol
+from core.permissions import ROLES_GESTION_USUARIOS, ROLES_TIERRA
 from core.utils import get_client_ip, hit_rate_limit, paginate, throttle, verify_turnstile
 from sitrep.accounts.audit import registrar_acceso
-from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from sitrep.accounts.decorators import tenant_member_required
 from sitrep.accounts.services import (
     notificar_ayuda_pin,
     resolver_usuario_reset,
@@ -241,7 +242,7 @@ def logout_tierra(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "tierra")
+@requiere_rol(*ROLES_GESTION_USUARIOS)
 def listar_usuarios(request, slug):
     q = request.GET.get("q", "").strip()
     rol = request.GET.get("rol", "").strip()
@@ -273,7 +274,7 @@ def listar_usuarios(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def crear_usuario(request, slug):
     if request.method == "GET":
         return render(
@@ -383,7 +384,7 @@ def crear_usuario(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def desactivar_usuario(request, slug, id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -397,7 +398,7 @@ def desactivar_usuario(request, slug, id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def cambiar_pin(request, slug, id):
     if request.user.rol == "capitan" and request.user.id != id:
         # El capitán puede resetear el PIN de la tripulación de sus propias naves.
