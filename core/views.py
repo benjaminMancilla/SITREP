@@ -11,6 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.conf import settings
 
 from core.forms import ContactoForm, ArcoForm
+from core.permissions import ROLES_TIERRA
 from core.services import enviar_email_contacto, enviar_email_arco
 from core.utils import get_client_ip, throttle, verify_turnstile
 from sitrep.accounts.models import Naviera
@@ -27,6 +28,10 @@ LEGAL_PAGE_URL_NAMES = {
 
 
 def homepage(request):
+    user = request.user
+    if user.is_authenticated and user.naviera_id and user.rol in ROLES_TIERRA:
+        return redirect(f"/{user.naviera.slug}/")
+
     navieras = Naviera.objects.filter(slug__isnull=False).order_by("nombre")
     stashed = request.session.pop(CONTACTO_SESSION_KEY, None)
     contacto_form = ContactoForm(QueryDict(stashed)) if stashed else ContactoForm()

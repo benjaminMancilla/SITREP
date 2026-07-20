@@ -1,8 +1,9 @@
+from django.core.cache import cache
 from django.http import Http404
 from django.test import TestCase
 from django.urls import reverse
 
-from sitrep.accounts.models import Naviera, Usuario
+from sitrep.accounts.models import AuditEvent, Naviera, Usuario
 from sitrep.fleet.models import Dispositivo, Nave
 from sitrep.fleet.services import FleetQueryService
 
@@ -121,3 +122,67 @@ class TestFleetQueryService(TenantFixturesMixin, TestCase):
     def test_get_nave_del_tenant_retorna_objeto(self):
         nave = FleetQueryService.get_nave(self.naviera_a, self.nave_a.id)
         self.assertEqual(nave.id, self.nave_a.id)
+
+
+class TestBuscarDispositivoPorToken(TenantFixturesMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.token_a = self.dispositivo_a.generar_nuevo_token()
+        self.dispositivo_a.save()
+
+    def test_token_valido_activo_retorna_dispositivo(self):
+        d = FleetQueryService.buscar_dispositivo_por_token(self.naviera_a.id, self.token_a)
+        self.assertEqual(d, self.dispositivo_a)
+
+    def test_token_de_dispositivo_revocado_igual_retorna_dispositivo(self):
+        """El match ignora is_active; el llamador decide rechazar."""
+        self.dispositivo_a.is_active = False
+        self.dispositivo_a.save()
+        d = FleetQueryService.buscar_dispositivo_por_token(self.naviera_a.id, self.token_a)
+        self.assertEqual(d, self.dispositivo_a)
+        self.assertFalse(d.is_active)
+
+    def test_token_incorrecto_retorna_none(self):
+        self.assertIsNone(
+            FleetQueryService.buscar_dispositivo_por_token(self.naviera_a.id, "token-que-no-existe")
+        )
+
+    def test_token_de_otra_naviera_retorna_none(self):
+        """El token de naviera_a no valida contra naviera_b."""
+        self.assertIsNone(
+            FleetQueryService.buscar_dispositivo_por_token(self.naviera_b.id, self.token_a)
+        )
+
+    def test_sin_token_retorna_none(self):
+        self.assertIsNone(FleetQueryService.buscar_dispositivo_por_token(self.naviera_a.id, ""))
+
+
+class TestVerificarDispositivoEndpoint(TenantFixturesMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.token_a = self.dispositivo_a.generar_nuevo_token()
+        self.dispositivo_a.save()
+        self.url = f"/{self.naviera_a.slug}/api/v1/dispositivos/verificar/"
+
+    def test_token_activo_valido_true(self):
+        response = self.client.post(self.url, {"token": self.token_a}, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["valido"])
+        self.assertFalse(AuditEvent.objects.filter(recurso="dispositivo_token").exists())
+
+    def test_token_revocado_valido_false_y_audita(self):
+        self.dispositivo_a.is_active = False
+        self.dispositivo_a.save()
+        response = self.client.post(self.url, {"token": self.token_a}, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["valido"])
+        self.assertTrue(
+            AuditEvent.objects.filter(recurso="dispositivo_token", accion="blocked").exists()
+        )
+
+    def test_sin_token_valido_false_sin_auditar(self):
+        response = self.client.post(self.url, {}, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["valido"])
+        self.assertFalse(AuditEvent.objects.filter(recurso="dispositivo_token").exists())
