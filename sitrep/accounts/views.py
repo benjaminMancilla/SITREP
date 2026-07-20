@@ -400,14 +400,16 @@ def desactivar_usuario(request, slug, id):
 @tenant_member_required
 @requiere_admin_capitan
 def cambiar_pin(request, slug, id):
-    if request.user.rol == "capitan" and request.user.id != id:
-        # El capitán puede resetear el PIN de la tripulación de sus propias naves.
-        es_tripulante_propio = Tripulacion.objects.filter(
-            usuario_id=id,
-            nave__in=FleetQueryService.get_naves_capitan(request.user, request.naviera),
-        ).exists()
-        if not es_tripulante_propio:
-            return HttpResponseForbidden("Acceso denegado.")
+    if request.user.id != id:
+        naves_scope = FleetQueryService.get_naves_scope(request.user, request.naviera)
+        if naves_scope is not None:
+            # El capitán puede resetear el PIN de la tripulación de sus propias naves.
+            es_tripulante_propio = Tripulacion.objects.filter(
+                usuario_id=id,
+                nave__in=naves_scope,
+            ).exists()
+            if not es_tripulante_propio:
+                return HttpResponseForbidden("Acceso denegado.")
 
     usuario = TenantQueryService.get_usuario_activo_del_tenant(request.naviera, id)
 
