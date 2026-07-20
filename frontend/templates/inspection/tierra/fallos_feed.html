@@ -1,0 +1,22 @@
+{% extends 'layouts/tierra.html' %}
+{% load django_vite %}
+
+{% block nav_active %}fallos{% endblock %}
+{% block page_title %}SITREP | Feed de fallos{% endblock %}
+{% block topbar_title %}Feed de fallos{% endblock %}
+
+{% block extra_head %}
+{% vite_asset 'entrypoints/fallos_feed.js' %}
+{% endblock %}
+
+{% block page_content %}
+<div class="space-y-6">
+    {% include 'inspection/tierra/_fallos_tabs.html' with slug=slug tab_activo='feed' %}
+
+    <div
+        id="svelte-failure-feed"
+        data-slug="{{ slug }}"
+        data-fallos-url="{% url 'inventory:fallos_activos' slug=slug %}"
+    ></div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% comment %}
+Variables: slug, tab_activo — 'activos' | 'resueltos' | 'feed'
+{% endcomment %}
+<div class="mb-4 flex items-center gap-1 border-b border-surface-border">
+    <a
+        href="{% url 'inventory:fallos_activos' slug=slug %}"
+        class="border-b-2 px-3 py-2 text-[13px] font-semibold transition
+               {% if tab_activo == 'activos' %}border-navy text-navy{% else %}border-transparent text-ink-muted hover:text-navy{% endif %}"
+    >
+        Activos
+    </a>
+    <a
+        href="{% url 'inventory:fallos_resueltos' slug=slug %}"
+        class="border-b-2 px-3 py-2 text-[13px] font-semibold transition
+               {% if tab_activo == 'resueltos' %}border-navy text-navy{% else %}border-transparent text-ink-muted hover:text-navy{% endif %}"
+    >
+        Resueltos
+    </a>
+    <a
+        href="{% url 'inventory:fallos_feed' slug=slug %}"
+        class="border-b-2 px-3 py-2 text-[13px] font-semibold transition
+               {% if tab_activo == 'feed' %}border-navy text-navy{% else %}border-transparent text-ink-muted hover:text-navy{% endif %}"
+    >
+        Feed
+    </a>
+</div>

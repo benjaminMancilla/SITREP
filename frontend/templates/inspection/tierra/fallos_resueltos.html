@@ -1,0 +1,156 @@
+{% extends 'layouts/tierra.html' %}
+
+{% block nav_active %}fallos{% endblock %}
+{% block page_title %}SITREP | Fallos resueltos{% endblock %}
+{% block topbar_title %}Fallos resueltos{% endblock %}
+
+
+{% block page_content %}
+<div class="space-y-6">
+    {% include 'inspection/tierra/_fallos_tabs.html' with slug=slug tab_activo='resueltos' %}
+
+    <div class="mb-6">
+        <h1 class="text-xl font-bold text-navy">Fallos resueltos</h1>
+        <p class="mt-0.5 text-sm text-ink-muted">
+            <span class="font-semibold text-ok">{{ total_resueltos }}</span>
+            recurso{{ total_resueltos|pluralize }} recién resuelto{{ total_resueltos|pluralize }} ·
+            <span class="font-semibold text-navy">{{ naves_afectadas }}</span>
+            nave{{ naves_afectadas|pluralize }}
+        </p>
+    </div>
+
+    {% include 'inspection/tierra/_fallos_filtros.html' with limpiar_url_name='inventory:fallos_resueltos' %}
+
+    {% if not total_resueltos %}
+        <div class="rounded-xl border border-surface-border bg-white px-6 py-10 text-center shadow-sm">
+            <p class="text-sm font-semibold text-navy">Sin resoluciones en este período</p>
+            <p class="mt-1 text-xs text-ink-muted">Ningún recurso ha pasado de fallo a operativo todavía.</p>
+        </div>
+    {% elif not resueltos_filtrados_total %}
+        <div class="rounded-xl border border-surface-border bg-white px-6 py-10 text-center shadow-sm">
+            <p class="text-sm font-semibold text-navy">No hay resoluciones que coincidan con los filtros</p>
+            <p class="mt-1 text-xs text-ink-muted">Prueba ajustando nave, área, periodicidad o rango de fechas.</p>
+        </div>
+    {% else %}
+        <section class="space-y-4">
+            {% for grupo in grupos %}
+
+                <div class="space-y-2.5">
+                    {% if agrupar_por %}
+                        <div class="flex items-center gap-3 py-2">
+                            <span class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">
+                                {{ grupo.label }}
+                            </span>
+                            <span class="h-px flex-1 bg-surface-border"></span>
+                            <span class="text-[11px] text-ink-muted">{{ grupo.items|length }} resuelto{{ grupo.items|length|pluralize }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% for resuelto in grupo.items %}
+                        <article x-data="{ abierto: false }" class="overflow-hidden rounded-lg border border-ok-border bg-white shadow-sm transition-shadow hover:shadow-md">
+                            <div
+                                @click="abierto = !abierto"
+                                class="flex cursor-pointer items-center gap-4 px-4 py-3 transition hover:bg-[#fcfdff]"
+                            >
+                                <span class="h-8 w-1 shrink-0 rounded-sm bg-ok"></span>
+
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="text-[14px] font-semibold text-navy">{{ resuelto.recurso.nombre }}</span>
+                                        {% if resuelto.recurso.area %}
+                                            <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold {{ resuelto.recurso.area.css_classes }}">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-current opacity-70"></span>
+                                                {{ resuelto.recurso.area.nombre }}
+                                            </span>
+                                        {% endif %}
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-ok-bg px-2 py-0.5 text-[10px] font-bold text-ok">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>
+                                            Resuelto
+                                        </span>
+                                    </div>
+                                    <div class="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-ink-muted">
+                                        <a
+                                            href="{% url 'inventory:nave_detalle' slug=slug nave_id=resuelto.nave.id %}"
+                                            @click.stop
+                                            class="font-medium text-ink-secondary hover:text-navy hover:underline"
+                                        >
+                                            {{ resuelto.nave.nombre }}
+                                        </a>
+                                        {% if resuelto.recurso.periodicidad %}
+                                            <span>·</span>
+                                            <span>{{ resuelto.recurso.periodicidad.nombre }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="shrink-0 text-right">
+                                    {% if resuelto.ultimo_estado_operativo_en %}
+                                        <p class="text-[12px] font-medium text-ok">
+                                            {{ resuelto.tiempo_desde_display }} atrás
+                                        </p>
+                                        <p class="text-[11px] font-mono text-ink-muted">
+                                            {{ resuelto.ultimo_estado_operativo_en|date:"d/m/Y H:i" }}
+                                        </p>
+                                    {% else %}
+                                        <p class="text-[11px] text-ink-muted">Sin fecha</p>
+                                    {% endif %}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    @click.stop="abierto = !abierto"
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-surface-border bg-white text-ink-muted transition hover:border-ok-border hover:text-ok"
+                                    :aria-expanded="abierto.toString()"
+                                    aria-label="Expandir ficha de la resolución"
+                                >
+                                    <svg
+                                        viewBox="0 0 14 14"
+                                        class="h-4 w-4 transition-transform"
+                                        :class="abierto ? 'rotate-180' : ''"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        aria-hidden="true"
+                                    >
+                                        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div x-show="abierto" x-cloak x-transition class="border-t border-surface-border bg-[#fcfdff] px-4 py-4">
+                                {% if resuelto.ficha_detalle %}
+                                    <div class="space-y-3">
+                                        <div>
+                                            <p class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">Ficha asociada</p>
+                                            <p class="mt-1 text-[13px] font-medium text-ink">
+                                                {{ resuelto.ficha_usuario_display }}
+                                                {% if resuelto.ficha_evento_en %}
+                                                    · {{ resuelto.ficha_evento_en|date:"d/m/Y H:i" }}
+                                                {% endif %}
+                                            </p>
+                                        </div>
+
+                                        {% if resuelto.ficha_observacion_general %}
+                                            <div class="rounded-md border-l-2 border-ok-border bg-white px-3 py-2 text-[12px] text-ink-secondary">
+                                                {{ resuelto.ficha_observacion_general }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <div class="rounded-md border border-surface-border bg-white px-3 py-2.5 text-[12px] text-ink-muted">
+                                        No se encontró una ficha asociada a esta resolución.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% if page_obj %}
+            <div class="rounded-lg border border-surface-border bg-white shadow-sm">
+                {% include 'components/pagination.html' with page_obj=page_obj pagination_params=pagination_params item_label="resueltos" %}
+            </div>
+            {% endif %}
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
