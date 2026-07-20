@@ -56,12 +56,11 @@
                 $refs.pinHelpToken.value = '';
             });
         }
-        sitrepToastDesdeQuery('pin_help', 'Se notificó a tu capitán y al equipo de tierra.', 'ok');
     "
     class="flex min-h-screen flex-col lg:flex-row"
 >
     <section
-        class="relative flex w-full shrink-0 flex-col justify-between overflow-hidden px-6 py-8 transition-colors duration-300 sm:px-10 sm:py-10 lg:w-[42%] lg:max-w-[500px] lg:min-w-[360px] lg:py-12"
+        class="relative flex w-full shrink-0 flex-col justify-between overflow-hidden px-6 pt-10 pb-10 transition-colors duration-300 sm:px-10 sm:pt-14 sm:pb-12 lg:w-[42%] lg:max-w-[500px] lg:min-w-[360px] lg:pt-16 lg:pb-14"
         :class="modo === 'mar' ? 'bg-navy text-white' : 'bg-surface text-ink lg:border-r lg:border-surface-border'"
     >
         <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
@@ -130,8 +129,8 @@
         </div>
     </section>
 
-    <section class="flex flex-1 items-center justify-center bg-white px-4 py-10 sm:px-8 lg:px-12">
-        <div class="w-full max-w-[400px]">
+    <section class="flex flex-1 items-center justify-center bg-surface px-4 py-10 sm:px-8 lg:px-12">
+        <div class="w-full max-w-md rounded-[10px] border border-surface-border bg-surface-card p-6 shadow-[0_20px_20px_rgba(0,0,0,0.0)] sm:p-8 lg:p-10">
             <div class="mb-7">
                 <h2 class="text-[28px] font-bold leading-tight text-navy">Acceso <span x-text="modo === 'tierra' ? 'Tierra' : 'Mar'"></span></h2>
                 <div class="mt-2 grid text-sm text-ink-secondary" x-cloak>
@@ -296,17 +295,17 @@
                         <input type="hidden" name="modo" value="mar">
 
                         <div class="space-y-5 rounded-lg border border-surface-border bg-surface p-5 sm:p-6">
-                            <div class="relative">
+                            <div>
+                                <label for="rut" class="text-sm font-medium text-ink-secondary">RUT</label>
                                 <input
                                     id="rut"
                                     name="rut"
                                     type="text"
                                     required
-                                    autocomplete="username"
-                                    placeholder=" "
-                                    class="peer w-full rounded border border-ink-muted bg-white px-4 pb-2.5 pt-5 text-base text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
+                                    autocomplete="off"
+                                    placeholder="12.345.678-9"
+                                    class="mt-1.5 w-full rounded border border-ink-muted bg-white px-4 py-3 text-base text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
                                 >
-                                <label for="rut" class="pointer-events-none absolute left-3 top-4 z-10 origin-[0] -translate-y-4 scale-75 bg-white px-1 text-sm text-ink-secondary duration-150 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-4 peer-focus:scale-75 peer-focus:text-ink">RUT</label>
                             </div>
 
                             <div x-data="{ vals: ['', '', '', ''] }" role="group" aria-label="Código PIN de 4 dígitos" class="flex justify-center gap-2">

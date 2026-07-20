@@ -1,0 +1,22 @@
+{% extends 'components/success_screen.html' %}
+
+{% block title %}SITREP | Solicitud enviada{% endblock %}
+
+{% block success_topbar_right %}
+{% if naviera %}{{ naviera.nombre }}{% endif %}
+{% endblock %}
+
+{% block success_title %}Solicitud enviada{% endblock %}
+
+{% block success_body %}
+<p class="mt-3 text-[13px] leading-relaxed text-ink-secondary">Se notificó a tu capitán y al equipo de tierra. Ellos podrán restablecer tu PIN contigo.</p>
+{% endblock %}
+
+{% block success_actions %}
+<a
+    href="{% url 'inventory:login_tierra' slug=slug %}?modo=mar"
+    class="rounded-md bg-navy px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
+>
+    Volver a bitácora
+</a>
+{% endblock %}

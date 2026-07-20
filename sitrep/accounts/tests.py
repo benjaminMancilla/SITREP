@@ -576,9 +576,8 @@ class TestPasswordRecovery(TestCase):
         resp = self.client.post(
             url, {"password": "clave-nueva-456", "password_confirmacion": "clave-nueva-456"}
         )
-        self.assertRedirects(
-            resp, f"/{self.naviera.slug}/login/?recuperacion=ok", fetch_redirect_response=False
-        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Contraseña actualizada")
         self.tierra.refresh_from_db()
         self.assertTrue(self.tierra.check_password("clave-nueva-456"))
         # El mismo enlace ya no sirve: el token embebe el hash anterior.
@@ -705,7 +704,8 @@ class TestAyudaPinNotifica(TestCase):
 
     def test_rut_de_la_nave_desde_kiosco_valido_notifica_capitan_y_admin(self):
         resp = self._post("31313131-3", self.token)
-        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Solicitud enviada")
         destinatarios = {addr for m in mail.outbox for addr in m.to}
         self.assertIn("capn@x.com", destinatarios)
         self.assertIn("adm@x.com", destinatarios)
