@@ -3,7 +3,29 @@ from rest_framework.response import Response
 from core.api_base import TierraAPIView
 from sitrep.fleet.models import Nave
 
-from .presenters import construir_tabla_urgencia
+from .presenters import construir_eventos_fallo_resolucion, construir_tabla_urgencia
+
+
+class FallosFeedView(TierraAPIView):
+    def get(self, request, slug):
+        naves = self.get_naves_scope(request)
+        dias = self._resolver_dias(request)
+        if isinstance(dias, Response):
+            return dias
+        eventos = construir_eventos_fallo_resolucion(request.naviera, naves=naves, dias=dias)
+        return Response(eventos)
+
+    def _resolver_dias(self, request):
+        param = request.query_params.get("dias", "").strip()
+        if not param:
+            return None
+        try:
+            dias = int(param)
+        except ValueError:
+            return Response({"error": "Parámetro 'dias' inválido"}, status=400)
+        if dias <= 0:
+            return Response({"error": "Parámetro 'dias' inválido"}, status=400)
+        return dias
 
 
 class UrgenciaPorPeriodicidadView(TierraAPIView):

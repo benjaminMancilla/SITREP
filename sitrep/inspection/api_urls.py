@@ -4,4 +4,5 @@ from . import api_views
 
 urlpatterns = [
     path("dashboard/urgencia/", api_views.UrgenciaPorPeriodicidadView.as_view(), name="api_urgencia"),
+    path("fallos/feed/", api_views.FallosFeedView.as_view(), name="api_fallos_feed"),
 ]
