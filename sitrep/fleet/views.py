@@ -5,15 +5,16 @@ from django.db.models import Count, Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
+from core.decorators import requiere_admin, requiere_admin_capitan, requiere_tierra
 from core.utils import paginate
-from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from sitrep.accounts.decorators import tenant_member_required
 from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
 from sitrep.fleet.services import FleetQueryService
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to FleetQueryService/AccountsQueryService after full segregation
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def listar_naves(request, slug):
     q = request.GET.get("q", "").strip()
     naves = TenantQueryService.get_naves_activas(request.naviera).annotate(
@@ -58,7 +59,7 @@ def listar_naves(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def crear_nave(request, slug):
     if request.method == "GET":
         return render(
@@ -110,7 +111,7 @@ def crear_nave(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def editar_nave(request, slug, nave_id):
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
 
@@ -174,7 +175,7 @@ def editar_nave(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def desactivar_nave(request, slug, nave_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -188,7 +189,7 @@ def desactivar_nave(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def listar_dispositivos(request, slug):
     q = request.GET.get("q", "").strip()
     dispositivos = TenantQueryService.get_dispositivos(request.naviera)
@@ -211,7 +212,7 @@ def listar_dispositivos(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def setup_kiosco(request, slug):
     if request.method == "POST":
         nombre_dispositivo = request.POST.get("nombre_dispositivo")
@@ -238,7 +239,7 @@ def setup_kiosco(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def revocar_dispositivo(request, slug, id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -257,7 +258,7 @@ def revocar_dispositivo(request, slug, id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def listar_tripulacion(request, slug, nave_id):
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
     if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
@@ -289,7 +290,7 @@ def listar_tripulacion(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def agregar_tripulante(request, slug, nave_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -312,7 +313,7 @@ def agregar_tripulante(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def remover_tripulante(request, slug, nave_id, tripulacion_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
