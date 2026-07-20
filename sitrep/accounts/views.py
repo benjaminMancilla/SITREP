@@ -71,14 +71,16 @@ def login_unificado(request, slug, modo_default="tierra"):
         return redirect(f"/{slug}/")
 
     if request.method == "POST":
-        if modo == "mar":
-            # Cada intento corre check_password por cada dispositivo de la naviera
-            # (KioscoTenantBackend): limitar por IP para que no sea amplificador de DoS.
-            if hit_rate_limit("login_mar", request, limit=10, window_seconds=60):
-                return _render_login_unificado(
-                    request, slug, modo, error="Demasiados intentos. Espera un momento."
-                )
+        # Scope por modo (ej. login_mar, login_tierra): cada modo mantiene su propio
+        # budget, mar en particular porque cada intento corre check_password por cada
+        # dispositivo de la naviera (KioscoTenantBackend) y es amplificador de DoS.
+        # Un solo chequeo acá cubre cualquier modo nuevo que se agregue sin repetirlo.
+        if hit_rate_limit(f"login_{modo}", request, limit=10, window_seconds=60):
+            return _render_login_unificado(
+                request, slug, modo, error="Demasiados intentos. Espera un momento."
+            )
 
+        if modo == "mar":
             rut = _normalizar_rut(request.POST.get("rut") or "")
             pin = request.POST.get("pin")
             dispositivo_token = request.POST.get("dispositivo_token")
@@ -104,17 +106,24 @@ def login_unificado(request, slug, modo_default="tierra"):
 
             return _render_login_unificado(request, slug, modo, error="Acceso denegado.")
 
-        email = request.POST.get("email")
-        password = request.POST.get("password")
+        elif modo == "tierra":
+            email = request.POST.get("email")
+            password = request.POST.get("password")
 
-        usuario = authenticate(request, email=email, password=password)
-        if usuario is not None:
-            recordar = bool(request.POST.get("recordar"))
-            request.session.set_expiry(SESSION_COOKIE_AGE_RECORDADO if recordar else 0)
-            login(request, usuario)
-            return redirect(f"/{slug}/")
+            usuario = authenticate(request, email=email, password=password)
+            if usuario is not None:
+                recordar = bool(request.POST.get("recordar"))
+                request.session.set_expiry(SESSION_COOKIE_AGE_RECORDADO if recordar else 0)
+                login(request, usuario)
+                return redirect(f"/{slug}/")
 
-        return _render_login_unificado(request, slug, modo, error="Credenciales inválidas.")
+            return _render_login_unificado(request, slug, modo, error="Credenciales inválidas.")
+
+        else:
+            # _normalizar_modo_login solo devuelve "mar" o "tierra"; si esto se
+            # dispara, algo cambió esa garantía y no queremos caer en la rama
+            # de tierra por default con un modo no contemplado.
+            raise ValueError(f"modo de login desconocido: {modo!r}")
 
     return _render_login_unificado(request, slug, modo)
 
