@@ -5,7 +5,8 @@ from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from core.decorators import requiere_kiosco
+from sitrep.accounts.decorators import tenant_member_required
 from sitrep.catalog.models import Periodicidad
 
 from ..models import MatrizNaveRecurso, PeriodoRevision
@@ -47,7 +48,7 @@ def _parse_estado_checklist_form(raw_estado):
 
 
 @tenant_member_required
-@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+@requiere_kiosco
 def dashboard_kiosco(request, slug):
     nave, redir = _get_nave_kiosco_o_redirect(request, slug)
     if redir:
@@ -120,7 +121,7 @@ def dashboard_kiosco(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+@requiere_kiosco
 def kiosco_periodo_detalle(request, slug, periodo_id):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
@@ -181,7 +182,7 @@ def kiosco_periodo_detalle(request, slug, periodo_id):
 
 
 @tenant_member_required
-@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+@requiere_kiosco
 def kiosco_periodo_pdf(request, slug, periodo_id):
     nave, redir = _get_nave_kiosco_o_redirect(request, slug)
     if redir:
@@ -200,7 +201,7 @@ def kiosco_periodo_pdf(request, slug, periodo_id):
 
 
 @tenant_member_required
-@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+@requiere_kiosco
 def kiosco_periodo_historial(request, slug, periodo_id):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
@@ -242,7 +243,7 @@ def kiosco_periodo_historial(request, slug, periodo_id):
 
 
 @tenant_member_required
-@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+@requiere_kiosco
 def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
     if request.method not in ["GET", "POST"]:
         return HttpResponseNotAllowed(["GET", "POST"])

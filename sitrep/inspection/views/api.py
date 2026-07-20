@@ -3,7 +3,8 @@ import logging
 
 from django.http import Http404, JsonResponse
 
-from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from core.decorators import requiere_kiosco
+from sitrep.accounts.decorators import tenant_member_required
 from sitrep.catalog.models import Recurso
 
 from ..models import FichaRegistro, MatrizNaveRecurso
@@ -85,7 +86,7 @@ def _extraer_payload_fichas_bulk_desde_json(request):
 
 
 @tenant_member_required
-@requiere_rol("mar", "capitan", "tierra", "admin_naviera", "admin_sitrep")
+@requiere_kiosco
 def api_guardar_fichas_periodo(request, slug, periodo_id):
     """
     POST: recibe lista de fichas con cambios y las crea/actualiza en una transacción.

@@ -1,13 +1,15 @@
 from django.shortcuts import render
 
-from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from core.decorators import requiere_rol
+from core.permissions import ROLES_ADMIN_SITREP
+from sitrep.accounts.decorators import tenant_member_required
 from sitrep.fleet.services import FleetQueryService
 
 from .models import Area, Periodicidad, Recurso
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep")
+@requiere_rol(*ROLES_ADMIN_SITREP)
 def catalogo_admin(request, slug):
     context = {
         "slug": slug,

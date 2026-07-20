@@ -5,15 +5,16 @@ from django.db.models import Count, Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
+from core.decorators import requiere_admin, requiere_admin_capitan, requiere_tierra
 from core.utils import paginate
-from sitrep.accounts.decorators import requiere_rol, tenant_member_required
+from sitrep.accounts.decorators import tenant_member_required
 from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
 from sitrep.fleet.services import FleetQueryService
 from sitrep.inspection.services import TenantQueryService  # ponytail: migrate to FleetQueryService/AccountsQueryService after full segregation
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def listar_naves(request, slug):
     q = request.GET.get("q", "").strip()
     naves = TenantQueryService.get_naves_activas(request.naviera).annotate(
@@ -39,8 +40,9 @@ def listar_naves(request, slug):
             distinct=True,
         ),
     )
-    if request.user.rol == "capitan":
-        naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
+    naves_scope = FleetQueryService.get_naves_scope(request.user, request.naviera)
+    if naves_scope is not None:
+        naves = naves.filter(id__in=naves_scope)
     if q:
         naves = naves.filter(Q(nombre__icontains=q) | Q(matricula__icontains=q))
     _params = request.GET.copy()
@@ -58,7 +60,7 @@ def listar_naves(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def crear_nave(request, slug):
     if request.method == "GET":
         return render(
@@ -110,7 +112,7 @@ def crear_nave(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def editar_nave(request, slug, nave_id):
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
 
@@ -174,7 +176,7 @@ def editar_nave(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera")
+@requiere_admin
 def desactivar_nave(request, slug, nave_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -188,12 +190,13 @@ def desactivar_nave(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def listar_dispositivos(request, slug):
     q = request.GET.get("q", "").strip()
     dispositivos = TenantQueryService.get_dispositivos(request.naviera)
-    if request.user.rol == "capitan":
-        dispositivos = dispositivos.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
+    naves_scope = FleetQueryService.get_naves_scope(request.user, request.naviera)
+    if naves_scope is not None:
+        dispositivos = dispositivos.filter(nave__in=naves_scope)
     if q:
         dispositivos = dispositivos.filter(Q(nombre__icontains=q) | Q(nave__nombre__icontains=q))
     _params = request.GET.copy()
@@ -211,7 +214,7 @@ def listar_dispositivos(request, slug):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def setup_kiosco(request, slug):
     if request.method == "POST":
         nombre_dispositivo = request.POST.get("nombre_dispositivo")
@@ -221,7 +224,7 @@ def setup_kiosco(request, slug):
             return HttpResponseForbidden("Debe asignar el dispositivo a una nave.")
 
         nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-        if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
+        if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
             return HttpResponseForbidden("Acceso denegado.")
 
         dispositivo = Dispositivo(naviera=request.naviera, nave=nave, nombre=nombre_dispositivo)
@@ -232,19 +235,20 @@ def setup_kiosco(request, slug):
         return render(request, "fleet/kiosco_tatuado.html", contexto)
 
     naves = TenantQueryService.get_naves_activas(request.naviera)
-    if request.user.rol == "capitan":
-        naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, request.naviera))
+    naves_scope = FleetQueryService.get_naves_scope(request.user, request.naviera)
+    if naves_scope is not None:
+        naves = naves.filter(id__in=naves_scope)
     return render(request, "fleet/kiosco_setup.html", {"naves": naves})
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def revocar_dispositivo(request, slug, id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
     dispositivo = TenantQueryService.get_dispositivo(request.naviera, id)
-    if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=dispositivo.nave_id).exists():
+    if not FleetQueryService.nave_en_scope(request.user, request.naviera, dispositivo.nave_id):
         return HttpResponseForbidden("Acceso denegado.")
 
     if not dispositivo.is_active:
@@ -257,10 +261,10 @@ def revocar_dispositivo(request, slug, id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan", "tierra")
+@requiere_tierra
 def listar_tripulacion(request, slug, nave_id):
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
+    if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
         return HttpResponseForbidden("Acceso denegado.")
     q = request.GET.get("q", "").strip()
     tripulacion = TenantQueryService.get_tripulacion_activa_de_nave(request.naviera, nave_id)
@@ -289,13 +293,13 @@ def listar_tripulacion(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def agregar_tripulante(request, slug, nave_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
+    if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
         return HttpResponseForbidden("Acceso denegado.")
 
     usuario_id = request.POST.get("usuario_id")
@@ -312,13 +316,13 @@ def agregar_tripulante(request, slug, nave_id):
 
 
 @tenant_member_required
-@requiere_rol("admin_sitrep", "admin_naviera", "capitan")
+@requiere_admin_capitan
 def remover_tripulante(request, slug, nave_id, tripulacion_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
     nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
-    if request.user.rol == "capitan" and not FleetQueryService.get_naves_capitan(request.user, request.naviera).filter(id=nave.id).exists():
+    if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
         return HttpResponseForbidden("Acceso denegado.")
 
     try:
