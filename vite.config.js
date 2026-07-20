@@ -11,7 +11,7 @@ export default defineConfig(({ command }) => ({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        urgencia: 'entrypoints/urgencia.js',
+        dashboard: 'entrypoints/dashboard.js',
       },
     },
   },
