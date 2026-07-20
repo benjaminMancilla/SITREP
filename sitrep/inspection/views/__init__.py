@@ -7,7 +7,10 @@ from sitrep.accounts.views import (  # noqa: F401
     login_unificado, logout_kiosco, logout_tierra, redirect_kiosco_login,
     listar_usuarios, crear_usuario, desactivar_usuario, cambiar_pin,
 )
-from .tierra import dashboard_tierra, fallos_activos, periodos_vencidos, nave_detalle, nave_periodo_pdf  # noqa: F401
+from .tierra import (  # noqa: F401
+    dashboard_tierra, fallos_activos, fallos_resueltos, fallos_feed,
+    periodos_vencidos, nave_detalle, nave_periodo_pdf,
+)
 from .kiosco import (  # noqa: F401
     dashboard_kiosco, kiosco_periodo_detalle, kiosco_periodo_pdf,
     kiosco_periodo_historial, kiosco_recurso_ficha,

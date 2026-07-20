@@ -362,6 +362,166 @@ def fallos_activos(request, slug):
 
 @tenant_member_required
 @requiere_tierra
+def fallos_resueltos(request, slug):
+    naviera = request.naviera
+    filtros_base = MatrizNaveRecurso.objects.filter(
+        nave__naviera=naviera,
+        nave__is_active=True,
+        es_visible=True,
+    )
+    if request.user.rol == "capitan":
+        filtros_base = filtros_base.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, naviera))
+    resueltos_base = filtros_base.filter(ultimo_estado_operativo=True, ultimo_estado_operativo_anterior=False)
+    qs = (
+        resueltos_base.select_related(
+            "nave",
+            "recurso__area",
+            "recurso__periodicidad",
+        )
+        .order_by(F("ultimo_estado_operativo_en").desc(nulls_last=True), "nave__nombre", "recurso__nombre")
+    )
+
+    nave_id = request.GET.get("nave", "").strip()
+    area_id = request.GET.get("area", "").strip()
+    periodicidad_id = request.GET.get("periodicidad", "").strip()
+    fecha_desde_str = request.GET.get("fecha_desde", "").strip()
+    fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
+    agrupar_por = request.GET.get("agrupar", "").strip()
+    if agrupar_por not in {"", "nave", "area", "periodo"}:
+        agrupar_por = ""
+
+    if nave_id:
+        try:
+            qs = qs.filter(nave_id=int(nave_id))
+        except ValueError:
+            nave_id = ""
+
+    if area_id:
+        try:
+            qs = qs.filter(recurso__area_id=int(area_id))
+        except ValueError:
+            area_id = ""
+
+    if periodicidad_id:
+        try:
+            qs = qs.filter(recurso__periodicidad_id=int(periodicidad_id))
+        except ValueError:
+            periodicidad_id = ""
+
+    if fecha_desde_str:
+        try:
+            fecha_desde = date.fromisoformat(fecha_desde_str)
+            qs = qs.filter(ultimo_estado_operativo_en__date__gte=fecha_desde)
+        except ValueError:
+            fecha_desde_str = ""
+
+    if fecha_hasta_str:
+        try:
+            fecha_hasta = date.fromisoformat(fecha_hasta_str)
+            qs = qs.filter(ultimo_estado_operativo_en__date__lte=fecha_hasta)
+        except ValueError:
+            fecha_hasta_str = ""
+
+    resueltos_filtrados_total = qs.count()
+    _params = request.GET.copy()
+    _params.pop("page", None)
+    if not agrupar_por:
+        page_obj = paginate(qs, request.GET.get("page"), 20)
+        resueltos = list(page_obj.object_list)
+        pagination_params = _params.urlencode()
+    else:
+        page_obj = None
+        resueltos = list(qs)
+        pagination_params = ""
+    presenters.adjuntar_detalle_a_resueltos(resueltos, naviera)
+    grupos = []
+    if agrupar_por == "nave":
+        agrupado = {}
+        for resuelto in resueltos:
+            grupo = agrupado.setdefault(
+                resuelto.nave_id,
+                {"label": resuelto.nave.nombre, "sort_key": resuelto.nave.nombre.lower(), "items": []},
+            )
+            grupo["items"].append(resuelto)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    elif agrupar_por == "area":
+        agrupado = {}
+        for resuelto in resueltos:
+            if resuelto.recurso.area_id:
+                key = resuelto.recurso.area_id
+                label = resuelto.recurso.area.nombre
+                orden = resuelto.recurso.area.orden if resuelto.recurso.area.orden is not None else 9999
+                sort_key = (0, orden, label.lower())
+            else:
+                key = None
+                label = "Sin área"
+                sort_key = (1, 9999, "")
+            grupo = agrupado.setdefault(key, {"label": label, "sort_key": sort_key, "items": []})
+            grupo["items"].append(resuelto)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    elif agrupar_por == "periodo":
+        agrupado = {}
+        for resuelto in resueltos:
+            periodicidad = resuelto.recurso.periodicidad
+            if periodicidad:
+                key = periodicidad.id
+                label = periodicidad.nombre
+                sort_key = (periodicidad.duracion_dias, periodicidad.nombre.lower())
+            else:
+                key = None
+                label = "Sin periodicidad"
+                sort_key = (99999, "")
+            grupo = agrupado.setdefault(key, {"label": label, "sort_key": sort_key, "items": []})
+            grupo["items"].append(resuelto)
+        grupos = [grupo for grupo in sorted(agrupado.values(), key=lambda item: item["sort_key"])]
+    else:
+        grupos = [{"label": None, "items": resueltos}]
+
+    naves = Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre")
+    if request.user.rol == "capitan":
+        naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, naviera))
+    areas = Area.objects.filter(
+        id__in=filtros_base.exclude(recurso__area_id__isnull=True).values_list("recurso__area_id", flat=True)
+    ).order_by(F("orden").asc(nulls_last=True), "nombre")
+    periodicidades = Periodicidad.objects.filter(
+        id__in=filtros_base.values_list("recurso__periodicidad_id", flat=True)
+    ).order_by("duracion_dias", "nombre")
+
+    total_resueltos = resueltos_base.count()
+    naves_afectadas = resueltos_base.values("nave").distinct().count()
+
+    return render(
+        request,
+        "inspection/tierra/fallos_resueltos.html",
+        {
+            "slug": slug,
+            "grupos": grupos,
+            "agrupar_por": agrupar_por,
+            "total_resueltos": total_resueltos,
+            "naves_afectadas": naves_afectadas,
+            "naves": naves,
+            "areas": areas,
+            "periodicidades": periodicidades,
+            "nave_id": nave_id,
+            "area_id": area_id,
+            "periodicidad_id": periodicidad_id,
+            "fecha_desde_str": fecha_desde_str,
+            "fecha_hasta_str": fecha_hasta_str,
+            "resueltos_filtrados_total": resueltos_filtrados_total,
+            "page_obj": page_obj,
+            "pagination_params": pagination_params,
+        },
+    )
+
+
+@tenant_member_required
+@requiere_tierra
+def fallos_feed(request, slug):
+    return render(request, "inspection/tierra/fallos_feed.html", {"slug": slug})
+
+
+@tenant_member_required
+@requiere_tierra
 def periodos_vencidos(request, slug):
     naviera = request.naviera
     hoy = timezone.localdate()
