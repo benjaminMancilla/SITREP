@@ -523,6 +523,12 @@ def fallos_feed(request, slug):
 
 @tenant_member_required
 @requiere_tierra
+def calendario(request, slug):
+    return render(request, "inspection/tierra/calendario.html", {"slug": slug})
+
+
+@tenant_member_required
+@requiere_tierra
 def periodos_vencidos(request, slug):
     naviera = request.naviera
     hoy = timezone.localdate()

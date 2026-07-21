@@ -3,7 +3,11 @@ from rest_framework.response import Response
 from core.api_base import TierraAPIView
 from sitrep.fleet.models import Nave
 
-from .presenters import construir_eventos_fallo_resolucion, construir_tabla_urgencia
+from .presenters import (
+    construir_eventos_fallo_resolucion,
+    construir_hitos_inminentes,
+    construir_tabla_urgencia,
+)
 
 
 class FallosFeedView(TierraAPIView):
@@ -48,3 +52,10 @@ class UrgenciaPorPeriodicidadView(TierraAPIView):
         if base is not None:
             return base.filter(id__in=ids)
         return Nave.objects.filter(id__in=ids)
+
+
+class HitosInminentesView(TierraAPIView):
+    def get(self, request, slug):
+        naves = self.get_naves_scope(request)
+        hitos = construir_hitos_inminentes(request.naviera, naves=naves)
+        return Response(hitos)

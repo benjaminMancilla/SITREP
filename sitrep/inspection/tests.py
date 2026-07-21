@@ -14,6 +14,7 @@ from .models import (
     MatrizNaveRecurso,
     PeriodoRevision,
 )
+from .presenters import construir_hitos_inminentes
 from .services import MotorFichas, MotorPeriodos, MotorReglasSITREP, TenantQueryService
 
 
@@ -2213,3 +2214,107 @@ class TestNaveDetalleResoluciones(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["resoluciones_nave"], 1)
         self.assertContains(response, "Resoluciones")
+
+
+class TestConstruirHitosInminentes(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(
+            nombre="Naviera Hitos",
+            rut="55555555-7",
+            slug="naviera-hitos",
+        )
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Mensual",
+            duracion_dias=30,
+            offset_dias=1,
+            responsabilidad="mar",
+            visibilidad="todos",
+        )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        self.recurso_a = Recurso.objects.create(
+            categoria="Seguridad", tipo="Material",
+            periodicidad=self.periodicidad,
+            nombre="Extintor A",
+            requerimientos=requerimientos_estandar("vigencia", "presion"),
+            regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
+        )
+        self.recurso_b = Recurso.objects.create(
+            categoria="Seguridad", tipo="Material",
+            periodicidad=self.periodicidad,
+            nombre="Extintor B",
+            requerimientos=requerimientos_estandar("sello"),
+            regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
+        )
+        self.recurso_sin_checklist = Recurso.objects.create(
+            categoria="Seguridad", tipo="Material",
+            periodicidad=self.periodicidad,
+            nombre="Radio VHF",
+            requerimientos=[],
+            regla_aplicacion=None,
+            catalogo_version=self.catalogo_version,
+        )
+        self.usuario = Usuario.objects.create_user(
+            username="marinero_hitos",
+            password="password-seguro-123",
+            naviera=self.naviera,
+            rut="55555555-8",
+            email="marinero_hitos@example.com",
+            rol="mar",
+        )
+        self.nave = Nave.objects.create(
+            naviera=self.naviera,
+            nombre="Nave Hitos",
+            matricula="NVH-001",
+            eslora=20.0,
+            arqueo_bruto=200,
+            capacidad_personas=12,
+        )
+        self.periodo = PeriodoRevision.objects.get(
+            nave=self.nave,
+            periodicidad=self.periodicidad,
+        )
+        hoy = date.today()
+        self.lunes = hoy - timedelta(days=hoy.weekday())
+        self.domingo_prox = self.lunes + timedelta(days=13)
+
+    def _set_fecha_termino(self, fecha):
+        self.periodo.fecha_termino = fecha
+        self.periodo.save(update_fields=["fecha_termino"])
+
+    def test_incluye_borde_inicio_de_ventana(self):
+        self._set_fecha_termino(self.lunes)
+        hitos = construir_hitos_inminentes(self.naviera)
+        self.assertEqual([h["id"] for h in hitos], [self.periodo.id])
+
+    def test_incluye_borde_fin_de_ventana(self):
+        self._set_fecha_termino(self.domingo_prox)
+        hitos = construir_hitos_inminentes(self.naviera)
+        self.assertEqual([h["id"] for h in hitos], [self.periodo.id])
+
+    def test_excluye_justo_antes_de_la_ventana(self):
+        self._set_fecha_termino(self.lunes - timedelta(days=1))
+        self.assertEqual(construir_hitos_inminentes(self.naviera), [])
+
+    def test_excluye_justo_despues_de_la_ventana(self):
+        self._set_fecha_termino(self.domingo_prox + timedelta(days=1))
+        self.assertEqual(construir_hitos_inminentes(self.naviera), [])
+
+    def test_avance_refleja_fichas_completas_sobre_total_recursos(self):
+        self._set_fecha_termino(self.domingo_prox)
+        MotorFichas.crear_ficha(
+            periodo=self.periodo,
+            recurso=self.recurso_sin_checklist,
+            usuario=self.usuario,
+            estado_operativo=True,
+            observacion_general="",
+            payload_checklist={},
+        )
+
+        hitos = construir_hitos_inminentes(self.naviera)
+
+        self.assertEqual(len(hitos), 1)
+        self.assertEqual(hitos[0]["nave"], self.nave.nombre)
+        self.assertEqual(hitos[0]["periodicidad"], self.periodicidad.nombre)
+        self.assertEqual(hitos[0]["avance"], round(100 / 3))
