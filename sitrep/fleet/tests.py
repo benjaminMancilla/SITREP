@@ -284,3 +284,33 @@ class TestGetNavesConEstado(TenantFixturesMixin, TestCase):
         naves = FleetQueryService.get_naves_con_estado(self.naviera_a)
 
         self.assertEqual(list(naves.values_list("id", flat=True)), [self.nave_a.id])
+
+
+class TestNavesEstadoView(TenantFixturesMixin, TestCase):
+    def test_lista_naves_con_estado_scoped_a_naviera(self):
+        self.client.force_login(self.admin_a)
+        url = reverse("inventory:api_naves_estado", kwargs={"slug": self.naviera_a.slug})
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        ids = [item["id"] for item in response.json()]
+        self.assertEqual(ids, [self.nave_a.id])
+        item = response.json()[0]
+        self.assertEqual(item["nombre"], "Nave A")
+        self.assertEqual(item["matricula"], "NVA-001")
+        self.assertIn("resoluciones", item)
+        self.assertIn("ultimaFichaEn", item)
+        self.assertIsNone(item["ultimaFichaEn"])
+
+    def test_mar_no_puede_acceder(self):
+        mar = Usuario.objects.create_user(
+            username="mar_a", password="password-seguro-123", naviera=self.naviera_a,
+            rut="33333333-3", email="mar_a@example.com", rol="mar",
+        )
+        self.client.force_login(mar)
+        url = reverse("inventory:api_naves_estado", kwargs={"slug": self.naviera_a.slug})
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 403)

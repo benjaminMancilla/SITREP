@@ -4,4 +4,5 @@ from . import api_views
 
 urlpatterns = [
     path('dispositivos/verificar/', api_views.VerificarDispositivoView.as_view(), name='verificar_dispositivo'),
+    path('naves/', api_views.NavesEstadoView.as_view(), name='api_naves_estado'),
 ]
