@@ -1,0 +1,14 @@
+{% extends 'layouts/tierra.html' %}
+{% load django_vite %}
+
+{% block nav_active %}calendario{% endblock %}
+{% block page_title %}SITREP | Calendario{% endblock %}
+{% block topbar_title %}Calendario{% endblock %}
+
+{% block extra_head %}
+{% vite_asset 'entrypoints/calendario.js' %}
+{% endblock %}
+
+{% block page_content %}
+<div id="svelte-hitos-inminentes" data-slug="{{ slug }}"></div>
+{% endblock %}

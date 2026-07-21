@@ -82,6 +82,22 @@
                 </a>
 
                 <a
+                    href="{% url 'inventory:calendario' slug=tenant_slug %}"
+                    class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+                    :class="navActive === 'calendario'
+                        ? 'border-[#3b82f6] bg-[rgba(29,78,216,0.22)] text-[#93c5fd] font-semibold'
+                        : 'border-transparent'"
+                >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="2" y="3" width="12" height="11" rx="1" stroke="currentColor" stroke-width="1.4" fill="none"/>
+                        <line x1="2" y1="6.5" x2="14" y2="6.5" stroke="currentColor" stroke-width="1.4"/>
+                        <line x1="5" y1="1.5" x2="5" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                        <line x1="11" y1="1.5" x2="11" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                    <span>Calendario</span>
+                </a>
+
+                <a
                     href="{% url 'inventory:listar_naves' slug=tenant_slug %}"
                     class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
                     :class="navActive === 'naves'

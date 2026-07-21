@@ -13,6 +13,7 @@ urlpatterns = [
     path('fallos/', views.fallos_activos, name='fallos_activos'),
     path('fallos/resueltos/', views.fallos_resueltos, name='fallos_resueltos'),
     path('fallos/feed/', views.fallos_feed, name='fallos_feed'),
+    path('calendario/', views.calendario, name='calendario'),
     path('vencidos/', views.periodos_vencidos, name='periodos_vencidos'),
     path('naves/<int:nave_id>/detalle/', views.nave_detalle, name='nave_detalle'),
     path(

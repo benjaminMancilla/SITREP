@@ -7,7 +7,7 @@ datos de DB los pide a través de repositories o services — nunca ejecuta
 Model.objects directamente.
 """
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.utils import timezone
 
@@ -412,6 +412,48 @@ def construir_tabla_urgencia(naviera, naves=None):
         })
 
     return {"columns": columns, "naves": naves_data}
+
+
+def construir_hitos_inminentes(naviera, naves=None):
+    """
+    Vencimientos (fecha_termino) de esta semana + próxima (lunes a domingo),
+    con el mismo cálculo de avance que construir_tabla_urgencia.
+    Reutiliza get_brutos_urgencia: su periodos_por_clave ya viene reducido al
+    período abierto vigente por (nave, periodicidad) — ver nota en ese repositorio.
+    """
+    brutos = get_brutos_urgencia(naviera, naves=naves)
+    if brutos is None:
+        return []
+
+    hoy = date.today()
+    lunes = hoy - timedelta(days=hoy.weekday())
+    domingo_prox = lunes + timedelta(days=13)
+
+    fichas_completas = {}
+    for ficha in brutos["fichas_raw"]:
+        if MotorPeriodos._es_ficha_completa(ficha):
+            fichas_completas[ficha.periodo_id] = fichas_completas.get(ficha.periodo_id, 0) + 1
+
+    naves_por_id = {nave.id: nave for nave in brutos["naves"]}
+    totales = brutos["totales"]
+
+    hitos = []
+    for periodo in brutos["periodos_por_clave"].values():
+        if not (lunes <= periodo.fecha_termino <= domingo_prox):
+            continue
+        total_recursos = totales.get((periodo.nave_id, periodo.periodicidad_id), 0)
+        fichas_ok = fichas_completas.get(periodo.id, 0)
+        cobertura = 1.0 if total_recursos == 0 else min(1.0, fichas_ok / total_recursos)
+        hitos.append({
+            "id": periodo.id,
+            "nave": naves_por_id[periodo.nave_id].nombre,
+            "periodicidad": periodo.periodicidad.nombre,
+            "avance": round(cobertura * 100),
+            "fecha": periodo.fecha_termino.isoformat(),
+        })
+
+    hitos.sort(key=lambda h: h["fecha"])
+    return hitos
 
 
 # ---------------------------------------------------------------------------
