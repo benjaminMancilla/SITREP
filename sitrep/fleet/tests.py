@@ -1,11 +1,16 @@
+from datetime import timedelta
+
 from django.core.cache import cache
 from django.http import Http404
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from sitrep.accounts.models import AuditEvent, Naviera, Usuario
+from sitrep.catalog.models import CatalogoVersion, Periodicidad, Recurso
 from sitrep.fleet.models import Dispositivo, Nave
 from sitrep.fleet.services import FleetQueryService
+from sitrep.inspection.models import FichaRegistro, MatrizNaveRecurso, PeriodoRevision
 
 
 class TenantFixturesMixin:
@@ -186,3 +191,96 @@ class TestVerificarDispositivoEndpoint(TenantFixturesMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["valido"])
         self.assertFalse(AuditEvent.objects.filter(recurso="dispositivo_token").exists())
+
+
+class TestGetNavesConEstado(TenantFixturesMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Semanal",
+            duracion_dias=7,
+            offset_dias=1,
+            responsabilidad="mar",
+            visibilidad="todos",
+        )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        self.recurso = Recurso.objects.create(
+            categoria="Seguridad",
+            tipo="Material",
+            periodicidad=self.periodicidad,
+            nombre="Extintor",
+            requerimientos=[],
+            regla_aplicacion={},
+            catalogo_version=self.catalogo_version,
+        )
+
+    def test_resoluciones_matches_fallos_resueltos_predicate(self):
+        """Mismo predicado que la tab Fallos resueltos: operativo ahora, con falla en el período anterior."""
+        MatrizNaveRecurso.objects.create(
+            nave=self.nave_a,
+            recurso=self.recurso,
+            cantidad=1,
+            es_visible=True,
+            ultimo_estado_operativo=True,
+            ultimo_estado_operativo_anterior=False,
+        )
+        # no debe contar: sigue fallado
+        recurso_b = Recurso.objects.create(
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad,
+            nombre="Chaleco", requerimientos=[], regla_aplicacion={},
+            catalogo_version=self.catalogo_version,
+        )
+        MatrizNaveRecurso.objects.create(
+            nave=self.nave_a,
+            recurso=recurso_b,
+            cantidad=1,
+            es_visible=True,
+            ultimo_estado_operativo=False,
+            ultimo_estado_operativo_anterior=False,
+        )
+
+        nave = FleetQueryService.get_naves_con_estado(self.naviera_a).get(id=self.nave_a.id)
+
+        self.assertEqual(nave.resoluciones, 1)
+        self.assertEqual(nave.fallos_activos, 1)
+
+    def test_ultima_ficha_en_uses_modificado_en_when_present(self):
+        periodo = PeriodoRevision.objects.create(
+            nave=self.nave_a,
+            periodicidad=self.periodicidad,
+            fecha_inicio=timezone.localdate(),
+            fecha_termino=timezone.localdate(),
+            estado="pendiente",
+        )
+        ficha = FichaRegistro.objects.create(
+            periodo=periodo,
+            recurso=self.recurso,
+            usuario=self.admin_a,
+            estado_operativo=True,
+            payload_checklist={},
+        )
+        later = timezone.now() + timedelta(hours=2)
+        ficha.modificado_en = later
+        ficha.save(update_fields=["modificado_en"])
+
+        nave = FleetQueryService.get_naves_con_estado(self.naviera_a).get(id=self.nave_a.id)
+
+        self.assertEqual(nave.ultima_ficha_en, later)
+
+    def test_ultima_ficha_en_none_when_no_fichas(self):
+        nave = FleetQueryService.get_naves_con_estado(self.naviera_a).get(id=self.nave_a.id)
+
+        self.assertIsNone(nave.ultima_ficha_en)
+
+    def test_scoped_to_naviera(self):
+        MatrizNaveRecurso.objects.create(
+            nave=self.nave_b,
+            recurso=self.recurso,
+            cantidad=1,
+            es_visible=True,
+            ultimo_estado_operativo=False,
+        )
+
+        naves = FleetQueryService.get_naves_con_estado(self.naviera_a)
+
+        self.assertEqual(list(naves.values_list("id", flat=True)), [self.nave_a.id])
