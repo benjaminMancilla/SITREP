@@ -1,6 +1,10 @@
+from collections import defaultdict
+from datetime import timedelta
+
 from django.db.models import Count, Max, Q
-from django.db.models.functions import Coalesce, Greatest
+from django.db.models.functions import Coalesce, Greatest, TruncDate
 from django.http import Http404
+from django.utils import timezone
 
 from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
 
@@ -124,3 +128,31 @@ class FleetQueryService:
                 ),
             ),
         )
+
+    @staticmethod
+    def get_actividad_diaria(naviera, nave_ids=None, dias=42):
+        """Conteo de fichas por nave y día, acotado a los últimos `dias` (Monday-
+        aligned). Una sola query GROUP BY — nunca carga fichas como objetos, el
+        costo escala con naves x dias, no con el historial completo de la flota."""
+        from sitrep.inspection.models import FichaRegistro
+
+        hoy = timezone.localdate()
+        lunes = hoy - timedelta(days=hoy.weekday())
+        inicio = lunes - timedelta(days=dias - 7)
+
+        qs = FichaRegistro.objects.filter(
+            periodo__nave__naviera=naviera,
+            fecha_revision__date__gte=inicio,
+        )
+        if nave_ids is not None:
+            qs = qs.filter(periodo__nave_id__in=nave_ids)
+
+        filas = (
+            qs.annotate(dia=TruncDate("fecha_revision"))
+            .values("periodo__nave_id", "dia")
+            .annotate(count=Count("id"))
+        )
+        conteos = defaultdict(dict)
+        for fila in filas:
+            conteos[fila["periodo__nave_id"]][fila["dia"]] = fila["count"]
+        return inicio, conteos

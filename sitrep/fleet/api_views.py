@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -61,4 +63,31 @@ class NavesEstadoView(TierraAPIView):
             }
             for nave in naves.order_by("nombre")
         ]
+        return Response(data)
+
+
+class FleetActividadView(TierraAPIView):
+    DIAS = 42
+
+    def get(self, request, slug):
+        naves = FleetQueryService.get_naves_activas(request.naviera)
+        naves_scope = self.get_naves_scope(request)
+        if naves_scope is not None:
+            naves = naves.filter(id__in=naves_scope)
+        naves = list(naves.order_by("nombre"))
+
+        inicio, conteos = FleetQueryService.get_actividad_diaria(
+            request.naviera, nave_ids=[n.id for n in naves], dias=self.DIAS
+        )
+        data = []
+        for nave in naves:
+            por_dia = conteos.get(nave.id, {})
+            dias = [
+                {
+                    "date": (inicio + timedelta(days=i)).isoformat(),
+                    "count": por_dia.get(inicio + timedelta(days=i), 0),
+                }
+                for i in range(self.DIAS)
+            ]
+            data.append({"id": nave.id, "nombre": nave.nombre, "matricula": nave.matricula, "days": dias})
         return Response(data)

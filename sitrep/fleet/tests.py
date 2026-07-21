@@ -314,3 +314,107 @@ class TestNavesEstadoView(TenantFixturesMixin, TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 403)
+
+
+class TestGetActividadDiaria(TenantFixturesMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Semanal", duracion_dias=7, offset_dias=1,
+            responsabilidad="mar", visibilidad="todos",
+        )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        self.recurso = Recurso.objects.create(
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad,
+            nombre="Extintor", requerimientos=[], regla_aplicacion={},
+            catalogo_version=self.catalogo_version,
+        )
+
+    def _crear_ficha(self, nave, fecha_revision):
+        periodo = PeriodoRevision.objects.create(
+            nave=nave, periodicidad=self.periodicidad,
+            fecha_inicio=timezone.localdate(), fecha_termino=timezone.localdate(),
+            estado="pendiente",
+        )
+        ficha = FichaRegistro.objects.create(
+            periodo=periodo, recurso=self.recurso, usuario=self.admin_a,
+            estado_operativo=True, payload_checklist={},
+        )
+        FichaRegistro.objects.filter(id=ficha.id).update(fecha_revision=fecha_revision)
+        return ficha
+
+    def test_ficha_cae_en_el_dia_correcto(self):
+        hoy = timezone.now()
+        self._crear_ficha(self.nave_a, hoy)
+
+        inicio, conteos = FleetQueryService.get_actividad_diaria(self.naviera_a)
+
+        self.assertEqual(conteos[self.nave_a.id][hoy.date()], 1)
+
+    def test_scoped_a_naviera(self):
+        hoy = timezone.now()
+        self._crear_ficha(self.nave_b, hoy)
+
+        inicio, conteos = FleetQueryService.get_actividad_diaria(self.naviera_a)
+
+        self.assertNotIn(self.nave_b.id, conteos)
+
+    def test_nave_ids_filtra_otras_naves(self):
+        hoy = timezone.now()
+        otra_nave = Nave.objects.create(
+            naviera=self.naviera_a, nombre="Nave A2", matricula="NVA-002",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=15,
+        )
+        self._crear_ficha(self.nave_a, hoy)
+        self._crear_ficha(otra_nave, hoy)
+
+        inicio, conteos = FleetQueryService.get_actividad_diaria(
+            self.naviera_a, nave_ids=[self.nave_a.id]
+        )
+
+        self.assertIn(self.nave_a.id, conteos)
+        self.assertNotIn(otra_nave.id, conteos)
+
+    def test_ficha_fuera_de_ventana_se_excluye(self):
+        vieja = timezone.now() - timedelta(days=100)
+        self._crear_ficha(self.nave_a, vieja)
+
+        inicio, conteos = FleetQueryService.get_actividad_diaria(self.naviera_a, dias=42)
+
+        self.assertNotIn(self.nave_a.id, conteos)
+
+
+class TestFleetActividadView(TenantFixturesMixin, TestCase):
+    def test_scoped_a_naviera(self):
+        self.client.force_login(self.admin_a)
+        url = reverse("inventory:fleet_actividad", kwargs={"slug": self.naviera_a.slug})
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        ids = [item["id"] for item in response.json()]
+        self.assertEqual(ids, [self.nave_a.id])
+
+    def test_mar_no_puede_acceder(self):
+        mar = Usuario.objects.create_user(
+            username="mar_a", password="password-seguro-123", naviera=self.naviera_a,
+            rut="33333333-3", email="mar_a@example.com", rol="mar",
+        )
+        self.client.force_login(mar)
+        url = reverse("inventory:fleet_actividad", kwargs={"slug": self.naviera_a.slug})
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_respuesta_tiene_dias_densos_con_ceros(self):
+        self.client.force_login(self.admin_a)
+        url = reverse("inventory:fleet_actividad", kwargs={"slug": self.naviera_a.slug})
+
+        response = self.client.get(url)
+
+        item = response.json()[0]
+        self.assertEqual(len(item["days"]), 42)
+        self.assertTrue(all(d["count"] == 0 for d in item["days"]))
+        self.assertIn("nombre", item)
+        self.assertIn("matricula", item)
