@@ -1,9 +1,13 @@
 {% extends 'layouts/tierra.html' %}
+{% load django_vite %}
 
 {% block nav_active %}naves{% endblock %}
 {% block page_title %}SITREP | Naves{% endblock %}
 {% block topbar_title %}Naves{% endblock %}
 
+{% block extra_head %}
+{% vite_asset 'entrypoints/naves_tabla.js' %}
+{% endblock %}
 
 {% block page_content %}
 <div
@@ -26,6 +30,7 @@
             return this.actionTemplate.replace('__ID__', String(this.modalId ?? ''));
         }
     }"
+    x-on:nave-desactivar.window="abrirModal($event.detail.subtitulo, $event.detail.id)"
     class="space-y-4"
 >
     <div class="mb-5 flex items-center justify-between">
@@ -33,7 +38,7 @@
             <h1 class="text-[20px] font-bold text-navy">Gestión de Naves</h1>
             <p class="mt-0.5 text-[12px] text-ink-muted">Flota activa de la naviera</p>
         </div>
-        {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
+        {% if puede_editar %}
         <a
             href="{% url 'inventory:crear_nave' slug=slug %}"
             class="inline-flex items-center gap-1.5 rounded-md bg-navy px-3.5 py-2 text-[13px] font-semibold text-white transition hover:bg-navy-light"
@@ -47,108 +52,13 @@
         {% endif %}
     </div>
 
-    <form method="get" class="mb-3.5 flex flex-wrap items-center gap-2.5">
-        {% include 'components/search_input.html' with placeholder="Buscar por nombre o matrícula…" value=q %}
-        {% if q %}
-        <a href="?" class="text-[12px] text-ink-muted transition hover:text-ink">Limpiar</a>
-        {% endif %}
-        <span class="ml-auto text-[12px] text-ink-muted">{{ page_obj.paginator.count }} naves</span>
-    </form>
-
-    <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
-        {% if page_obj.object_list %}
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-neutral-bg text-ink-muted">
-                    <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Nave</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Matrícula</th>
-                        <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Eslora</th>
-                        <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Arqueo bruto</th>
-                        <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Cap. personas</th>
-                        <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Períodos abiertos</th>
-                        <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos activos</th>
-                        <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos nuevos</th>
-                        <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for nave in page_obj %}
-                    <tr class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
-                        <td class="px-4 py-3.5">
-                            <a
-                                href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
-                                class="font-semibold text-navy transition hover:text-brand"
-                            >
-                                {{ nave.nombre }}
-                            </a>
-                        </td>
-                        <td class="px-4 py-3.5 font-mono text-[12px] text-ink-secondary">{{ nave.matricula }}</td>
-                        <td class="px-4 py-3.5 text-center text-[13px] text-ink">{{ nave.eslora|floatformat:"-2" }}</td>
-                        <td class="px-4 py-3.5 text-center text-[13px] text-ink">{{ nave.arqueo_bruto }}</td>
-                        <td class="px-4 py-3.5 text-center text-[13px] text-ink">{{ nave.capacidad_personas }}</td>
-                        <td class="px-4 py-3.5 text-center">
-                            {% if nave.periodos_abiertos > 0 %}
-                                <span class="inline-flex items-center rounded-[4px] border border-info-border bg-info-bg px-2 py-0.5 text-[11px] font-semibold text-info">{{ nave.periodos_abiertos }}</span>
-                            {% else %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3.5 text-center">
-                            {% if nave.fallos_activos > 0 %}
-                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>{{ nave.fallos_activos }}
-                                </span>
-                            {% else %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3.5 text-center">
-                            {% if nave.fallos_nuevos > 0 %}
-                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>{{ nave.fallos_nuevos }}
-                                </span>
-                            {% else %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">0</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3.5">
-                            <div class="flex flex-wrap justify-end gap-1.5">
-                                <a
-                                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
-                                    class="btn-ghost-info inline-flex items-center rounded-md border border-info-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-info transition"
-                                >
-                                    Ver detalle
-                                </a>
-                                {% if request.user.rol == "admin_sitrep" or request.user.rol == "admin_naviera" %}
-                                <a
-                                    href="{% url 'inventory:editar_nave' slug=slug nave_id=nave.id %}"
-                                    class="btn-ghost-warn inline-flex items-center rounded-md border border-warn-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-warn transition"
-                                >
-                                    Editar
-                                </a>
-                                <button
-                                    type="button"
-                                    @click="abrirModal('{{ nave.nombre|escapejs }} · {{ nave.matricula|escapejs }}', {{ nave.id }})"
-                                    class="btn-ghost-fail inline-flex items-center rounded-md border border-fail-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-fail transition"
-                                >
-                                    Desactivar
-                                </button>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% include 'components/pagination.html' with page_obj=page_obj pagination_params=pagination_params item_label="naves" %}
-        {% else %}
-        <div class="px-5 py-8 text-center text-sm text-ink-muted">
-            No se encontraron naves con los filtros aplicados.
-        </div>
-        {% endif %}
-    </div>
+    <div
+        id="svelte-fleet-table"
+        data-slug="{{ slug }}"
+        data-puede-editar="{{ puede_editar|yesno:'true,false' }}"
+        data-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
+        data-editar-url-template="{% url 'inventory:editar_nave' slug=slug nave_id=987654321 %}"
+    ></div>
 
     {% include 'components/confirm_modal.html' with titulo="Desactivar nave" descripcion="La nave será desactivada y dejará de aparecer en el sistema. Los registros históricos se conservan." confirm_label="Desactivar nave" %}
 </div>
