@@ -1,5 +1,5 @@
 <script>
-  let { hitos = [], visiblePerGroup = 3 } = $props()
+  let { hitos = [], visiblePerGroup = 3, mostrarLinkCalendario = false } = $props()
 
   const DAY = 86400000
   const now = Date.now()
@@ -32,12 +32,14 @@
       <h2 class="text-[15px] font-bold text-navy">Hitos Inminentes</h2>
       <p class="mt-0.5 text-[11px] text-ink-muted">Vencimientos de períodos, lunes a domingo</p>
     </div>
-    <span
-      class="shrink-0 text-[11px] font-semibold text-ink-muted opacity-70"
-      title="Disponible cuando se habilite la sección de calendario"
-    >
-      Ver calendario completo
-    </span>
+    {#if mostrarLinkCalendario}
+      <span
+        class="shrink-0 text-[11px] font-semibold text-ink-muted opacity-70"
+        title="Disponible cuando se habilite la sección de calendario"
+      >
+        Ver calendario completo
+      </span>
+    {/if}
   </div>
 
   {#if hitos.length === 0}
