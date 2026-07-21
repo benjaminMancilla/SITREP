@@ -749,6 +749,12 @@ def nave_detalle(request, slug, nave_id):
         es_visible=True,
         es_fallo_nuevo=True,
     ).count()
+    resoluciones_nave = MatrizNaveRecurso.objects.filter(
+        nave=nave,
+        es_visible=True,
+        ultimo_estado_operativo=True,
+        ultimo_estado_operativo_anterior=False,
+    ).count()
     periodos_vencidos_nave = PeriodoRevision.objects.filter(
         nave=nave,
         estado__in=PeriodoRevision.ESTADOS_INCOMPLETOS,
@@ -771,6 +777,7 @@ def nave_detalle(request, slug, nave_id):
             "periodicidades": periodicidades,
             "fallos_activos_nave": fallos_activos_nave,
             "fallos_nuevos_nave": fallos_nuevos_nave,
+            "resoluciones_nave": resoluciones_nave,
             "periodos_vencidos_nave": periodos_vencidos_nave,
             "total_recursos_nave": total_recursos_nave,
             "slug": slug,
