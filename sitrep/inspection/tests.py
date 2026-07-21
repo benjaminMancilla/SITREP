@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 from unittest.mock import patch
 
@@ -2176,3 +2177,39 @@ class TestNavePeriodoPdfView(TestCase):
     def test_capitan_con_la_nave_puede_imprimir(self):
         response = self._llamar_vista(self.capitan, self.otra_nave)
         self.assertEqual(response.status_code, 200)
+
+
+class TestNaveDetalleResoluciones(TestCase):
+    def setUp(self):
+        self.naviera = Naviera.objects.create(nombre="Naviera Resol", rut="44444444-4", slug="naviera-resol")
+        self.nave = Nave.objects.create(
+            naviera=self.naviera, nombre="Nave Resol", matricula="NVR-001",
+            eslora=20.0, arqueo_bruto=200, capacidad_personas=15,
+        )
+        self.admin = Usuario.objects.create_user(
+            username="admin_resol", password="password-seguro-123", naviera=self.naviera,
+            rut="44444444-4", email="admin_resol@example.com", rol="admin_naviera",
+        )
+        self.periodicidad = Periodicidad.objects.create(
+            nombre="Semanal", duracion_dias=7, offset_dias=1, responsabilidad="mar", visibilidad="todos",
+        )
+        self.catalogo_version = CatalogoVersion.crear_para_scope()
+        self.recurso = Recurso.objects.create(
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad,
+            nombre="Extintor", requerimientos=[], regla_aplicacion={},
+            catalogo_version=self.catalogo_version,
+        )
+
+    def test_context_incluye_resoluciones_nave(self):
+        MatrizNaveRecurso.objects.create(
+            nave=self.nave, recurso=self.recurso, cantidad=1, es_visible=True,
+            ultimo_estado_operativo=True, ultimo_estado_operativo_anterior=False,
+        )
+        self.client.force_login(self.admin)
+        url = reverse("inventory:nave_detalle", kwargs={"slug": self.naviera.slug, "nave_id": self.nave.id})
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["resoluciones_nave"], 1)
+        self.assertContains(response, "Resoluciones")

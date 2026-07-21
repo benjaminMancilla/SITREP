@@ -1,3 +1,5 @@
+from django.db.models import Count, Max, Q
+from django.db.models.functions import Coalesce, Greatest
 from django.http import Http404
 
 from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
@@ -75,3 +77,50 @@ class FleetQueryService:
     def nave_en_scope(user, naviera, nave_id):
         scope = FleetQueryService.get_naves_scope(user, naviera)
         return scope is None or scope.filter(id=nave_id).exists()
+
+    @staticmethod
+    def get_naves_con_estado(naviera):
+        """Naves activas con los contadores que necesita la tabla de estado
+        de flota: períodos abiertos, fallos activos/nuevos, resoluciones
+        (mismo predicado que la tab Fallos resueltos) y última ficha."""
+        from sitrep.inspection.models import PeriodoRevision
+
+        return FleetQueryService.get_naves_activas(naviera).annotate(
+            periodos_abiertos=Count(
+                "periodos",
+                filter=Q(periodos__estado__in=PeriodoRevision.ESTADOS_ABIERTOS),
+                distinct=True,
+            ),
+            fallos_activos=Count(
+                "matriz_recursos",
+                filter=Q(
+                    matriz_recursos__es_visible=True,
+                    matriz_recursos__ultimo_estado_operativo=False,
+                ),
+                distinct=True,
+            ),
+            fallos_nuevos=Count(
+                "matriz_recursos",
+                filter=Q(
+                    matriz_recursos__es_visible=True,
+                    matriz_recursos__es_fallo_nuevo=True,
+                ),
+                distinct=True,
+            ),
+            resoluciones=Count(
+                "matriz_recursos",
+                filter=Q(
+                    matriz_recursos__es_visible=True,
+                    matriz_recursos__ultimo_estado_operativo=True,
+                    matriz_recursos__ultimo_estado_operativo_anterior=False,
+                ),
+                distinct=True,
+            ),
+            ultima_ficha_en=Greatest(
+                Max("periodos__fichas__fecha_revision"),
+                Coalesce(
+                    Max("periodos__fichas__modificado_en"),
+                    Max("periodos__fichas__fecha_revision"),
+                ),
+            ),
+        )

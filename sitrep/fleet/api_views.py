@@ -2,6 +2,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.api_base import TierraAPIView
 from core.throttling import AnonIPRateThrottle
 from core.utils import get_client_ip
 from sitrep.accounts.models import AuditEvent
@@ -36,3 +37,28 @@ class VerificarDispositivoView(APIView):
                 endpoint=request.path,
             )
         return Response({"valido": valido})
+
+
+class NavesEstadoView(TierraAPIView):
+    def get(self, request, slug):
+        naves = FleetQueryService.get_naves_con_estado(request.naviera)
+        naves_scope = self.get_naves_scope(request)
+        if naves_scope is not None:
+            naves = naves.filter(id__in=naves_scope)
+        data = [
+            {
+                "id": nave.id,
+                "nombre": nave.nombre,
+                "matricula": nave.matricula,
+                "eslora": float(nave.eslora),
+                "arqueoBruto": nave.arqueo_bruto,
+                "capacidadPersonas": nave.capacidad_personas,
+                "periodosAbiertos": nave.periodos_abiertos,
+                "fallosActivos": nave.fallos_activos,
+                "fallosNuevos": nave.fallos_nuevos,
+                "resoluciones": nave.resoluciones,
+                "ultimaFichaEn": nave.ultima_ficha_en,
+            }
+            for nave in naves.order_by("nombre")
+        ]
+        return Response(data)

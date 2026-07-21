@@ -1,11 +1,12 @@
 from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
 from core.decorators import requiere_admin, requiere_admin_capitan, requiere_tierra
+from core.permissions import ROLES_ADMIN
 from core.utils import paginate
 from sitrep.accounts.decorators import tenant_member_required
 from sitrep.fleet.models import Dispositivo, Nave, Tripulacion
@@ -16,45 +17,12 @@ from sitrep.inspection.services import TenantQueryService  # ponytail: migrate t
 @tenant_member_required
 @requiere_tierra
 def listar_naves(request, slug):
-    q = request.GET.get("q", "").strip()
-    naves = TenantQueryService.get_naves_activas(request.naviera).annotate(
-        periodos_abiertos=Count(
-            "periodos",
-            filter=Q(periodos__estado__in=TenantQueryService.ESTADOS_ABIERTOS),
-            distinct=True,
-        ),
-        fallos_activos=Count(
-            "matriz_recursos",
-            filter=Q(
-                matriz_recursos__es_visible=True,
-                matriz_recursos__ultimo_estado_operativo=False,
-            ),
-            distinct=True,
-        ),
-        fallos_nuevos=Count(
-            "matriz_recursos",
-            filter=Q(
-                matriz_recursos__es_visible=True,
-                matriz_recursos__es_fallo_nuevo=True,
-            ),
-            distinct=True,
-        ),
-    )
-    naves_scope = FleetQueryService.get_naves_scope(request.user, request.naviera)
-    if naves_scope is not None:
-        naves = naves.filter(id__in=naves_scope)
-    if q:
-        naves = naves.filter(Q(nombre__icontains=q) | Q(matricula__icontains=q))
-    _params = request.GET.copy()
-    _params.pop("page", None)
     return render(
         request,
         "fleet/naves_lista.html",
         {
-            "page_obj": paginate(naves.order_by("nombre"), request.GET.get("page"), 20),
-            "pagination_params": _params.urlencode(),
-            "q": q,
             "slug": slug,
+            "puede_editar": request.user.rol in ROLES_ADMIN,
         },
     )
 

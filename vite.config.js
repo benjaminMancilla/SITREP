@@ -13,6 +13,7 @@ export default defineConfig(({ command }) => ({
       input: {
         urgencia: 'entrypoints/urgencia.js',
         fallos_feed: 'entrypoints/fallos_feed.js',
+        naves_tabla: 'entrypoints/naves_tabla.js',
       },
     },
   },
