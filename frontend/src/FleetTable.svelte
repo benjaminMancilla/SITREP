@@ -82,7 +82,7 @@
                 <a href={urlFor(detalleUrlTemplate, nave.id)} class="font-semibold text-navy transition hover:text-brand">{nave.nombre}</a>
                 <p class="font-mono text-[11px] text-ink-muted">{nave.matricula}</p>
               </td>
-              <td class="px-4 py-3.5 text-center text-[13px] text-ink">{nave.eslora}</td>
+              <td class="px-4 py-3.5 text-center text-[13px] text-ink">{Number(nave.eslora)}</td>
               <td class="px-4 py-3.5 text-center text-[13px] text-ink">{nave.arqueoBruto}</td>
               <td class="px-4 py-3.5 text-center text-[13px] text-ink">{nave.capacidadPersonas}</td>
               <td class="px-4 py-3.5 text-center">

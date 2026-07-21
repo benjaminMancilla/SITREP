@@ -15,4 +15,7 @@ if (el) {
         editarUrlTemplate: editarUrlTemplate.replace('987654321', '__ID__'),
       },
     }))
+    .catch(() => {
+      el.textContent = 'No se pudieron cargar las naves.'
+    })
 }
