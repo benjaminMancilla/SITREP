@@ -7,6 +7,7 @@
 
 {% block extra_head %}
 {% vite_asset 'entrypoints/naves_tabla.js' %}
+{% vite_asset 'entrypoints/heatmap_fleet.js' %}
 {% endblock %}
 
 {% block page_content %}
@@ -51,6 +52,8 @@
         </a>
         {% endif %}
     </div>
+
+    <div id="svelte-activity-heatmap" data-slug="{{ slug }}"></div>
 
     <div
         id="svelte-fleet-table"
