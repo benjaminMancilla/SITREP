@@ -12,6 +12,7 @@ export default defineConfig(({ command }) => ({
     rollupOptions: {
       input: {
         urgencia: 'entrypoints/urgencia.js',
+        fallos_feed: 'entrypoints/fallos_feed.js',
       },
     },
   },

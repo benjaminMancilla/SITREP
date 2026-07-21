@@ -5,10 +5,13 @@ Regla: cada función requiere naviera (o un objeto ya validado como nave/periodo
 que pertenece implícitamente al tenant correcto). Nunca retorna datos de más de
 un tenant. No aplica reglas de negocio — eso le corresponde a services.
 """
-from django.db.models import F
-from django.db.models.functions import Coalesce
+from datetime import timedelta
 
-from .models import FichaRegistro, PeriodoRevision
+from django.db.models import F, Q
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+
+from .models import FichaRegistro, MatrizNaveRecurso, PeriodoRevision
 
 
 def get_periodo_de_nave(nave, periodo_id):
@@ -58,17 +61,18 @@ def get_datos_periodo_anterior(nave, periodo):
     }
 
 
-def get_ultimas_fichas_fallidas(naviera, nave_ids, recurso_ids):
+def _ultimas_fichas_por_estado(naviera, nave_ids, recurso_ids, estado_operativo):
     """
-    Retorna {(nave_id, recurso_id): FichaRegistro} con la ficha fallida más
-    reciente por clave. Scoped a naviera para garantizar aislamiento tenant.
+    Retorna {(nave_id, recurso_id): FichaRegistro} con la ficha más reciente
+    por clave que tenga el estado_operativo dado. Scoped a naviera para
+    garantizar aislamiento tenant.
     """
     fichas_ordenadas = (
         FichaRegistro.objects.filter(
             periodo__nave__naviera=naviera,
             periodo__nave_id__in=nave_ids,
             recurso_id__in=recurso_ids,
-            estado_operativo=False,
+            estado_operativo=estado_operativo,
         )
         .select_related("usuario", "modificado_por", "periodo", "periodo__nave")
         .annotate(evento_en=Coalesce("modificado_en", "fecha_revision"))
@@ -81,6 +85,44 @@ def get_ultimas_fichas_fallidas(naviera, nave_ids, recurso_ids):
         if clave not in ultimas:
             ultimas[clave] = ficha
     return ultimas
+
+
+def get_ultimas_fichas_fallidas(naviera, nave_ids, recurso_ids):
+    """Retorna la ficha fallida más reciente por (nave_id, recurso_id)."""
+    return _ultimas_fichas_por_estado(naviera, nave_ids, recurso_ids, False)
+
+
+def get_ultimas_fichas_resueltas(naviera, nave_ids, recurso_ids):
+    """Retorna la ficha aprobada más reciente por (nave_id, recurso_id)."""
+    return _ultimas_fichas_por_estado(naviera, nave_ids, recurso_ids, True)
+
+
+def get_eventos_matriz(naviera, naves=None, dias=None):
+    """
+    Filas de MatrizNaveRecurso que representan un evento del período abierto
+    actual: recién fallado (es_fallo_nuevo=True, ultimo_estado_operativo=False)
+    o recién resuelto (ultimo_estado_operativo=True, ultimo_estado_operativo_anterior=False).
+    Ambas señales se resetean al cerrar período, por lo que esto no es un
+    historial ilimitado — solo cubre transiciones del período actual.
+
+    naves: queryset/lista opcional de ids para restringir a un subconjunto de naves.
+    dias: opcional, filtra a ultimo_estado_operativo_en >= ahora - dias días.
+    """
+    qs = MatrizNaveRecurso.objects.filter(
+        nave__naviera=naviera,
+        nave__is_active=True,
+        es_visible=True,
+    ).filter(
+        Q(es_fallo_nuevo=True, ultimo_estado_operativo=False)
+        | Q(ultimo_estado_operativo=True, ultimo_estado_operativo_anterior=False)
+    )
+    if naves is not None:
+        qs = qs.filter(nave_id__in=naves)
+    if dias is not None:
+        qs = qs.filter(ultimo_estado_operativo_en__gte=timezone.now() - timedelta(days=dias))
+    return qs.select_related("nave", "recurso").order_by(
+        F("ultimo_estado_operativo_en").desc(nulls_last=True)
+    )
 
 
 def get_fichas_de_recursos_en_periodo(periodo, recurso_ids):

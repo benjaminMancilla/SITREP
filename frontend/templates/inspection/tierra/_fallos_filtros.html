@@ -1,0 +1,100 @@
+{% comment %}
+Variables: slug, naves, areas, periodicidades, nave_id, area_id, periodicidad_id,
+           fecha_desde_str, fecha_hasta_str, agrupar_por, limpiar_url_name,
+           solo_nuevos (opcional, solo lo usa fallos_activos.html)
+{% endcomment %}
+<form method="get" class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
+    {% if solo_nuevos %}<input type="hidden" name="solo_nuevos" value="1">{% endif %}
+    <div class="flex flex-wrap items-end gap-3">
+        <div>
+            <label for="nave" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Nave</label>
+            <select
+                id="nave"
+                name="nave"
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+                <option value="">Todas las naves</option>
+                {% for nave in naves %}
+                    <option value="{{ nave.id }}" {% if nave_id == nave.id|stringformat:'s' %}selected{% endif %}>{{ nave.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="area" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Área</label>
+            <select
+                id="area"
+                name="area"
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+                <option value="">Todas las áreas</option>
+                {% for area in areas %}
+                    <option value="{{ area.id }}" {% if area_id == area.id|stringformat:'s' %}selected{% endif %}>{{ area.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="periodicidad" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Periodicidad</label>
+            <select
+                id="periodicidad"
+                name="periodicidad"
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+                <option value="">Todas las periodicidades</option>
+                {% for periodicidad in periodicidades %}
+                    <option value="{{ periodicidad.id }}" {% if periodicidad_id == periodicidad.id|stringformat:'s' %}selected{% endif %}>{{ periodicidad.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="fecha_desde" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Desde</label>
+            <input
+                id="fecha_desde"
+                type="date"
+                name="fecha_desde"
+                value="{{ fecha_desde_str }}"
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+        </div>
+
+        <div>
+            <label for="fecha_hasta" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Hasta</label>
+            <input
+                id="fecha_hasta"
+                type="date"
+                name="fecha_hasta"
+                value="{{ fecha_hasta_str }}"
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+        </div>
+
+        <div>
+            <label for="agrupar" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Agrupar por</label>
+            <select
+                id="agrupar"
+                name="agrupar"
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+                <option value="" {% if not agrupar_por %}selected{% endif %}>Sin agrupación</option>
+                <option value="nave" {% if agrupar_por == 'nave' %}selected{% endif %}>Nave</option>
+                <option value="area" {% if agrupar_por == 'area' %}selected{% endif %}>Área</option>
+                <option value="periodo" {% if agrupar_por == 'periodo' %}selected{% endif %}>Periodicidad</option>
+            </select>
+        </div>
+
+        <button
+            type="submit"
+            class="inline-flex min-h-10 items-center justify-center rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-light"
+        >
+            Filtrar
+        </button>
+        <a
+            href="{% url limpiar_url_name slug=slug %}"
+            class="inline-flex min-h-10 items-center justify-center rounded-lg border border-surface-border bg-white px-4 py-2 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface hover:text-navy"
+        >
+            Limpiar
+        </a>
+    </div>
+</form>

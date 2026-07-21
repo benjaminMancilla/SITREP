@@ -13,8 +13,10 @@ from django.utils import timezone
 
 from .repositories import (
     get_brutos_urgencia,
+    get_eventos_matriz,
     get_fichas_de_recursos_en_periodo,
     get_ultimas_fichas_fallidas,
+    get_ultimas_fichas_resueltas,
 )
 from .services import MotorFichas, MotorPeriodos, TenantQueryService
 from sitrep.catalog.presenters import (  # noqa: F401
@@ -416,47 +418,116 @@ def construir_tabla_urgencia(naviera, naves=None):
 # Enriquecimiento de fallos
 # ---------------------------------------------------------------------------
 
+def _checklist_fallido(recurso, cantidad, ficha):
+    payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
+    definicion = MotorFichas.obtener_definicion_checklist(recurso, cantidad, ficha=ficha)
+    checklist_items = MotorFichas.construir_checklist_items(definicion, payload_actual)
+    return [item for item in checklist_items if item["checked"] is False]
+
+
+def _adjuntar_detalle_ficha(items, naviera, fichas_lookup_fn):
+    """
+    Enriquece in-place cada item (MatrizNaveRecurso) con atributos comunes de
+    presentación: tiempo_desde_display, ficha_detalle, ficha_usuario_display,
+    ficha_evento_en, ficha_observacion_general. Retorna el dict de fichas
+    encontradas para que el caller pueda seguir usándolo (ej. checklist).
+    """
+    if not items:
+        return {}
+
+    ahora = timezone.now()
+    nave_ids = {item.nave_id for item in items}
+    recurso_ids = {item.recurso_id for item in items}
+    fichas = fichas_lookup_fn(naviera, nave_ids, recurso_ids)
+
+    for item in items:
+        item.tiempo_desde_display = formatear_tiempo_transcurrido_es(
+            item.ultimo_estado_operativo_en,
+            ahora=ahora,
+        )
+        ficha = fichas.get((item.nave_id, item.recurso_id))
+        item.ficha_detalle = ficha
+        item.ficha_usuario_display = nombre_usuario_display(
+            (ficha.modificado_por or ficha.usuario) if ficha else None
+        )
+        item.ficha_evento_en = (
+            ficha.modificado_en or ficha.fecha_revision if ficha else None
+        )
+        item.ficha_observacion_general = (
+            (ficha.observacion_general or "").strip() if ficha else ""
+        )
+    return fichas
+
+
 def adjuntar_detalle_a_fallos(fallos, naviera):
     """
     Enriquece in-place cada objeto fallo con atributos de presentación:
     tiempo_desde_display, ficha_detalle, ficha_usuario_display,
     ficha_evento_en, ficha_observacion_general, checklist_fallido.
     """
-    if not fallos:
-        return
-
-    ahora = timezone.now()
-    nave_ids = {fallo.nave_id for fallo in fallos}
-    recurso_ids = {fallo.recurso_id for fallo in fallos}
-    ultimas_fichas = get_ultimas_fichas_fallidas(naviera, nave_ids, recurso_ids)
-
+    fichas = _adjuntar_detalle_ficha(fallos, naviera, get_ultimas_fichas_fallidas)
     for fallo in fallos:
-        fallo.tiempo_desde_display = formatear_tiempo_transcurrido_es(
-            fallo.ultimo_estado_operativo_en,
-            ahora=ahora,
-        )
-        ficha = ultimas_fichas.get((fallo.nave_id, fallo.recurso_id))
-        fallo.ficha_detalle = ficha
-        fallo.ficha_usuario_display = nombre_usuario_display(
-            (ficha.modificado_por or ficha.usuario) if ficha else None
-        )
-        fallo.ficha_evento_en = (
-            ficha.modificado_en or ficha.fecha_revision if ficha else None
-        )
-        fallo.ficha_observacion_general = (
-            (ficha.observacion_general or "").strip() if ficha else ""
-        )
+        ficha = fichas.get((fallo.nave_id, fallo.recurso_id))
+        fallo.checklist_fallido = _checklist_fallido(fallo.recurso, fallo.cantidad, ficha) if ficha else []
 
-        if not ficha:
-            fallo.checklist_fallido = []
-            continue
 
-        payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
-        definicion = MotorFichas.obtener_definicion_checklist(fallo.recurso, fallo.cantidad, ficha=ficha)
-        checklist_items = MotorFichas.construir_checklist_items(definicion, payload_actual)
-        fallo.checklist_fallido = [
-            item for item in checklist_items if item["checked"] is False
-        ]
+def adjuntar_detalle_a_resueltos(resueltos, naviera):
+    """
+    Enriquece in-place cada objeto resuelto con atributos de presentación:
+    tiempo_desde_display, ficha_detalle, ficha_usuario_display,
+    ficha_evento_en, ficha_observacion_general. Sin checklist_fallido — la
+    ficha asociada aprobó, no hay requisitos fallidos que mostrar.
+    """
+    _adjuntar_detalle_ficha(resueltos, naviera, get_ultimas_fichas_resueltas)
+
+
+def construir_eventos_fallo_resolucion(naviera, naves=None, dias=None):
+    """
+    Retorna una lista de eventos (fallo nuevo / resolución) con la forma
+    exacta que espera FailureFeed.svelte:
+    {id, tipo, nave, item, usuario, requisitosFallidos, timestamp}
+    """
+    filas = list(get_eventos_matriz(naviera, naves=naves, dias=dias))
+    if not filas:
+        return []
+
+    nave_ids_nuevo = {f.nave_id for f in filas if f.ultimo_estado_operativo is False}
+    recurso_ids_nuevo = {f.recurso_id for f in filas if f.ultimo_estado_operativo is False}
+    nave_ids_resuelto = {f.nave_id for f in filas if f.ultimo_estado_operativo is True}
+    recurso_ids_resuelto = {f.recurso_id for f in filas if f.ultimo_estado_operativo is True}
+
+    fichas_nuevo = (
+        get_ultimas_fichas_fallidas(naviera, nave_ids_nuevo, recurso_ids_nuevo) if nave_ids_nuevo else {}
+    )
+    fichas_resuelto = (
+        get_ultimas_fichas_resueltas(naviera, nave_ids_resuelto, recurso_ids_resuelto) if nave_ids_resuelto else {}
+    )
+
+    eventos = []
+    for fila in filas:
+        es_nuevo = fila.ultimo_estado_operativo is False
+        ficha = (fichas_nuevo if es_nuevo else fichas_resuelto).get((fila.nave_id, fila.recurso_id))
+        requisitos_fallidos = []
+        if es_nuevo and ficha:
+            requisitos_fallidos = [
+                {"requisito": item["label"], "observacion": item["observacion"]}
+                for item in _checklist_fallido(fila.recurso, fila.cantidad, ficha)
+            ]
+        eventos.append({
+            "id": fila.id,
+            "tipo": "nuevo" if es_nuevo else "resuelto",
+            "nave": fila.nave.nombre,
+            "item": fila.recurso.nombre,
+            "usuario": nombre_usuario_display(
+                (ficha.modificado_por or ficha.usuario) if ficha else None
+            ),
+            "requisitosFallidos": requisitos_fallidos,
+            "timestamp": (
+                int(fila.ultimo_estado_operativo_en.timestamp() * 1000)
+                if fila.ultimo_estado_operativo_en else 0
+            ),
+        })
+    return eventos
 
 
 # ---------------------------------------------------------------------------
