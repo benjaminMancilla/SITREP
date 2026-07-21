@@ -356,6 +356,7 @@ def fallos_activos(request, slug):
             "pagination_params": pagination_params,
             "solo_nuevos": solo_nuevos,
             "fallos_nuevos_total_sin_filtro": fallos_nuevos_total_sin_filtro,
+            "tab_activo": "nuevos" if solo_nuevos else "activos",
         },
     )
 

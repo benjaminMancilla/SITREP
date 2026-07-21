@@ -7,34 +7,19 @@
 
 {% block page_content %}
 <div class="space-y-6">
-    {% include 'inspection/tierra/_fallos_tabs.html' with slug=slug tab_activo='activos' %}
+    {% include 'inspection/tierra/_fallos_tabs.html' with slug=slug tab_activo=tab_activo %}
 
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <h1 class="text-xl font-bold text-navy">Fallos activos</h1>
-            <p class="mt-0.5 text-sm text-ink-muted">
-                <span class="font-semibold text-fail">{{ total_fallos }}</span>
-                recurso{{ total_fallos|pluralize }} con falla ·
-                <span class="font-semibold text-navy">{{ naves_afectadas }}</span>
-                nave{{ naves_afectadas|pluralize }} afectada{{ naves_afectadas|pluralize }}
-                {% if fallos_nuevos_total_sin_filtro > 0 %}
-                    · <span class="font-semibold text-warn">{{ fallos_nuevos_total_sin_filtro }} nuevo{{ fallos_nuevos_total_sin_filtro|pluralize }} este período</span>
-                {% endif %}
-            </p>
-        </div>
-        {% if fallos_nuevos_total_sin_filtro > 0 %}
-            <div x-data>
-                <button
-                    type="button"
-                    @click="const u = new URL(window.location.href); u.searchParams.get('solo_nuevos') === '1' ? u.searchParams.delete('solo_nuevos') : u.searchParams.set('solo_nuevos', '1'); window.location.href = u.toString()"
-                    class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[12px] font-semibold transition
-                           {% if solo_nuevos %}border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100{% else %}border-surface-border bg-white text-ink-secondary hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600{% endif %}"
-                >
-                    <span class="h-2 w-2 rounded-full {% if solo_nuevos %}bg-orange-500{% else %}bg-ink-muted opacity-40{% endif %}"></span>
-                    {% if solo_nuevos %}Solo nuevos (activo){% else %}Ver solo nuevos ({{ fallos_nuevos_total_sin_filtro }}){% endif %}
-                </button>
-            </div>
-        {% endif %}
+    <div class="mb-6">
+        <h1 class="text-xl font-bold text-navy">{% if solo_nuevos %}Fallos nuevos{% else %}Fallos activos{% endif %}</h1>
+        <p class="mt-0.5 text-sm text-ink-muted">
+            <span class="font-semibold text-fail">{{ total_fallos }}</span>
+            recurso{{ total_fallos|pluralize }} con falla ·
+            <span class="font-semibold text-navy">{{ naves_afectadas }}</span>
+            nave{{ naves_afectadas|pluralize }} afectada{{ naves_afectadas|pluralize }}
+            {% if fallos_nuevos_total_sin_filtro > 0 %}
+                · <span class="font-semibold text-warn">{{ fallos_nuevos_total_sin_filtro }} nuevo{{ fallos_nuevos_total_sin_filtro|pluralize }} este período</span>
+            {% endif %}
+        </p>
     </div>
 
     {% include 'inspection/tierra/_fallos_filtros.html' with limpiar_url_name='inventory:fallos_activos' solo_nuevos=solo_nuevos %}

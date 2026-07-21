@@ -1,5 +1,5 @@
 {% comment %}
-Variables: slug, tab_activo — 'activos' | 'resueltos' | 'feed'
+Variables: slug, tab_activo — 'activos' | 'nuevos' | 'resueltos' | 'feed'
 {% endcomment %}
 <div class="mb-4 flex items-center gap-1 border-b border-surface-border">
     <a
@@ -8,6 +8,16 @@ Variables: slug, tab_activo — 'activos' | 'resueltos' | 'feed'
                {% if tab_activo == 'activos' %}border-navy text-navy{% else %}border-transparent text-ink-muted hover:text-navy{% endif %}"
     >
         Activos
+    </a>
+    <a
+        href="{% url 'inventory:fallos_activos' slug=slug %}?solo_nuevos=1"
+        class="border-b-2 px-3 py-2 text-[13px] font-semibold transition
+               {% if tab_activo == 'nuevos' %}border-navy text-navy{% else %}border-transparent text-ink-muted hover:text-navy{% endif %}"
+    >
+        Nuevos
+        {% if fallos_nuevos_total_sin_filtro %}
+            <span class="ml-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">{{ fallos_nuevos_total_sin_filtro }}</span>
+        {% endif %}
     </a>
     <a
         href="{% url 'inventory:fallos_resueltos' slug=slug %}"
