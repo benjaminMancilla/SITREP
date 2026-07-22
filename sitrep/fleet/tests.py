@@ -286,6 +286,33 @@ class TestGetNavesConEstado(TenantFixturesMixin, TestCase):
 
         self.assertEqual(list(naves.values_list("id", flat=True)), [self.nave_a.id])
 
+    def test_fichas_hoy_cuenta_solo_las_de_hoy(self):
+        recurso_b = Recurso.objects.create(
+            categoria="Seguridad", tipo="Material", periodicidad=self.periodicidad,
+            nombre="Chaleco fichas hoy", requerimientos=[], regla_aplicacion={},
+            catalogo_version=self.catalogo_version,
+        )
+        periodo = PeriodoRevision.objects.create(
+            nave=self.nave_a, periodicidad=self.periodicidad,
+            fecha_inicio=timezone.localdate(), fecha_termino=timezone.localdate(),
+            estado="pendiente",
+        )
+        FichaRegistro.objects.create(
+            periodo=periodo, recurso=self.recurso, usuario=self.admin_a,
+            estado_operativo=True, payload_checklist={},
+        )
+        ayer_ficha = FichaRegistro.objects.create(
+            periodo=periodo, recurso=recurso_b, usuario=self.admin_a,
+            estado_operativo=True, payload_checklist={},
+        )
+        FichaRegistro.objects.filter(id=ayer_ficha.id).update(
+            fecha_revision=timezone.now() - timedelta(days=1)
+        )
+
+        nave = FleetQueryService.get_naves_con_estado(self.naviera_a).get(id=self.nave_a.id)
+
+        self.assertEqual(nave.fichas_hoy, 1)
+
 
 class TestNavesEstadoView(TenantFixturesMixin, TestCase):
     def test_lista_naves_con_estado_scoped_a_naviera(self):
@@ -301,6 +328,7 @@ class TestNavesEstadoView(TenantFixturesMixin, TestCase):
         self.assertEqual(item["nombre"], "Nave A")
         self.assertEqual(item["matricula"], "NVA-001")
         self.assertIn("resoluciones", item)
+        self.assertIn("fichasHoy", item)
         self.assertIn("ultimaFichaEn", item)
         self.assertIsNone(item["ultimaFichaEn"])
 

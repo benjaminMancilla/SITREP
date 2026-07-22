@@ -127,6 +127,11 @@ class FleetQueryService:
                     Max("periodos__fichas__fecha_revision"),
                 ),
             ),
+            fichas_hoy=Count(
+                "periodos__fichas",
+                filter=Q(periodos__fichas__fecha_revision__date=timezone.localdate()),
+                distinct=True,
+            ),
         )
 
     @staticmethod

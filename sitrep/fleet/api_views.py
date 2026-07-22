@@ -59,6 +59,7 @@ class NavesEstadoView(TierraAPIView):
                 "fallosActivos": nave.fallos_activos,
                 "fallosNuevos": nave.fallos_nuevos,
                 "resoluciones": nave.resoluciones,
+                "fichasHoy": nave.fichas_hoy,
                 "ultimaFichaEn": nave.ultima_ficha_en,
             }
             for nave in naves.order_by("nombre")

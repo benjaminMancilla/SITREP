@@ -6,12 +6,50 @@
 {% block topbar_title %}Dashboard{% endblock %}
 
 {% block extra_head %}
-{% vite_asset 'entrypoints/urgencia.js' %}
+{% vite_asset 'entrypoints/dashboard.js' %}
 {% endblock %}
 
 {% block page_content %}
-<div class="space-y-6">
-    <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-5 items-start">
+<div>
+    <div class="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <a href="{{ naves_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+            <span class="font-mono font-semibold text-navy">{{ page_obj.paginator.count }}</span> naves activas
+        </a>
+        <span class="text-surface-border">·</span>
+        <a href="{{ usuarios_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+            <span class="font-mono font-semibold text-navy">{{ total_usuarios }}</span> usuarios
+        </a>
+        <span class="text-surface-border">·</span>
+        <a href="{{ dispositivos_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+            <span class="font-mono font-semibold text-navy">{{ total_dispositivos }}</span> dispositivos
+        </a>
+    </div>
+
+    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <!-- EJE 2 · Cumplimiento y estado: cómo estamos operando -->
+        <div class="min-w-0 space-y-6">
+            <div id="svelte-urgencia" data-slug="{{ slug }}"></div>
+            <div id="svelte-failure-feed" data-slug="{{ slug }}" data-fallos-url="{% url 'inventory:fallos_activos' slug=slug %}"></div>
+            <div id="svelte-activity-heatmap" data-slug="{{ slug }}"></div>
+        </div>
+
+        <!-- EJE 1 · Acción rápida: qué acaba de pasar -->
+        <div class="min-w-0 space-y-6 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1">
+            <div id="svelte-hitos-inminentes" data-slug="{{ slug }}" data-calendario-url="{% url 'inventory:calendario' slug=slug %}"></div>
+            <div
+                id="svelte-fleet-status"
+                data-slug="{{ slug }}"
+                data-naves-url="{% url 'inventory:listar_naves' slug=slug %}"
+                data-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
+                data-fallos-activos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321"
+                data-fallos-nuevos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321&solo_nuevos=1"
+                data-fallos-resueltos-url-template="{% url 'inventory:fallos_resueltos' slug=slug %}?nave=987654321"
+            ></div>
+        </div>
+    </div>
+
+    {# ponytail: dead code — KPI cards replaced by the top summary line + widgets above per the dashboard redesign. Hidden, not deleted, in case some of this comes back (e.g. a real fallos/vencidos tile). #}
+    <section class="hidden" data-dead-code="kpi-cards grid gap-3 md:grid-cols-2 xl:grid-cols-5 items-start">
         <article class="rounded-lg border border-surface-border bg-white px-5 pt-5 pb-4 shadow-sm">
             <p class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Naves activas</p>
             <p class="mt-2 text-[28px] font-bold leading-none text-navy">{{ page_obj.paginator.count }}</p>
@@ -81,7 +119,8 @@
         </a>
     </section>
 
-    <section x-data="{ q: '{{ query_busqueda|escapejs }}' }" class="space-y-3">
+    {# ponytail: dead code — full searchable/paginated fleet table replaced by the compact #svelte-fleet-status widget above. The full table already lives on naves_lista; hidden, not deleted. #}
+    <section class="hidden" data-dead-code="tabla-flota-completa" x-data="{ q: '{{ query_busqueda|escapejs }}' }">
         <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <h2 class="text-sm font-bold text-navy">Estado de la Flota</h2>
@@ -227,10 +266,6 @@
         </div>
     </section>
 
-    <section>
-        <div id="svelte-urgencia" data-slug="{{ slug }}"></div>
-    </section>
-
     <section class="hidden">
         <div class="mb-3">
             <h2 class="text-sm font-bold text-navy">Actividad Reciente</h2>
@@ -289,7 +324,8 @@
         </div>
     </section>
 
-    <section>
+    {# ponytail: dead code — quick-access nav dropped per the dashboard redesign (topbar/sidebar covers navigation). Hidden, not deleted. #}
+    <section class="hidden" data-dead-code="acceso-rapido">
         <div class="mb-3">
             <h2 class="text-sm font-bold text-navy">Acceso rápido</h2>
         </div>
