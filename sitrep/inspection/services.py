@@ -39,6 +39,7 @@ def contar_fichas_completas_por_periodo(periodo_ids):
 class TenantQueryService:
     ESTADOS_ABIERTOS = PeriodoRevision.ESTADOS_ABIERTOS
     ESTADOS_CERRADOS = PeriodoRevision.ESTADOS_CERRADOS
+    ESTADOS_INCOMPLETOS = PeriodoRevision.ESTADOS_INCOMPLETOS
 
     # ponytail: fleet/accounts queries delegated — callers migrate to FleetQueryService/AccountsQueryService in full segregation
     get_nave = FleetQueryService.get_nave
@@ -89,6 +90,14 @@ class TenantQueryService:
             qs = qs.filter(periodicidad_id=periodicidad_id)
 
         return qs.order_by("-fecha_inicio")
+
+    @staticmethod
+    def get_periodos_vencidos_count_de_nave(nave):
+        """Cantidad de períodos de la nave en estado vencido/incompleto."""
+        return PeriodoRevision.objects.filter(
+            nave=nave,
+            estado__in=TenantQueryService.ESTADOS_INCOMPLETOS,
+        ).count()
 
     @staticmethod
     def get_periodos_de_nave(nave, estado=None):
