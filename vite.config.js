@@ -17,6 +17,7 @@ export default defineConfig(({ command }) => ({
         calendario: 'entrypoints/calendario.js',
         heatmap_fleet: 'entrypoints/heatmap_fleet.js',
         heatmap_nave: 'entrypoints/heatmap_nave.js',
+        dashboard: 'entrypoints/dashboard.js',
       },
     },
   },
