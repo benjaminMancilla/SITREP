@@ -15,6 +15,7 @@ export default defineConfig(({ command }) => ({
         fallos_feed: 'entrypoints/fallos_feed.js',
         naves_tabla: 'entrypoints/naves_tabla.js',
         calendario: 'entrypoints/calendario.js',
+        heatmap_fleet: 'entrypoints/heatmap_fleet.js',
       },
     },
   },
