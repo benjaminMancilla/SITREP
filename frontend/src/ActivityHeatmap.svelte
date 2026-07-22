@@ -1,14 +1,11 @@
 <script>
-  let { naves = [] } = $props()
+  let { naves = [], weeks = 6 } = $props()
   let tooltip = $state(null)
 
   const MAX_COUNT = 6
   // DESIGN.md blue family only — no invented hex. Baseline is Instrument Grey.
   const STEPS = ['#3b82f6', '#1d4ed8', '#1e40af', '#0f2d4a'] // brand-light -> brand -> brand-dark -> navy
   const LEGEND = ['#f0f4f8', ...STEPS]
-
-  const WEEKS = 6
-  const DAYS = WEEKS * 7
 
   function intensity(count) {
     if (count === 0) return '#f0f4f8'
@@ -32,7 +29,7 @@
   <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-border px-4 py-3">
     <div>
       <h2 class="text-[15px] font-bold text-navy">Heatmap de Actividad</h2>
-      <p class="mt-0.5 text-[11px] text-ink-muted">Fichas registradas · últimas 6 semanas</p>
+      <p class="mt-0.5 text-[11px] text-ink-muted">Fichas registradas · últimas {weeks} semanas</p>
     </div>
     <div class="flex items-center gap-1.5 text-[10px] text-ink-muted">
       <span>Sin actividad</span>
@@ -52,7 +49,7 @@
         <div class="flex items-center gap-3">
           <div class="w-32 shrink-0"></div>
           <div class="flex gap-1.5">
-            {#each Array(WEEKS) as _, week}
+            {#each Array(weeks) as _, week}
               <div class="relative flex gap-1">
                 {#each Array(7) as _, day}
                   <div class="h-3.5 w-3.5">
@@ -74,7 +71,7 @@
               <p class="truncate text-[12px] font-medium text-ink">{nave.nombre}</p>
             </div>
             <div class="flex gap-1.5">
-              {#each Array(WEEKS) as _, week}
+              {#each Array(weeks) as _, week}
                 <div class="flex gap-1">
                   {#each nave.days.slice(week * 7, week * 7 + 7) as d}
                     <div

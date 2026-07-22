@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from sitrep.accounts.models import AuditEvent, Naviera, Usuario
 from sitrep.catalog.models import CatalogoVersion, Periodicidad, Recurso
+from sitrep.fleet.api_views import FleetActividadView
 from sitrep.fleet.models import Dispositivo, Nave
 from sitrep.fleet.services import FleetQueryService
 from sitrep.inspection.models import FichaRegistro, MatrizNaveRecurso, PeriodoRevision
@@ -418,3 +419,21 @@ class TestFleetActividadView(TenantFixturesMixin, TestCase):
         self.assertTrue(all(d["count"] == 0 for d in item["days"]))
         self.assertIn("nombre", item)
         self.assertIn("matricula", item)
+
+    def test_semanas_query_param_cambia_la_ventana(self):
+        self.client.force_login(self.admin_a)
+        url = reverse("inventory:fleet_actividad", kwargs={"slug": self.naviera_a.slug})
+
+        response = self.client.get(url, {"semanas": 12})
+
+        item = response.json()[0]
+        self.assertEqual(len(item["days"]), 84)
+
+    def test_semanas_fuera_de_rango_se_acota(self):
+        self.client.force_login(self.admin_a)
+        url = reverse("inventory:fleet_actividad", kwargs={"slug": self.naviera_a.slug})
+
+        response = self.client.get(url, {"semanas": 999})
+
+        item = response.json()[0]
+        self.assertEqual(len(item["days"]), FleetActividadView.MAX_SEMANAS * 7)
