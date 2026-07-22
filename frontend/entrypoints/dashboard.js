@@ -32,7 +32,10 @@ if (timelineEl) {
 
 const fleetEl = document.getElementById('svelte-fleet-status')
 if (fleetEl) {
-  const { slug, navesUrl, detalleUrlTemplate, fallosActivosUrlTemplate, fallosNuevosUrlTemplate } = fleetEl.dataset
+  const {
+    slug, navesUrl, detalleUrlTemplate,
+    fallosActivosUrlTemplate, fallosNuevosUrlTemplate, fallosResueltosUrlTemplate,
+  } = fleetEl.dataset
   fetch(`/${slug}/api/v1/naves/`)
     .then((res) => res.json())
     .then((naves) => mount(FleetStatusWidget, {
@@ -43,6 +46,7 @@ if (fleetEl) {
         detalleUrlTemplate: detalleUrlTemplate.replace('987654321', '__ID__'),
         fallosActivosUrlTemplate: fallosActivosUrlTemplate.replace('987654321', '__ID__'),
         fallosNuevosUrlTemplate: fallosNuevosUrlTemplate.replace('987654321', '__ID__'),
+        fallosResueltosUrlTemplate: fallosResueltosUrlTemplate.replace('987654321', '__ID__'),
       },
     }))
 }

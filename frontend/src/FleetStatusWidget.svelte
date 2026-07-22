@@ -5,6 +5,7 @@
     detalleUrlTemplate = '',
     fallosActivosUrlTemplate = '',
     fallosNuevosUrlTemplate = '',
+    fallosResueltosUrlTemplate = '',
   } = $props()
 
   const PER_PAGE = 5
@@ -101,17 +102,18 @@
             >
               {nave.fallosNuevos} nuevo{nave.fallosNuevos === 1 ? '' : 's'}
             </a>
-            <span
-              class="inline-flex items-center rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold"
-              class:border-ok-border={nave.fichasHoy > 0}
-              class:bg-ok-bg={nave.fichasHoy > 0}
-              class:text-ok={nave.fichasHoy > 0}
-              class:border-neutral-border={nave.fichasHoy === 0}
-              class:bg-neutral-bg={nave.fichasHoy === 0}
-              class:text-neutral={nave.fichasHoy === 0}
+            <a
+              href={urlFor(fallosResueltosUrlTemplate, nave.id)}
+              class="inline-flex items-center rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold transition hover:opacity-80"
+              class:border-ok-border={nave.resoluciones > 0}
+              class:bg-ok-bg={nave.resoluciones > 0}
+              class:text-ok={nave.resoluciones > 0}
+              class:border-neutral-border={nave.resoluciones === 0}
+              class:bg-neutral-bg={nave.resoluciones === 0}
+              class:text-neutral={nave.resoluciones === 0}
             >
-              {nave.fichasHoy} ficha{nave.fichasHoy === 1 ? '' : 's'} hoy
-            </span>
+              {nave.resoluciones} resuelta{nave.resoluciones === 1 ? '' : 's'}
+            </a>
           </div>
 
           <div class="ml-auto flex items-center gap-3">
