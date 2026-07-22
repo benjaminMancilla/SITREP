@@ -71,13 +71,13 @@
   {:else}
     <ul class="divide-y divide-surface-border">
       {#each paged as nave (nave.id)}
-        <li class="group flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 transition hover:bg-[#f0f7ff]">
-          <a href={urlFor(detalleUrlTemplate, nave.id)} class="min-w-[150px]">
-            <p class="text-[13px] font-semibold text-navy transition group-hover:text-brand">{nave.nombre}</p>
-            <p class="font-mono text-[11px] text-ink-muted">{nave.matricula}</p>
+        <li class="group flex items-center gap-3 px-4 py-3 transition hover:bg-[#f0f7ff]">
+          <a href={urlFor(detalleUrlTemplate, nave.id)} class="min-w-0 flex-1">
+            <p class="truncate text-[13px] font-semibold text-navy transition group-hover:text-brand">{nave.nombre}</p>
+            <p class="truncate font-mono text-[11px] text-ink-muted">{nave.matricula}</p>
           </a>
 
-          <div class="flex flex-wrap items-center gap-1.5">
+          <div class="flex shrink-0 items-center gap-1.5">
             <a
               href={urlFor(fallosActivosUrlTemplate, nave.id)}
               class="inline-flex items-center gap-1 rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold transition hover:opacity-80"
@@ -116,7 +116,7 @@
             </a>
           </div>
 
-          <div class="ml-auto flex items-center gap-3">
+          <div class="flex shrink-0 items-center gap-3">
             <span class="font-mono text-[11px] text-ink-secondary">{formatFecha(nave.ultimaFichaEn)}</span>
             <a href={urlFor(detalleUrlTemplate, nave.id)} class="text-[11px] font-semibold text-info opacity-0 transition group-hover:opacity-100">Ver detalle →</a>
           </div>
