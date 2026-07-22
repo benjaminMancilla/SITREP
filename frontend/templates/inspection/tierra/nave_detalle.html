@@ -1,10 +1,12 @@
 {% extends 'layouts/tierra.html' %}
+{% load django_vite %}
 
 {% block nav_active %}naves{% endblock %}
 {% block page_title %}SITREP | {{ nave.nombre }}{% endblock %}
 {% block topbar_title %}{{ nave.nombre }}{% endblock %}
 
 {% block extra_head %}
+{% vite_asset 'entrypoints/heatmap_nave.js' %}
 <style>
     [x-cloak] { display: none !important; }
 
@@ -100,6 +102,8 @@
             </div>
         </div>
     </div>
+
+    <div id="svelte-year-heatmap" data-slug="{{ slug }}" data-nave-id="{{ nave.id }}"></div>
 
     <section>
         <div class="mb-3 flex items-center gap-3">

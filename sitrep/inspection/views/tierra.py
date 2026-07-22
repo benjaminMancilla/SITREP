@@ -761,10 +761,7 @@ def nave_detalle(request, slug, nave_id):
         ultimo_estado_operativo=True,
         ultimo_estado_operativo_anterior=False,
     ).count()
-    periodos_vencidos_nave = PeriodoRevision.objects.filter(
-        nave=nave,
-        estado__in=PeriodoRevision.ESTADOS_INCOMPLETOS,
-    ).count()
+    periodos_vencidos_nave = TenantQueryService.get_periodos_vencidos_count_de_nave(nave)
     total_recursos_nave = sum(item["total_recursos"] for item in periodos_abiertos_detalle)
 
     puede_ver_tripulacion = request.user.rol in ROLES_TIERRA

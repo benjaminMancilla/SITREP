@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from rest_framework.response import Response
 
 from core.api_base import TierraAPIView
 from sitrep.fleet.models import Nave
+from sitrep.fleet.services import FleetQueryService
 
 from .presenters import (
     construir_eventos_fallo_resolucion,
@@ -59,3 +62,30 @@ class HitosInminentesView(TierraAPIView):
         naves = self.get_naves_scope(request)
         hitos = construir_hitos_inminentes(request.naviera, naves=naves)
         return Response(hitos)
+
+
+class NaveActividadView(TierraAPIView):
+    """Heatmap anual de una sola nave — reusa la misma agregación GROUP BY
+    que el heatmap de flota (FleetQueryService.get_actividad_diaria), solo
+    cambia la ventana (52 semanas) y el filtro (un nave_id)."""
+
+    SEMANAS = 52
+
+    def get(self, request, slug, nave_id):
+        nave = FleetQueryService.get_nave_activa(request.naviera, nave_id)
+        if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
+            return Response({"error": "Acceso denegado."}, status=403)
+
+        dias = self.SEMANAS * 7
+        inicio, conteos = FleetQueryService.get_actividad_diaria(
+            request.naviera, nave_ids=[nave.id], dias=dias
+        )
+        por_dia = conteos.get(nave.id, {})
+        data = [
+            {
+                "date": (inicio + timedelta(days=i)).isoformat(),
+                "count": por_dia.get(inicio + timedelta(days=i), 0),
+            }
+            for i in range(dias)
+        ]
+        return Response(data)
