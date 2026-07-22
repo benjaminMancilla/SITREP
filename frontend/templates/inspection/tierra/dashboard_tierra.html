@@ -27,7 +27,7 @@
 
     <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <!-- EJE 2 · Cumplimiento y estado: cómo estamos operando -->
-        <div class="space-y-6">
+        <div class="space-y-6 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1">
             <div id="svelte-urgencia" data-slug="{{ slug }}"></div>
             <div id="svelte-failure-feed" data-slug="{{ slug }}" data-fallos-url="{% url 'inventory:fallos_activos' slug=slug %}"></div>
             <div id="svelte-activity-heatmap" data-slug="{{ slug }}"></div>
@@ -41,6 +41,8 @@
                 data-slug="{{ slug }}"
                 data-naves-url="{% url 'inventory:listar_naves' slug=slug %}"
                 data-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
+                data-fallos-activos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321"
+                data-fallos-nuevos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321&solo_nuevos=1"
             ></div>
         </div>
     </div>

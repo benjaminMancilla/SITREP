@@ -1,5 +1,11 @@
 <script>
-  let { naves = [], navesUrl = null, detalleUrlTemplate = '' } = $props()
+  let {
+    naves = [],
+    navesUrl = null,
+    detalleUrlTemplate = '',
+    fallosActivosUrlTemplate = '',
+    fallosNuevosUrlTemplate = '',
+  } = $props()
 
   const PER_PAGE = 5
   let query = $state('')
@@ -19,8 +25,8 @@
     page = 1
   })
 
-  function urlFor(id) {
-    return detalleUrlTemplate.replace('__ID__', String(id))
+  function urlFor(template, id) {
+    return template.replace('__ID__', String(id))
   }
 
   function formatFecha(iso) {
@@ -65,14 +71,15 @@
     <ul class="divide-y divide-surface-border">
       {#each paged as nave (nave.id)}
         <li class="group flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 transition hover:bg-[#f0f7ff]">
-          <a href={urlFor(nave.id)} class="min-w-[150px]">
+          <a href={urlFor(detalleUrlTemplate, nave.id)} class="min-w-[150px]">
             <p class="text-[13px] font-semibold text-navy transition group-hover:text-brand">{nave.nombre}</p>
             <p class="font-mono text-[11px] text-ink-muted">{nave.matricula}</p>
           </a>
 
           <div class="flex flex-wrap items-center gap-1.5">
-            <span
-              class="inline-flex items-center gap-1 rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold"
+            <a
+              href={urlFor(fallosActivosUrlTemplate, nave.id)}
+              class="inline-flex items-center gap-1 rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold transition hover:opacity-80"
               class:border-fail-border={nave.fallosActivos > 0}
               class:bg-fail-bg={nave.fallosActivos > 0}
               class:text-fail={nave.fallosActivos > 0}
@@ -81,9 +88,10 @@
               class:text-neutral={nave.fallosActivos === 0}
             >
               {nave.fallosActivos} falla{nave.fallosActivos === 1 ? '' : 's'}
-            </span>
-            <span
-              class="inline-flex items-center gap-1 rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold"
+            </a>
+            <a
+              href={urlFor(fallosNuevosUrlTemplate, nave.id)}
+              class="inline-flex items-center gap-1 rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold transition hover:opacity-80"
               class:border-orange-300={nave.fallosNuevos > 0}
               class:bg-orange-50={nave.fallosNuevos > 0}
               class:text-orange-600={nave.fallosNuevos > 0}
@@ -92,12 +100,23 @@
               class:text-neutral={nave.fallosNuevos === 0}
             >
               {nave.fallosNuevos} nuevo{nave.fallosNuevos === 1 ? '' : 's'}
+            </a>
+            <span
+              class="inline-flex items-center rounded-[4px] border px-2 py-0.5 font-mono text-[11px] font-semibold"
+              class:border-ok-border={nave.fichasHoy > 0}
+              class:bg-ok-bg={nave.fichasHoy > 0}
+              class:text-ok={nave.fichasHoy > 0}
+              class:border-neutral-border={nave.fichasHoy === 0}
+              class:bg-neutral-bg={nave.fichasHoy === 0}
+              class:text-neutral={nave.fichasHoy === 0}
+            >
+              {nave.fichasHoy} ficha{nave.fichasHoy === 1 ? '' : 's'} hoy
             </span>
           </div>
 
           <div class="ml-auto flex items-center gap-3">
             <span class="font-mono text-[11px] text-ink-secondary">{formatFecha(nave.ultimaFichaEn)}</span>
-            <span class="text-[11px] font-semibold text-info opacity-0 transition group-hover:opacity-100">Ver detalle →</span>
+            <a href={urlFor(detalleUrlTemplate, nave.id)} class="text-[11px] font-semibold text-info opacity-0 transition group-hover:opacity-100">Ver detalle →</a>
           </div>
         </li>
       {/each}
