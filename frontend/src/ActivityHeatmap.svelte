@@ -2,7 +2,7 @@
   let { naves = [], weeks = 6 } = $props()
   let tooltip = $state(null)
 
-  const MAX_COUNT = 6
+  const MAX_COUNT = 15
   // DESIGN.md blue family only — no invented hex. Baseline is Instrument Grey.
   const STEPS = ['#3b82f6', '#1d4ed8', '#1e40af', '#0f2d4a'] // brand-light -> brand -> brand-dark -> navy
   const LEGEND = ['#f0f4f8', ...STEPS]
