@@ -14,6 +14,7 @@ from .models import (
     MatrizNaveRecurso,
     PeriodoRevision,
 )
+from sitrep.fleet.tests import TenantFixturesMixin
 from .presenters import construir_hitos_inminentes
 from .services import MotorFichas, MotorPeriodos, MotorReglasSITREP, TenantQueryService
 
@@ -2318,3 +2319,60 @@ class TestConstruirHitosInminentes(TestCase):
         self.assertEqual(hitos[0]["nave"], self.nave.nombre)
         self.assertEqual(hitos[0]["periodicidad"], self.periodicidad.nombre)
         self.assertEqual(hitos[0]["avance"], round(100 / 3))
+
+
+class TestNaveActividadView(TenantFixturesMixin, TestCase):
+    def test_dias_densos_para_52_semanas(self):
+        self.client.force_login(self.admin_a)
+        url = reverse(
+            "inventory:api_nave_actividad",
+            kwargs={"slug": self.naviera_a.slug, "nave_id": self.nave_a.id},
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        dias = response.json()
+        self.assertEqual(len(dias), 52 * 7)
+        self.assertTrue(all(d["count"] == 0 for d in dias))
+
+    def test_nave_de_otro_tenant_retorna_404(self):
+        self.client.force_login(self.admin_a)
+        url = reverse(
+            "inventory:api_nave_actividad",
+            kwargs={"slug": self.naviera_a.slug, "nave_id": self.nave_b.id},
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_capitan_sin_la_nave_recibe_403(self):
+        capitan = Usuario.objects.create_user(
+            username="capitan_actividad", password="password-seguro-123", naviera=self.naviera_a,
+            rut="99999999-9", email="capitan_actividad@example.com", rol="capitan",
+        )
+        self.client.force_login(capitan)
+        url = reverse(
+            "inventory:api_nave_actividad",
+            kwargs={"slug": self.naviera_a.slug, "nave_id": self.nave_a.id},
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_mar_no_puede_acceder(self):
+        mar = Usuario.objects.create_user(
+            username="mar_actividad", password="password-seguro-123", naviera=self.naviera_a,
+            rut="88888888-8", email="mar_actividad@example.com", rol="mar",
+        )
+        self.client.force_login(mar)
+        url = reverse(
+            "inventory:api_nave_actividad",
+            kwargs={"slug": self.naviera_a.slug, "nave_id": self.nave_a.id},
+        )
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 403)
