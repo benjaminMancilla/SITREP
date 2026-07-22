@@ -40,14 +40,22 @@ class Command(BaseCommand):
 
     Uso:
         python manage.py seed_historial_demo
+        python manage.py seed_historial_demo --skip-naves-nuevas  # solo regenera historial
     """
     help = "Siembra naves adicionales + historial de ~1 año de periodos/fichas para testing local."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--skip-naves-nuevas', action='store_true',
+            help='No crea las naves fixture de dev (nav-sur/pacific-fleet), solo regenera el historial de las naves ya existentes.',
+        )
 
     def handle(self, *args, **options):
         if not settings.DEBUG:
             raise CommandError("Only executable in local enviroments")
 
-        self._crear_naves_nuevas()
+        if not options['skip_naves_nuevas']:
+            self._crear_naves_nuevas()
 
         self.stdout.write('  Sincronizando matriz de recursos...')
         call_command('sincronizar_matriz', verbosity=0)
