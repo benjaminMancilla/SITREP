@@ -163,38 +163,6 @@ def agrupar_recursos_por_area(recursos_lista):
     return _ordenar_grupos_por_area(grupos)
 
 
-def agrupar_registros_por_area(registros):
-    """
-    Agrupa registros por área. Sin área → al final.
-    Retorna lista de dicts: {area, nombre_display, registros, total, con_ficha}.
-    """
-    grupos = {}
-
-    for registro in registros:
-        area = registro["recurso"].area
-        area_id = area.id if area is not None else None
-
-        if area_id not in grupos:
-            grupos[area_id] = {
-                "area": area,
-                "nombre_display": _nombre_display_area(area),
-                "registros": [],
-                "total": 0,
-                "con_ficha": 0,
-            }
-
-        grupo = grupos[area_id]
-        grupo["registros"].append(registro)
-        grupo["total"] += 1
-        if registro.get("ficha_completa"):
-            grupo["con_ficha"] += 1
-
-    for grupo in grupos.values():
-        grupo["registros"].sort(key=lambda r: _clave_orden_recurso(r["recurso"]))
-
-    return _ordenar_grupos_por_area(grupos)
-
-
 # ---------------------------------------------------------------------------
 # Construcción de listas de recursos
 # ---------------------------------------------------------------------------
@@ -246,9 +214,9 @@ def construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False
 
 def construir_periodos_resumen(nave, periodos, for_history=False):
     """
-    Versión liviana de construir_periodos_detalle: cuenta fichas/recursos por
-    período sin construir checklist_items (evita evaluar reglas de catálogo).
-    Para listar botones de navegación, no para renderizar fichas.
+    Cuenta fichas/recursos por período sin construir checklist_items (evita
+    evaluar reglas de catálogo). Para listar botones de navegación, no para
+    renderizar fichas.
     """
     periodos_resumen = []
     for periodo in periodos:
@@ -281,77 +249,6 @@ def construir_periodos_resumen(nave, periodos, for_history=False):
             ],
         })
     return periodos_resumen
-
-
-def construir_periodos_detalle(nave, periodos, for_history=False):
-    """
-    Construye la lista de dicts de detalle por período para la vista de nave.
-    """
-    from django.db.models import F as DjangoF
-
-    periodos_detalle = []
-    for periodo in periodos:
-        fichas = list(
-            TenantQueryService.get_fichas_de_periodo(periodo).order_by(
-                DjangoF("recurso__area__orden").asc(nulls_last=True),
-                DjangoF("recurso__area__nombre").asc(nulls_last=True),
-                "recurso__nombre",
-            )
-        )
-        matrices_qs = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo)
-        if for_history:
-            matrices_qs = matrices_qs.filter(recurso__created_at__date__lte=periodo.fecha_termino)
-        matrices = list(
-            matrices_qs.order_by(
-                DjangoF("recurso__area__orden").asc(nulls_last=True),
-                DjangoF("recurso__area__nombre").asc(nulls_last=True),
-                "recurso__nombre",
-            )
-        )
-
-        total_recursos = len(matrices)
-        fichas_count = contar_fichas_completas(fichas)
-        fichas_por_recurso_id = {ficha.recurso_id: ficha for ficha in fichas}
-        registros = []
-        fallos_count = 0
-
-        for matriz in matrices:
-            ficha = fichas_por_recurso_id.get(matriz.recurso_id)
-            if ficha is None:
-                registros.append({"tipo": "pendiente", "recurso": matriz.recurso})
-                continue
-
-            if ficha.estado_operativo is False:
-                fallos_count += 1
-
-            payload_actual = MotorFichas.normalizar_payload_checklist(ficha.payload_checklist or {})
-            definicion = MotorFichas.obtener_definicion_checklist(matriz.recurso, matriz.cantidad, ficha=ficha)
-            checklist_items = MotorFichas.construir_checklist_items(definicion, payload_actual)
-
-            registros.append({
-                "tipo": "ficha",
-                "recurso": matriz.recurso,
-                "matriz": matriz,
-                "ficha": ficha,
-                "ficha_completa": MotorPeriodos._es_ficha_completa(ficha),
-                "estado_operativo": ficha.estado_operativo,
-                "checklist_items": checklist_items,
-            })
-
-        periodos_detalle.append({
-            "periodo": periodo,
-            "numero": numero_periodo(periodo, nave),
-            "numero_label": etiqueta_numero_periodicidad(periodo.periodicidad),
-            "fichas": fichas,
-            "registros": registros,
-            "registros_por_area": agrupar_registros_por_area(registros),
-            "total_recursos": total_recursos,
-            "fichas_count": fichas_count,
-            "fallos_count": fallos_count,
-            "has_fallos": fallos_count > 0,
-            "avance_pct": int((fichas_count * 100) / total_recursos) if total_recursos else 0,
-        })
-    return periodos_detalle
 
 
 # ---------------------------------------------------------------------------

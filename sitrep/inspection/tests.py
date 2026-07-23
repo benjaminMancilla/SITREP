@@ -1355,53 +1355,6 @@ class TestIntegracionMotorReglas(TestCase):
 
         self.assertEqual([grupo["area"].id for grupo in grupos], [area_zeta.id, area_alfa.id])
 
-    def test_registros_se_ordenan_por_codigo_dentro_del_area(self):
-        from sitrep.inspection.presenters import agrupar_registros_por_area as _agrupar_registros_por_area
-
-        area_salvamento = Area.objects.create(nombre="Salvamento")
-        recurso_15 = self._crear_recurso(
-            nombre="Salvamento 15",
-            regla_aplicacion=None,
-            requerimientos=[],
-            area=area_salvamento,
-            codigo="1.15-Q",
-        )
-        recurso_1 = self._crear_recurso(
-            nombre="Salvamento 1",
-            regla_aplicacion=None,
-            requerimientos=[],
-            area=area_salvamento,
-            codigo="1.1-Q",
-        )
-        recurso_21 = self._crear_recurso(
-            nombre="Salvamento 21",
-            regla_aplicacion=None,
-            requerimientos=[],
-            area=area_salvamento,
-            codigo="1.21-Q",
-        )
-        recurso_8 = self._crear_recurso(
-            nombre="Salvamento 8",
-            regla_aplicacion=None,
-            requerimientos=[],
-            area=area_salvamento,
-            codigo="1.8-Q",
-        )
-
-        grupos = _agrupar_registros_por_area(
-            [
-                {"tipo": "pendiente", "recurso": recurso_15},
-                {"tipo": "pendiente", "recurso": recurso_1},
-                {"tipo": "pendiente", "recurso": recurso_21},
-                {"tipo": "pendiente", "recurso": recurso_8},
-            ]
-        )
-
-        self.assertEqual(
-            [registro["recurso"].codigo for registro in grupos[0]["registros"]],
-            ["1.1-Q", "1.8-Q", "1.15-Q", "1.21-Q"],
-        )
-
     def test_numero_periodo_se_calcula_con_reset_anual_desde_agregado_en(self):
         from sitrep.inspection.presenters import numero_periodo as _numero_periodo
 
