@@ -325,6 +325,7 @@ def construir_tabla_urgencia(naviera, naves=None):
             key = keys_por_periodicidad[periodicidad_id]
 
             periodos_nave[key] = {
+                "periodo_id": periodo.id,
                 "estado": "en_curso" if es_abierto else periodo.estado,
                 "urgencia": (
                     calcular_urgencia(dias_restantes, duracion_total, cobertura)

@@ -9,7 +9,19 @@ const FEED_DIAS = 3 // ponytail: compact dashboard summary, narrower than the st
 const HEATMAP_WEEKS = 6 // fleet-wide heatmap uses 12 weeks on naves_lista; dashboard gets the shorter summary window
 
 const urgenciaEl = document.getElementById('svelte-urgencia')
-if (urgenciaEl) mount(UrgenciaTable, { target: urgenciaEl, props: { slug: urgenciaEl.dataset.slug } })
+if (urgenciaEl) {
+  const { slug, naveDetalleUrlTemplate, periodoDetalleUrlTemplate } = urgenciaEl.dataset
+  mount(UrgenciaTable, {
+    target: urgenciaEl,
+    props: {
+      slug,
+      naveDetalleUrlTemplate: naveDetalleUrlTemplate.replace('987654321', '__ID__'),
+      periodoDetalleUrlTemplate: periodoDetalleUrlTemplate
+        .replace('987654321', '__NAVE_ID__')
+        .replace('123456789', '__PERIODO_ID__'),
+    },
+  })
+}
 
 const feedEl = document.getElementById('svelte-failure-feed')
 if (feedEl) {

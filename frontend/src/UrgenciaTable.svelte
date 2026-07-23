@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
 
-  let { slug } = $props()
+  let { slug, naveDetalleUrlTemplate = '', periodoDetalleUrlTemplate = '' } = $props()
 
   const PER_PAGE = 10
 
@@ -60,6 +60,10 @@
   }
 
   const hideTooltip = () => tooltip = null
+
+  const naveUrl = (naveId) => naveDetalleUrlTemplate.replace('__ID__', String(naveId))
+  const periodoUrl = (naveId, periodoId) =>
+    periodoDetalleUrlTemplate.replace('__NAVE_ID__', String(naveId)).replace('__PERIODO_ID__', String(periodoId))
 </script>
 
 <!-- Título + leyenda -->
@@ -154,10 +158,10 @@
                 class="sticky left-0 z-10 px-4 py-0 transition-colors duration-100"
                 style:background-color={rowBg(ni, hoveredRow === ni)}
               >
-                <div class="py-3">
-                  <p class="font-semibold text-navy text-[13px] leading-tight">{nave.nombre}</p>
+                <a href={naveUrl(nave.id)} class="block py-3">
+                  <p class="font-semibold text-navy text-[13px] leading-tight hover:underline">{nave.nombre}</p>
                   <p class="font-mono text-[10px] text-ink-muted mt-0.5">{nave.matricula}</p>
-                </div>
+                </a>
               </td>
 
               {#each columns as col (col.key)}
@@ -166,7 +170,8 @@
                   {#if cell}
                     {#if cell.estado === 'en_curso'}
                       {@const u = urgency(cell.urgencia)}
-                      <div
+                      <a
+                        href={periodoUrl(nave.id, cell.periodo_id)}
                         class="cell-heat"
                         style:background-color={u.bg}
                         onmouseenter={(e) => showTooltip(e, cell, col)}
@@ -185,10 +190,10 @@
                         <span class="font-mono font-medium text-[15px] leading-none text-white">
                           {Math.round(cell.cobertura * 100)}%
                         </span>
-                      </div>
+                      </a>
 
                     {:else}
-                      <div class="flex flex-col items-center justify-center h-14 px-3 gap-1">
+                      <a href={periodoUrl(nave.id, cell.periodo_id)} class="flex flex-col items-center justify-center h-14 px-3 gap-1 hover:bg-neutral-bg">
                         <span class="flex items-center gap-1 text-ok">
                           <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                             <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" stroke-width="1.8"
@@ -197,7 +202,7 @@
                           <span class="font-mono text-xs font-semibold">100%</span>
                         </span>
                         <span class="text-[10px] text-ink-muted font-mono">{cell.fecha_cierre}</span>
-                      </div>
+                      </a>
                     {/if}
                   {:else}
                     <div class="flex items-center justify-center h-14">
@@ -325,7 +330,8 @@
     justify-content: center;
     height: 3.5rem;
     padding-inline: 0.75rem;
-    cursor: default;
+    cursor: pointer;
+    text-decoration: none;
     /* Borde blanco sutil entre celdas */
     outline: 1px solid rgba(255, 255, 255, 0.45);
     outline-offset: -1px;
