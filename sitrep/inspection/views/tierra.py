@@ -3,7 +3,8 @@ from datetime import date
 from django.db.models import Count, F, IntegerField, Max, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce, Greatest
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from core.utils import paginate
@@ -750,12 +751,12 @@ def nave_detalle(request, slug, nave_id):
         periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
     )
     periodicidades = Periodicidad.objects.all().order_by("nombre")
-    periodos_abiertos_detalle = presenters.construir_periodos_detalle(nave, periodos_abiertos)
+    periodos_abiertos_detalle = presenters.construir_periodos_resumen(nave, periodos_abiertos)
     historial_total = historial.count()
     _params = request.GET.copy()
     _params.pop("page", None)
     historial_page_obj = paginate(historial, request.GET.get("page"), 10)
-    historial_detalle = presenters.construir_periodos_detalle(nave, historial_page_obj.object_list, for_history=True)
+    historial_detalle = presenters.construir_periodos_resumen(nave, historial_page_obj.object_list, for_history=True)
     historial_pagination_params = _params.urlencode()
     fallos_activos_nave = MatrizNaveRecurso.objects.filter(
         nave=nave,
@@ -802,6 +803,36 @@ def nave_detalle(request, slug, nave_id):
             "fecha_hasta_str": filtros_historial["fecha_hasta_str"],
             "estado_filtro": filtros_historial["estado_filtro"],
             "periodicidad_id_filtro": filtros_historial["periodicidad_id_filtro"],
+        },
+    )
+
+
+@tenant_member_required
+@requiere_tierra
+def nave_periodo_detalle(request, slug, nave_id, periodo_id):
+    if request.method != "GET":
+        return HttpResponseNotAllowed(["GET"])
+
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
+        return HttpResponseForbidden("Acceso denegado.")
+
+    periodo = get_object_or_404(PeriodoRevision, pk=periodo_id, nave=nave)
+    for_history = periodo.estado in TenantQueryService.ESTADOS_CERRADOS
+    detalle = presenters.construir_periodos_detalle(nave, [periodo], for_history=for_history)[0]
+
+    return render(
+        request,
+        "inspection/tierra/nave_periodo_detalle.html",
+        {
+            "slug": slug,
+            "nave": nave,
+            "item": detalle,
+            "for_history": for_history,
+            "periodo_pdf_url": reverse(
+                "inventory:nave_periodo_pdf",
+                kwargs={"slug": slug, "nave_id": nave.id, "periodo_id": periodo.id},
+            ),
         },
     )
 

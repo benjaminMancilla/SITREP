@@ -244,6 +244,45 @@ def construir_recursos_lista_periodo(nave, periodo, slug=None, for_history=False
     return recursos_lista
 
 
+def construir_periodos_resumen(nave, periodos, for_history=False):
+    """
+    Versión liviana de construir_periodos_detalle: cuenta fichas/recursos por
+    período sin construir checklist_items (evita evaluar reglas de catálogo).
+    Para listar botones de navegación, no para renderizar fichas.
+    """
+    periodos_resumen = []
+    for periodo in periodos:
+        fichas = TenantQueryService.get_fichas_de_periodo(periodo)
+        matrices_qs = TenantQueryService.get_recursos_visibles_de_nave_en_periodo(nave, periodo)
+        if for_history:
+            matrices_qs = matrices_qs.filter(recurso__created_at__date__lte=periodo.fecha_termino)
+
+        total_recursos = matrices_qs.count()
+        fichas_count = contar_fichas_completas(list(fichas))
+        fallos_count = fichas.filter(estado_operativo=False).count()
+        areas_grupos = list(
+            matrices_qs.exclude(recurso__area__isnull=True)
+            .values("recurso__area_id", "recurso__area__nombre")
+            .distinct()
+            .order_by("recurso__area__nombre")
+        )
+        periodos_resumen.append({
+            "periodo": periodo,
+            "numero": numero_periodo(periodo, nave),
+            "numero_label": etiqueta_numero_periodicidad(periodo.periodicidad),
+            "total_recursos": total_recursos,
+            "fichas_count": fichas_count,
+            "fallos_count": fallos_count,
+            "has_fallos": fallos_count > 0,
+            "avance_pct": int((fichas_count * 100) / total_recursos) if total_recursos else 0,
+            "areas_grupos": [
+                {"area": {"id": a["recurso__area_id"]}, "nombre_display": a["recurso__area__nombre"]}
+                for a in areas_grupos
+            ],
+        })
+    return periodos_resumen
+
+
 def construir_periodos_detalle(nave, periodos, for_history=False):
     """
     Construye la lista de dicts de detalle por período para la vista de nave.

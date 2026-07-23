@@ -114,18 +114,11 @@
         <div class="space-y-2">
             {% for item in periodos_abiertos_detalle %}
             <article
-                x-data="{ abierto: false }"
-                class="overflow-hidden rounded-lg border bg-white shadow-sm transition"
-                :class="abierto ? 'border-info-border' : '{% if item.has_fallos %}border-fail-border{% else %}border-surface-border{% endif %}'"
+                class="overflow-hidden rounded-lg border bg-white shadow-sm transition {% if item.has_fallos %}border-fail-border{% else %}border-surface-border{% endif %}"
             >
-                <div
-                    role="button"
-                    tabindex="0"
-                    @click="abierto = !abierto"
-                    @keydown.enter="abierto = !abierto"
-                    @keydown.space.prevent="abierto = !abierto"
-                    :aria-expanded="abierto.toString()"
-                    class="flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left transition hover:bg-[#f8fafc]"
+                <a
+                    href="{% url 'inventory:nave_periodo_detalle' slug=slug nave_id=nave.id periodo_id=item.periodo.id %}"
+                    class="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-[#f8fafc]"
                 >
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
@@ -150,7 +143,7 @@
 
                     <div class="flex shrink-0 items-center gap-3">
                         {% url "inventory:nave_periodo_pdf" slug=slug nave_id=nave.id periodo_id=item.periodo.id as periodo_pdf_url %}
-                        {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=periodo_pdf_url areas_grupos=item.registros_por_area %}
+                        {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=periodo_pdf_url areas_grupos=item.areas_grupos %}
                         <div class="h-1.5 w-[84px] overflow-hidden rounded-full bg-surface-border">
                             <div
                                 class="h-full rounded-full {% if item.has_fallos %}bg-fail{% elif item.fichas_count == item.total_recursos and item.total_recursos > 0 %}bg-ok{% else %}bg-brand{% endif %}"
@@ -162,26 +155,15 @@
                         </span>
                         <svg
                             viewBox="0 0 14 14"
-                            class="h-4 w-4 text-ink-muted transition-transform"
-                            :class="abierto ? 'rotate-180' : ''"
+                            class="h-4 w-4 text-ink-muted"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
                             aria-hidden="true"
                         >
-                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                </div>
-
-                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border pb-3">
-                    {% if item.registros %}
-                        {% for grupo in item.registros_por_area %}
-                            {% include 'components/ficha/area_registros_readonly.html' with grupo=grupo periodo_estado=item.periodo.estado variant='abierto' %}
-                        {% endfor %}
-                    {% else %}
-                        <div class="px-5 py-4 text-[13px] text-ink-muted">Sin registros en este período.</div>
-                    {% endif %}
-                </div>
+                </a>
             </article>
             {% empty %}
             <div class="rounded-lg border border-surface-border bg-white px-5 py-6 text-[13px] text-ink-muted shadow-sm">
@@ -265,12 +247,10 @@
         <div class="space-y-2">
             {% for item in historial_detalle %}
             <article
-                x-data="{ abierto: false }"
                 class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm"
             >
-                <button
-                    type="button"
-                    @click="abierto = !abierto"
+                <a
+                    href="{% url 'inventory:nave_periodo_detalle' slug=slug nave_id=nave.id periodo_id=item.periodo.id %}"
                     class="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-[#f8fafc]"
                 >
                     <div class="min-w-0 flex-1">
@@ -300,26 +280,15 @@
                         </span>
                         <svg
                             viewBox="0 0 14 14"
-                            class="h-4 w-4 text-ink-muted transition-transform"
-                            :class="abierto ? 'rotate-180' : ''"
+                            class="h-4 w-4 text-ink-muted"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
                             aria-hidden="true"
                         >
-                            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                </button>
-
-                <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border pb-3">
-                    {% if item.registros %}
-                        {% for grupo in item.registros_por_area %}
-                            {% include 'components/ficha/area_registros_readonly.html' with grupo=grupo periodo_estado=item.periodo.estado variant='historial' %}
-                        {% endfor %}
-                    {% else %}
-                        <div class="px-5 py-4 text-[13px] text-ink-muted">No hay registros en este período.</div>
-                    {% endif %}
-                </div>
+                </a>
             </article>
             {% empty %}
             <div class="rounded-lg border border-surface-border bg-white px-5 py-6 text-[13px] text-ink-muted shadow-sm">

@@ -1,0 +1,85 @@
+{% extends 'layouts/tierra.html' %}
+
+{% block nav_active %}naves{% endblock %}
+{% block page_title %}SITREP | {{ nave.nombre }} · {{ item.periodo.periodicidad.nombre }}{% endblock %}
+{% block topbar_title %}{{ nave.nombre }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    [x-cloak] { display: none !important; }
+    .modal-backdrop {
+        backdrop-filter: blur(2px);
+        background: rgba(15, 45, 82, 0.45);
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="space-y-6">
+    <div class="rounded-lg border border-surface-border bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div class="min-w-0">
+                <a
+                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
+                    class="mb-2 inline-flex items-center gap-1 text-[12px] font-medium text-ink-secondary hover:text-navy"
+                >
+                    &larr; Volver a {{ nave.nombre }}
+                </a>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-[20px] font-bold text-navy">
+                        {{ item.periodo.periodicidad.nombre }}
+                        {% if item.numero %}
+                            <span class="text-[13px] font-normal text-ink-muted">· {{ item.numero_label }} {{ item.numero }}</span>
+                        {% endif %}
+                    </h1>
+                    {% include 'components/badge_estado.html' with estado=item.periodo.get_estado_display %}
+                    {% if item.has_fallos %}
+                        <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                            <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                            Con fallos
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="mt-1 font-mono text-[12px] text-ink-muted">
+                    {{ item.periodo.fecha_inicio|date:"d/m/Y" }} — {{ item.periodo.fecha_termino|date:"d/m/Y" }}
+                </div>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-3">
+                {% if not for_history %}
+                    {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=periodo_pdf_url areas_grupos=item.registros_por_area %}
+                {% endif %}
+                <div class="h-1.5 w-[100px] overflow-hidden rounded-full bg-surface-border">
+                    <div
+                        class="h-full rounded-full {% if item.has_fallos %}bg-fail{% elif item.fichas_count == item.total_recursos and item.total_recursos > 0 %}bg-ok{% else %}bg-brand{% endif %}"
+                        style="width: {{ item.avance_pct }}%"
+                    ></div>
+                </div>
+                <span class="whitespace-nowrap text-[12px] font-medium text-ink-muted">
+                    <strong class="text-navy">{{ item.fichas_count }}</strong> / {{ item.total_recursos }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-2">
+        {% if item.registros %}
+            {% for grupo in item.registros_por_area %}
+                {% if for_history %}
+                    {% include 'components/ficha/area_registros_readonly.html' with grupo=grupo periodo_estado=item.periodo.estado variant='historial' %}
+                {% else %}
+                    {% include 'components/ficha/area_registros_readonly.html' with grupo=grupo periodo_estado=item.periodo.estado variant='abierto' %}
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="rounded-lg border border-surface-border bg-white px-5 py-6 text-[13px] text-ink-muted shadow-sm">
+                Sin registros en este período.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% include 'components/ficha/imprimir_periodo_script.html' %}
+{% endblock %}

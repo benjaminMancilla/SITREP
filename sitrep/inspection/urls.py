@@ -17,6 +17,11 @@ urlpatterns = [
     path('vencidos/', views.periodos_vencidos, name='periodos_vencidos'),
     path('naves/<int:nave_id>/detalle/', views.nave_detalle, name='nave_detalle'),
     path(
+        'naves/<int:nave_id>/periodos/<int:periodo_id>/detalle/',
+        views.nave_periodo_detalle,
+        name='nave_periodo_detalle',
+    ),
+    path(
         'naves/<int:nave_id>/periodos/<int:periodo_id>/pdf/',
         views.nave_periodo_pdf,
         name='nave_periodo_pdf',
