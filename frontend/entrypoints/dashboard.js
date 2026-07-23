@@ -49,19 +49,17 @@ if (fleetEl) {
     slug, navesUrl, detalleUrlTemplate,
     fallosActivosUrlTemplate, fallosNuevosUrlTemplate, fallosResueltosUrlTemplate,
   } = fleetEl.dataset
-  fetch(`/${slug}/api/v1/naves/`)
-    .then((res) => res.json())
-    .then((naves) => mount(FleetStatusWidget, {
-      target: fleetEl,
-      props: {
-        naves,
-        navesUrl,
-        detalleUrlTemplate: detalleUrlTemplate.replace('987654321', '__ID__'),
-        fallosActivosUrlTemplate: fallosActivosUrlTemplate.replace('987654321', '__ID__'),
-        fallosNuevosUrlTemplate: fallosNuevosUrlTemplate.replace('987654321', '__ID__'),
-        fallosResueltosUrlTemplate: fallosResueltosUrlTemplate.replace('987654321', '__ID__'),
-      },
-    }))
+  mount(FleetStatusWidget, {
+    target: fleetEl,
+    props: {
+      slug,
+      navesUrl,
+      detalleUrlTemplate: detalleUrlTemplate.replace('987654321', '__ID__'),
+      fallosActivosUrlTemplate: fallosActivosUrlTemplate.replace('987654321', '__ID__'),
+      fallosNuevosUrlTemplate: fallosNuevosUrlTemplate.replace('987654321', '__ID__'),
+      fallosResueltosUrlTemplate: fallosResueltosUrlTemplate.replace('987654321', '__ID__'),
+    },
+  })
 }
 
 const heatmapEl = document.getElementById('svelte-activity-heatmap')
