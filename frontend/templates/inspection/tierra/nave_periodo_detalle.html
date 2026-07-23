@@ -1,131 +1,58 @@
 {% extends 'layouts/tierra.html' %}
 
 {% block nav_active %}naves{% endblock %}
-{% block page_title %}SITREP | {{ nave.nombre }} · {{ item.periodo.periodicidad.nombre }}{% endblock %}
+{% block page_title %}SITREP | {{ nave.nombre }} · {{ periodo.periodicidad.nombre }}{% endblock %}
 {% block topbar_title %}{{ nave.nombre }}{% endblock %}
 
 {% block extra_head %}
 <style>
     [x-cloak] { display: none !important; }
+
+    textarea.obs-prev::placeholder {
+        font-style: italic;
+        color: #b0bec9;
+    }
+
     .modal-backdrop {
         backdrop-filter: blur(2px);
         background: rgba(15, 45, 82, 0.45);
+    }
+
+    .load-action-label {
+        max-width: 0;
+        opacity: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        transition:
+            max-width 0.22s ease,
+            opacity 0.18s ease,
+            margin-left 0.22s ease;
+    }
+
+    .group:hover .load-action-label,
+    .group:focus-within .load-action-label {
+        max-width: 180px;
+        opacity: 1;
+        margin-left: 0.375rem;
+    }
+
+    .sitrep-ficha-contenido {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .sitrep-ficha-contenido.lista {
+        opacity: 1;
     }
 </style>
 {% endblock %}
 
 {% block page_content %}
-<div class="space-y-6">
-    <div class="rounded-lg border border-surface-border bg-white p-5 shadow-sm">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div class="min-w-0">
-                <a
-                    href="{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id %}"
-                    class="mb-2 inline-flex items-center gap-1 text-[12px] font-medium text-ink-secondary hover:text-navy"
-                >
-                    &larr; Volver a {{ nave.nombre }}
-                </a>
-                <div class="flex flex-wrap items-center gap-2">
-                    <h1 class="text-[20px] font-bold text-navy">
-                        {{ item.periodo.periodicidad.nombre }}
-                        {% if item.numero %}
-                            <span class="text-[13px] font-normal text-ink-muted">· {{ item.numero_label }} {{ item.numero }}</span>
-                        {% endif %}
-                    </h1>
-                    {% include 'components/badge_estado.html' with estado=item.periodo.get_estado_display %}
-                    {% if item.has_fallos %}
-                        <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
-                            <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
-                            Con fallos
-                        </span>
-                    {% endif %}
-                </div>
-                <div class="mt-1 font-mono text-[12px] text-ink-muted">
-                    {{ item.periodo.fecha_inicio|date:"d/m/Y" }} — {{ item.periodo.fecha_termino|date:"d/m/Y" }}
-                </div>
-            </div>
-
-            <div class="flex shrink-0 items-center gap-3">
-                {% if not for_history %}
-                    {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=periodo_pdf_url areas_grupos=item.registros_por_area %}
-                {% endif %}
-                <div class="h-1.5 w-[100px] overflow-hidden rounded-full bg-surface-border">
-                    <div
-                        class="h-full rounded-full {% if item.has_fallos %}bg-fail{% elif item.fichas_count == item.total_recursos and item.total_recursos > 0 %}bg-ok{% else %}bg-brand{% endif %}"
-                        style="width: {{ item.avance_pct }}%"
-                    ></div>
-                </div>
-                <span class="whitespace-nowrap text-[12px] font-medium text-ink-muted">
-                    <strong class="text-navy">{{ item.fichas_count }}</strong> / {{ item.total_recursos }}
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <div class="space-y-4">
-        {% if item.registros %}
-            {% for grupo in item.registros_por_area %}
-            <section class="space-y-1.5">
-                <div class="flex items-center gap-2 px-1">
-                    <span class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-bold {% if grupo.area %}{{ grupo.area.css_classes }}{% else %}border-surface-border bg-neutral-bg text-ink-secondary{% endif %}">
-                        <span class="h-2 w-2 rounded-full bg-current opacity-70"></span>
-                        {{ grupo.nombre_display }}
-                    </span>
-                    <span class="text-[11px] text-ink-muted">{{ grupo.con_ficha }}/{{ grupo.total }}</span>
-                </div>
-                <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
-                    {% for registro in grupo.registros %}
-                    <a
-                        href="{% url 'inventory:nave_recurso_ficha' slug=slug nave_id=nave.id periodo_id=item.periodo.id recurso_id=registro.recurso.id %}"
-                        class="flex items-center gap-4 border-b border-surface-border px-5 py-3.5 transition last:border-b-0 hover:bg-[#f8fafc]"
-                    >
-                        <span class="h-2.5 w-2.5 shrink-0 rounded-full {% if registro.tipo == 'ficha' %}{% if registro.estado_operativo == False %}bg-fail{% elif registro.estado_operativo %}bg-ok{% else %}bg-warn{% endif %}{% else %}bg-neutral-border{% endif %}"></span>
-                        <div class="min-w-0 flex-1">
-                            <div class="text-[13px] font-semibold text-ink">{{ registro.recurso.nombre }}</div>
-                            {% if registro.tipo == 'ficha' %}
-                            <div class="mt-0.5 text-[11px] text-ink-muted">
-                                {% if registro.ficha.usuario.first_name or registro.ficha.usuario.last_name %}
-                                    {{ registro.ficha.usuario.first_name }} {{ registro.ficha.usuario.last_name }}
-                                {% else %}
-                                    {{ registro.ficha.usuario.rut }}
-                                {% endif %}
-                                · {{ registro.ficha.fecha_revision|date:"d/m/Y H:i" }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% if registro.tipo == 'ficha' %}
-                            {% if registro.estado_operativo == False %}
-                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-fail-border bg-fail-bg px-2 py-0.5 text-[11px] font-semibold text-fail">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falla
-                                </span>
-                            {% elif registro.estado_operativo %}
-                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-ok-border bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Operativo
-                                </span>
-                            {% else %}
-                                <span class="inline-flex items-center gap-1 rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>En proceso
-                                </span>
-                            {% endif %}
-                        {% else %}
-                            <span class="inline-flex items-center gap-1 rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">
-                                <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Sin registro
-                            </span>
-                        {% endif %}
-                    </a>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endfor %}
-        {% else %}
-            <div class="rounded-lg border border-surface-border bg-white px-5 py-6 text-[13px] text-ink-muted shadow-sm">
-                Sin registros en este período.
-            </div>
-        {% endif %}
-    </div>
-</div>
+{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id as volver_url %}
+{% include 'components/ficha/periodo_ficha_detalle_body.html' with volver_url=volver_url pdf_url=periodo_pdf_url solo_lectura=True %}
 {% endblock %}
 
 {% block extra_scripts %}
+{% include 'components/ficha/periodo_ficha_detalle_script.html' %}
 {% include 'components/ficha/imprimir_periodo_script.html' %}
 {% endblock %}

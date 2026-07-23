@@ -1,0 +1,548 @@
+<script>
+    function periodoFichaDetalle(config) {
+        return {
+            soloLectura: config.soloLectura || false,
+            totalCambios: 0,
+            busqueda: '',
+            _busquedaAnterior: '',
+            guardandoTodo: false,
+            cambiosPorRecurso: {},
+            _borradorPendiente: null,
+            _mostrarBannerRecuperacion: false,
+            _guardadoExitoso: false,
+            _erroresValidacion: [],
+            _mostrarModalErrores: false,
+            _stickyAreaOffset: 64,
+
+            init() {
+                const self = this;
+                if (!this.soloLectura) {
+                    window.addEventListener('beforeunload', function(e) {
+                        if (self.totalCambios > 0 && !self._guardadoExitoso) {
+                            e.preventDefault();
+                            e.returnValue = '';
+                        }
+                    });
+                    this._cargarBorradorSiExiste();
+                }
+                this.$watch('_mostrarBannerRecuperacion', () => {
+                    this.$nextTick(() => this._recalcularOffsetSticky());
+                });
+                sitrepToastDesdeQuery('guardado', 'Cambios guardados');
+                this.$nextTick(() => {
+                    this._restaurarEstadoVista();
+                    this._mostrarContenidoFicha();
+                    this._recalcularOffsetSticky();
+                });
+            },
+
+            _normalizarTextoBusqueda(texto) {
+                return (texto || '')
+                    .toString()
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+            },
+
+            _compactarTextoBusqueda(texto) {
+                return this._normalizarTextoBusqueda(texto).replace(/[^a-z0-9]+/g, '');
+            },
+
+            coincideBusqueda(nombre, codigo) {
+                const consulta = this._normalizarTextoBusqueda(this.busqueda).trim();
+                if (!consulta) {
+                    return true;
+                }
+
+                const nombreNormalizado = this._normalizarTextoBusqueda(nombre);
+                const codigoNormalizado = this._normalizarTextoBusqueda(codigo);
+                const nombreCompacto = this._compactarTextoBusqueda(nombre);
+                const codigoCompacto = this._compactarTextoBusqueda(codigo);
+                const campos = [
+                    nombreNormalizado,
+                    codigoNormalizado,
+                ].filter(Boolean);
+                const camposCompactos = [
+                    nombreCompacto,
+                    codigoCompacto,
+                    `${nombreCompacto}${codigoCompacto}`.trim(),
+                ].filter(Boolean);
+                const tokens = consulta.split(/\s+/).filter(Boolean);
+
+                return tokens.every(token => {
+                    const tokenCompacto = token.replace(/\s+/g, '');
+                    return (
+                        campos.some(campo => campo.includes(token)) ||
+                        camposCompactos.some(campo => campo.includes(tokenCompacto))
+                    );
+                });
+            },
+
+            _forzarEstadoAreas(abierto) {
+                document.querySelectorAll('[data-area-idx]').forEach(function(el) {
+                    const data = el._x_dataStack?.[0];
+                    if (data) {
+                        data.abierto = abierto;
+                    }
+                });
+            },
+
+            alCambiarBusqueda() {
+                const activa = this.busqueda.trim().length > 0;
+                const estabaActiva = this._busquedaAnterior.trim().length > 0;
+
+                if (activa) {
+                    this._forzarEstadoAreas(true);
+                } else if (estabaActiva) {
+                    this._forzarEstadoAreas(false);
+                }
+
+                this._busquedaAnterior = this.busqueda;
+            },
+
+            _claveLocalStorage() {
+                return 'sitrep_borrador_periodo_{{ periodo.id }}';
+            },
+
+            _claveEstadoVista() {
+                return 'sitrep_vista_{{ periodo.id }}';
+            },
+
+            _guardarBorrador() {
+                if (this.soloLectura) return;
+                if (Object.keys(this.cambiosPorRecurso).length === 0) {
+                    localStorage.removeItem(this._claveLocalStorage());
+                    return;
+                }
+                try {
+                    localStorage.setItem(
+                        this._claveLocalStorage(),
+                        JSON.stringify(this.cambiosPorRecurso)
+                    );
+                } catch (e) {
+                    // localStorage lleno o bloqueado — ignorar silenciosamente
+                }
+            },
+
+            _limpiarBorrador() {
+                localStorage.removeItem(this._claveLocalStorage());
+            },
+
+            _recalcularOffsetSticky() {
+                const banner = document.querySelector('[data-recuperacion-banner]');
+                this._stickyAreaOffset = 64 + (this._mostrarBannerRecuperacion && banner ? banner.offsetHeight : 0);
+            },
+
+            _offsetStickyAreas() {
+                return this._stickyAreaOffset;
+            },
+
+            _guardarEstadoVista() {
+                const estadoVista = {
+                    areas: [],
+                    recursos: [],
+                };
+
+                document.querySelectorAll('[data-area-idx]').forEach(function(el) {
+                    const data = el._x_dataStack?.[0];
+                    if (data?.abierto) {
+                        estadoVista.areas.push(el.dataset.areaIdx);
+                    }
+                });
+
+                document.querySelectorAll('[data-recurso-id]').forEach(function(el) {
+                    const data = el._x_dataStack?.[0];
+                    if (data?.abierto) {
+                        estadoVista.recursos.push(el.dataset.recursoId);
+                    }
+                });
+
+                try {
+                    sessionStorage.setItem(
+                        this._claveEstadoVista(),
+                        JSON.stringify(estadoVista)
+                    );
+                } catch (e) {
+                    // sessionStorage lleno o bloqueado — ignorar silenciosamente
+                }
+            },
+
+            _restaurarEstadoVista() {
+                try {
+                    const rawVista = sessionStorage.getItem(this._claveEstadoVista());
+                    if (!rawVista) return;
+
+                    sessionStorage.removeItem(this._claveEstadoVista());
+                    const estadoVista = JSON.parse(rawVista);
+
+                    if (estadoVista.areas?.length) {
+                        document.querySelectorAll('[data-area-idx]').forEach(function(el) {
+                            if (estadoVista.areas.includes(el.dataset.areaIdx)) {
+                                const data = el._x_dataStack?.[0];
+                                if (data) {
+                                    data.abierto = true;
+                                }
+                            }
+                        });
+                    }
+
+                    if (estadoVista.recursos?.length) {
+                        document.querySelectorAll('[data-recurso-id]').forEach(function(el) {
+                            if (estadoVista.recursos.includes(el.dataset.recursoId)) {
+                                const data = el._x_dataStack?.[0];
+                                if (data) {
+                                    data.abierto = true;
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {
+                    sessionStorage.removeItem(this._claveEstadoVista());
+                }
+            },
+
+            _mostrarContenidoFicha() {
+                const skeleton = document.getElementById('ficha-skeleton');
+                const real = document.getElementById('ficha-real');
+                const contenido = document.getElementById('ficha-contenido');
+
+                if (skeleton) skeleton.remove();
+                if (real) real.classList.remove('hidden');
+                if (contenido) contenido.classList.add('lista');
+            },
+
+            _cargarBorradorSiExiste() {
+                if (this.soloLectura) return;
+                try {
+                    const raw = localStorage.getItem(this._claveLocalStorage());
+                    if (!raw) return;
+                    const borrador = JSON.parse(raw);
+                    if (!borrador || typeof borrador !== 'object') return;
+                    const keys = Object.keys(borrador);
+                    if (keys.length === 0) return;
+                    this._borradorPendiente = borrador;
+                    this._mostrarBannerRecuperacion = true;
+                } catch (e) {
+                    localStorage.removeItem(this._claveLocalStorage());
+                }
+            },
+
+            registrarCambio(recursoId, payload) {
+                if (this.soloLectura) return;
+                if (payload === null) {
+                    delete this.cambiosPorRecurso[recursoId];
+                } else {
+                    this.cambiosPorRecurso[recursoId] = payload;
+                }
+                this.totalCambios = Object.keys(this.cambiosPorRecurso).length;
+                this._guardarBorrador();
+            },
+
+            _validarAntesDeGuardar() {
+                const errores = [];
+
+                for (const [recursoIdStr, payload] of Object.entries(this.cambiosPorRecurso)) {
+                    const checklist = payload.payload_checklist || {};
+                    const itemsProblema = [];
+
+                    for (const [key, val] of Object.entries(checklist)) {
+                        if (val.cumple === false && !val.observacion?.trim()) {
+                            itemsProblema.push(val.label || key);
+                        }
+                    }
+
+                    if (itemsProblema.length > 0) {
+                        errores.push({
+                            recursoId: parseInt(recursoIdStr, 10),
+                            nombre: payload.nombre || `Recurso ${recursoIdStr}`,
+                            items: itemsProblema,
+                        });
+                    }
+                }
+
+                return errores;
+            },
+
+            _irAPrimerErrorDeValidacion() {
+                this._mostrarModalErrores = false;
+
+                if (this._erroresValidacion.length === 0) {
+                    return;
+                }
+
+                const primerError = this._erroresValidacion[0];
+                const el = document.querySelector(
+                    '[data-recurso-id="' + primerError.recursoId + '"]'
+                );
+                if (!el) {
+                    return;
+                }
+
+                let actual = el;
+                while (actual) {
+                    const data = actual._x_dataStack?.[0];
+                    if (data && Object.prototype.hasOwnProperty.call(data, 'abierto')) {
+                        data.abierto = true;
+                    }
+                    actual = actual.parentElement;
+                }
+
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    });
+                });
+            },
+
+            async guardarTodo() {
+                if (this.soloLectura) return;
+                if (this.guardandoTodo || this.totalCambios === 0) {
+                    return;
+                }
+
+                const errores = this._validarAntesDeGuardar();
+                if (errores.length > 0) {
+                    this._erroresValidacion = errores;
+                    this._mostrarModalErrores = true;
+                    return;
+                }
+
+                this.guardandoTodo = true;
+
+                const fichas = Object.entries(this.cambiosPorRecurso).map(function(entry) {
+                    return {
+                        recurso_id: parseInt(entry[0], 10),
+                        ...entry[1],
+                    };
+                });
+
+                try {
+                    const resp = await fetch(config.saveUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': config.csrfToken,
+                        },
+                        body: JSON.stringify({ fichas: fichas }),
+                    });
+
+                    let data = {};
+                    try {
+                        data = await resp.json();
+                    } catch (error) {
+                        data = {};
+                    }
+
+                    if (!resp.ok) {
+                        alert(data.error || 'No se pudieron guardar los cambios.');
+                        this.guardandoTodo = false;
+                        return;
+                    }
+
+                    if (data.errores && data.errores.length > 0) {
+                        alert('Algunos recursos no se guardaron: ' + data.errores.map(function(item) {
+                            return item.error;
+                        }).join(', '));
+                    }
+
+                    this._guardarEstadoVista();
+                    this._limpiarBorrador();
+                    this._guardadoExitoso = true;
+                    window.location.href = window.location.pathname + '?guardado=1';
+                } catch (error) {
+                    alert('Error de conexión. Intenta nuevamente.');
+                    this.guardandoTodo = false;
+                }
+            },
+        };
+    }
+
+    function recursoFichaPeriodo(config) {
+        return {
+            soloLectura: config.soloLectura || false,
+            recursoId: config.recursoId,
+            nombreRecurso: config.nombreRecurso,
+            abierto: config.abiertoInicial,
+            modalCarga: false,
+            tieneFichaInicial: config.tieneFichaInicial,
+            estadoFichaInicial: config.estadoFichaInicial,
+            estadoOperativoInicial: config.estadoOperativoInicial,
+            periodoAnterior: config.periodoAnterior || { checklist: {} },
+            checklist: config.checklistInicial.map(function(item) {
+                const anterior = config.periodoAnterior?.checklist?.[item.key] || { estado: null, obs: '' };
+                const obsBase = item.obs || (anterior.estado === false ? (anterior.obs || '') : '');
+                return {
+                    key: item.key,
+                    label: item.label,
+                    estado: item.estado,
+                    estadoInicial: item.estadoInicial,
+                    obs: obsBase,
+                    obsInicial: obsBase,
+                };
+            }),
+
+            init() {
+                const self = this;
+                if (this.soloLectura) return;
+                window.addEventListener('borrador-recuperado', function(e) {
+                    const draft = e.detail?.cambios?.[String(self.recursoId)];
+                    if (!draft) return;
+
+                    const cl = draft.payload_checklist || {};
+                    self.checklist.forEach(function(item, index) {
+                        if (cl[item.key] !== undefined) {
+                            self.checklist[index].estado = cl[item.key].cumple ?? null;
+                            self.checklist[index].obs = cl[item.key].observacion || '';
+                        }
+                    });
+
+                    self.notificarCambio();
+                });
+            },
+
+            estadoAnterior(key) {
+                const item = this.periodoAnterior.checklist?.[key];
+                if (!item || item.estado === null || item.estado === undefined) {
+                    return null;
+                }
+                return item.estado;
+            },
+
+            obsAnterior(key) {
+                return this.periodoAnterior.checklist?.[key]?.obs || '';
+            },
+
+            tieneRegistroAnterior() {
+                return Object.values(this.periodoAnterior.checklist || {}).some(function(item) {
+                    return item && item.estado !== null;
+                });
+            },
+
+            mostrarObs(index) {
+                const item = this.checklist[index];
+                return item.estado === false || (
+                    item.estado === null &&
+                    this.estadoAnterior(item.key) === false
+                );
+            },
+
+            buildChecklist() {
+                const payload = {};
+                this.checklist.forEach(function(item) {
+                    if (item.estado === null) {
+                        return;
+                    }
+                    payload[item.key] = {
+                        label: item.label,
+                        cumple: item.estado,
+                        observacion: item.obs,
+                    };
+                });
+                return payload;
+            },
+
+            hayCambios() {
+                return this.checklist.some(function(item) {
+                    return item.estado !== item.estadoInicial || item.obs !== item.obsInicial;
+                });
+            },
+
+            estadoTentativo() {
+                if (!this.hayCambios()) {
+                    if (!this.tieneFichaInicial) return 'pendiente';
+                    if (this.estadoFichaInicial === 'pendiente') return 'pendiente';
+                    if (this.estadoOperativoInicial === true) return 'operativo';
+                    if (this.estadoOperativoInicial === false) return 'fallo';
+                    return 'en_proceso';
+                }
+
+                const hayFallo = this.checklist.some(c => c.estado === false);
+                const hayPendiente = this.checklist.some(c => c.estado === null);
+                const hayRespuesta = this.checklist.some(c => c.estado !== null);
+                const estadoOp = this.checklist.length === 0
+                    ? null
+                    : hayFallo ? false : hayPendiente ? null : true;
+                if (estadoOp === false) return 'fallo';
+                if (estadoOp === true) return 'operativo';
+                return hayRespuesta ? 'en_proceso' : 'pendiente';
+            },
+
+            notificarCambio() {
+                if (this.soloLectura) return;
+                if (!this.hayCambios()) {
+                    this.$dispatch('recurso-modificado', {
+                        recursoId: this.recursoId,
+                        payload: null,
+                    });
+                    return;
+                }
+
+                this.$dispatch('recurso-modificado', {
+                    recursoId: this.recursoId,
+                    payload: {
+                        nombre: this.nombreRecurso,
+                        estado_operativo: null,
+                        observacion_general: '',
+                        payload_checklist: this.buildChecklist(),
+                    },
+                });
+            },
+
+            limpiarEstado(index) {
+                if (this.soloLectura) return;
+                this.checklist[index].estado = null;
+                this.checklist[index].obs = '';
+                this.notificarCambio();
+            },
+
+            marcarCumple(index) {
+                if (this.soloLectura) return;
+                this.checklist[index].estado = true;
+                this.checklist[index].obs = '';
+                this.notificarCambio();
+            },
+
+            marcarFalla(index) {
+                if (this.soloLectura) return;
+                this.checklist[index].estado = false;
+                this.notificarCambio();
+            },
+
+            cargarObsAnterior(index) {
+                if (this.soloLectura) return;
+                this.checklist[index].obs = this.obsAnterior(this.checklist[index].key);
+                this.checklist[index].estado = false;
+                this.notificarCambio();
+            },
+
+            abrirModalCarga() {
+                if (this.soloLectura) return;
+                this.modalCarga = true;
+            },
+
+            expandirYAbrirModalCarga() {
+                if (this.soloLectura) return;
+                this.abierto = true;
+                this.$nextTick(() => {
+                    this.abrirModalCarga();
+                });
+            },
+
+            cerrarModalCarga() {
+                this.modalCarga = false;
+            },
+
+            confirmarCargaRegistroAnterior() {
+                if (this.soloLectura) return;
+                const self = this;
+                this.checklist.forEach(function(item, index) {
+                    const anterior = self.periodoAnterior.checklist?.[item.key] || { estado: null, obs: '' };
+                    self.checklist[index].estado = anterior.estado;
+                    self.checklist[index].obs = anterior.obs || '';
+                });
+                this.cerrarModalCarga();
+                this.notificarCambio();
+            },
+        };
+    }
+</script>
