@@ -1,5 +1,5 @@
 <script>
-  let { events = [], fallosUrl = null, windowDays = 3 } = $props()
+  let { events = [], fallosUrl = null, fallosResueltosUrl = null, windowDays = 3 } = $props()
 
   const PER_PAGE = 5
   let page = $state(1)
@@ -22,12 +22,19 @@
     next.has(id) ? next.delete(id) : next.add(id)
     expandedIds = next
   }
+
+  function eventoUrl(ev) {
+    const base = ev.tipo === 'nuevo' ? fallosUrl : fallosResueltosUrl
+    if (!base) return null
+    const sep = base.includes('?') ? '&' : '?'
+    return `${base}${sep}matriz_id=${ev.id}`
+  }
 </script>
 
 <div class="rounded-lg border border-surface-border bg-white">
   <div class="flex items-center justify-between gap-3 border-b border-surface-border px-4 py-3">
     <div>
-      <h2 class="text-[15px] font-bold text-navy">Feed de Fallos</h2>
+      <h2 class="text-[15px] font-bold text-navy">Últimos Eventos</h2>
       <p class="mt-0.5 text-[11px] text-ink-muted">Eventos de los últimos {windowDays} días</p>
     </div>
     <div class="flex items-center gap-2">
@@ -48,7 +55,11 @@
       {#each paged as ev (ev.id)}
         {@const expanded = expandedIds.has(ev.id)}
         {@const extra = ev.requisitosFallidos.length - 1}
-        <li class="flex items-start gap-3 px-4 py-3">
+        {@const url = eventoUrl(ev)}
+        <li class="relative flex items-start gap-3 px-4 py-3 transition-colors hover:bg-neutral-bg">
+          {#if url}
+            <a href={url} class="absolute inset-0" aria-label="Ver {ev.item} en {ev.nave}"></a>
+          {/if}
           <span
             class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
             class:bg-fail-bg={ev.tipo === 'nuevo'}
@@ -88,7 +99,7 @@
                 <button
                   type="button"
                   onclick={() => toggleExpand(ev.id)}
-                  class="mt-1 inline-flex items-center rounded-full border border-surface-border px-2 py-0.5 text-[10px] font-semibold text-ink-secondary transition hover:border-brand hover:text-brand"
+                  class="relative z-10 mt-1 inline-flex items-center rounded-full border border-surface-border bg-white px-2 py-0.5 text-[10px] font-semibold text-ink-secondary transition hover:border-brand hover:text-brand"
                 >
                   {expanded ? 'Ver menos' : `+ ${extra} falla${extra === 1 ? '' : 's'} adicional${extra === 1 ? '' : 'es'}`}
                 </button>

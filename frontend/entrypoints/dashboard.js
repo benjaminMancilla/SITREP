@@ -25,10 +25,13 @@ if (urgenciaEl) {
 
 const feedEl = document.getElementById('svelte-failure-feed')
 if (feedEl) {
-  const { slug, fallosUrl } = feedEl.dataset
+  const { slug, fallosUrl, fallosResueltosUrl } = feedEl.dataset
   fetch(`/${slug}/api/v1/fallos/feed/?dias=${FEED_DIAS}`)
     .then((res) => res.json())
-    .then((events) => mount(FailureFeed, { target: feedEl, props: { events, fallosUrl, windowDays: FEED_DIAS } }))
+    .then((events) => mount(FailureFeed, {
+      target: feedEl,
+      props: { events, fallosUrl, fallosResueltosUrl, windowDays: FEED_DIAS },
+    }))
 }
 
 const timelineEl = document.getElementById('svelte-hitos-inminentes')

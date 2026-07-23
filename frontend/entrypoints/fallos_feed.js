@@ -5,8 +5,11 @@ const DIAS = 30 // ponytail: standalone Feed page bound, tune freely; dashboard 
 
 const el = document.getElementById('svelte-failure-feed')
 if (el) {
-  const { slug, fallosUrl } = el.dataset
+  const { slug, fallosUrl, fallosResueltosUrl } = el.dataset
   fetch(`/${slug}/api/v1/fallos/feed/?dias=${DIAS}`)
     .then((res) => res.json())
-    .then((events) => mount(FailureFeed, { target: el, props: { events, fallosUrl, windowDays: DIAS } }))
+    .then((events) => mount(FailureFeed, {
+      target: el,
+      props: { events, fallosUrl, fallosResueltosUrl, windowDays: DIAS },
+    }))
 }

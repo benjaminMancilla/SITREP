@@ -17,6 +17,7 @@
         id="svelte-failure-feed"
         data-slug="{{ slug }}"
         data-fallos-url="{% url 'inventory:fallos_activos' slug=slug %}"
+        data-fallos-resueltos-url="{% url 'inventory:fallos_resueltos' slug=slug %}"
     ></div>
 </div>
 {% endblock %}
