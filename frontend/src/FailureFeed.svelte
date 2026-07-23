@@ -1,8 +1,28 @@
 <script>
-  let { events = [], fallosUrl = null, fallosResueltosUrl = null, windowDays = 3 } = $props()
+  import { onMount } from 'svelte'
+
+  let { slug, fallosUrl = null, fallosResueltosUrl = null, windowDays = 3 } = $props()
 
   const PER_PAGE = 5
+
+  let loading = $state(true)
+  let error = $state(null)
+  let events = $state([])
   let page = $state(1)
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`/${slug}/api/v1/fallos/feed/?dias=${windowDays}`, {
+        credentials: 'same-origin',
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      events = await res.json()
+    } catch (e) {
+      error = e.message
+    } finally {
+      loading = false
+    }
+  })
 
   let totalPages = $derived(Math.max(1, Math.ceil(events.length / PER_PAGE)))
   let paged = $derived(events.slice((page - 1) * PER_PAGE, page * PER_PAGE))
@@ -37,14 +57,34 @@
       <p class="mt-0.5 text-[11px] text-ink-muted">Eventos de los últimos {windowDays} días</p>
     </div>
     <div class="flex items-center gap-2">
-      <span class="rounded-full bg-neutral-bg px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-secondary">{events.length}</span>
+      {#if !loading && !error}
+        <span class="rounded-full bg-neutral-bg px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-secondary">{events.length}</span>
+      {/if}
       {#if fallosUrl}
         <a href={fallosUrl} class="text-[11px] font-semibold text-info transition hover:text-brand">Ver todos los fallos →</a>
       {/if}
     </div>
   </div>
 
-  {#if events.length === 0}
+  {#if loading}
+    <ul class="divide-y divide-surface-border">
+      {#each [0, 1, 2, 3] as _}
+        <li class="flex items-center gap-3 px-4 py-3">
+          <span class="h-5 w-5 shrink-0 animate-pulse rounded-full bg-surface-border"></span>
+          <div class="min-w-0 flex-1 space-y-1.5">
+            <div class="h-3 w-3/4 animate-pulse rounded bg-surface-border"></div>
+            <div class="h-3 w-1/2 animate-pulse rounded bg-surface-border"></div>
+            <div class="h-2.5 w-1/3 animate-pulse rounded bg-surface-border"></div>
+          </div>
+        </li>
+      {/each}
+    </ul>
+  {:else if error}
+    <div class="px-4 py-8 text-center">
+      <p class="text-[13px] font-medium text-fail">No se pudieron cargar los eventos</p>
+      <p class="mt-1 text-[11px] text-ink-muted">{error}</p>
+    </div>
+  {:else if events.length === 0}
     <div class="px-4 py-8 text-center">
       <p class="text-[13px] font-medium text-ok">Sin novedades en los últimos {windowDays} días</p>
       <p class="mt-1 text-[11px] text-ink-muted">La flota está operando sin cambios recientes</p>
