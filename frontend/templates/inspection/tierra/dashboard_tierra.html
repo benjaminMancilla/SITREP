@@ -11,23 +11,22 @@
 
 {% block page_content %}
 <div>
-    <div class="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <a href="{{ naves_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
-            <span class="font-mono font-semibold text-navy">{{ page_obj.paginator.count }}</span> naves activas
-        </a>
-        <span class="text-surface-border">·</span>
-        <a href="{{ usuarios_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
-            <span class="font-mono font-semibold text-navy">{{ total_usuarios }}</span> usuarios
-        </a>
-        <span class="text-surface-border">·</span>
-        <a href="{{ dispositivos_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
-            <span class="font-mono font-semibold text-navy">{{ total_dispositivos }}</span> dispositivos
-        </a>
-    </div>
-
     <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <!-- EJE 2 · Cumplimiento y estado: cómo estamos operando -->
-        <div class="min-w-0 space-y-6">
+        <!-- EJE 2 · Cumplimiento y estado: cómo estamos operando. Header propio (resumen) + sticky, scroll interno -->
+        <div class="min-w-0 space-y-6 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1 scrollbar-none">
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <a href="{{ naves_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+                    <span class="font-mono font-semibold text-navy">{{ page_obj.paginator.count }}</span> naves activas
+                </a>
+                <span class="text-surface-border">·</span>
+                <a href="{{ usuarios_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+                    <span class="font-mono font-semibold text-navy">{{ total_usuarios }}</span> usuarios
+                </a>
+                <span class="text-surface-border">·</span>
+                <a href="{{ dispositivos_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+                    <span class="font-mono font-semibold text-navy">{{ total_dispositivos }}</span> dispositivos
+                </a>
+            </div>
             <div
                 id="svelte-urgencia"
                 data-slug="{{ slug }}"
@@ -46,8 +45,8 @@
             <div id="svelte-activity-heatmap" data-slug="{{ slug }}"></div>
         </div>
 
-        <!-- EJE 1 · Acción rápida: qué acaba de pasar -->
-        <div class="min-w-0 space-y-6 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1">
+        <!-- EJE 1 · Acción rápida: qué acaba de pasar. Flujo normal, controla el scroll de la página -->
+        <div class="min-w-0 space-y-6">
             <div
                 id="svelte-failure-feed"
                 data-slug="{{ slug }}"
