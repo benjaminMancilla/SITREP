@@ -47,7 +47,7 @@
                     {% endif %}
 
                     {% for resuelto in grupo.items %}
-                        <article x-data="{ abierto: false }" class="overflow-hidden rounded-lg border border-ok-border bg-white shadow-sm transition-shadow hover:shadow-md">
+                        <article x-data="{ abierto: {% if matriz_id %}true{% else %}false{% endif %} }" class="overflow-hidden rounded-lg border border-ok-border bg-white shadow-sm transition-shadow hover:shadow-md">
                             <div
                                 @click="abierto = !abierto"
                                 class="flex cursor-pointer items-center gap-4 px-4 py-3 transition hover:bg-[#fcfdff]"
