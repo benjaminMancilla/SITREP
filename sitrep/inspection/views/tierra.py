@@ -198,6 +198,72 @@ def dashboard_tierra(request, slug):
     )
 
 
+def _aplicar_filtros_fallos(request, qs):
+    """Aplica los filtros GET comunes a fallos_activos/fallos_resueltos.
+
+    Devuelve (qs_filtrado, dict_de_valores) para pasar directo al contexto
+    del template. matriz_id es exacto y sirve solo para deep-links (no
+    tiene UI propia); q_nombre/q_codigo son icontains sobre el recurso.
+    """
+    valores = {
+        "nave_id": request.GET.get("nave", "").strip(),
+        "area_id": request.GET.get("area", "").strip(),
+        "periodicidad_id": request.GET.get("periodicidad", "").strip(),
+        "fecha_desde_str": request.GET.get("fecha_desde", "").strip(),
+        "fecha_hasta_str": request.GET.get("fecha_hasta", "").strip(),
+        "agrupar_por": request.GET.get("agrupar", "").strip(),
+        "q_nombre": request.GET.get("q_nombre", "").strip(),
+        "q_codigo": request.GET.get("q_codigo", "").strip(),
+        "matriz_id": request.GET.get("matriz_id", "").strip(),
+    }
+    if valores["agrupar_por"] not in {"", "nave", "area", "periodo"}:
+        valores["agrupar_por"] = ""
+
+    if valores["nave_id"]:
+        try:
+            qs = qs.filter(nave_id=int(valores["nave_id"]))
+        except ValueError:
+            valores["nave_id"] = ""
+
+    if valores["area_id"]:
+        try:
+            qs = qs.filter(recurso__area_id=int(valores["area_id"]))
+        except ValueError:
+            valores["area_id"] = ""
+
+    if valores["periodicidad_id"]:
+        try:
+            qs = qs.filter(recurso__periodicidad_id=int(valores["periodicidad_id"]))
+        except ValueError:
+            valores["periodicidad_id"] = ""
+
+    if valores["fecha_desde_str"]:
+        try:
+            qs = qs.filter(ultimo_estado_operativo_en__date__gte=date.fromisoformat(valores["fecha_desde_str"]))
+        except ValueError:
+            valores["fecha_desde_str"] = ""
+
+    if valores["fecha_hasta_str"]:
+        try:
+            qs = qs.filter(ultimo_estado_operativo_en__date__lte=date.fromisoformat(valores["fecha_hasta_str"]))
+        except ValueError:
+            valores["fecha_hasta_str"] = ""
+
+    if valores["q_nombre"]:
+        qs = qs.filter(recurso__nombre__icontains=valores["q_nombre"])
+
+    if valores["q_codigo"]:
+        qs = qs.filter(recurso__codigo__icontains=valores["q_codigo"])
+
+    if valores["matriz_id"]:
+        try:
+            qs = qs.filter(id=int(valores["matriz_id"]))
+        except ValueError:
+            valores["matriz_id"] = ""
+
+    return qs, valores
+
+
 @tenant_member_required
 @requiere_tierra
 def fallos_activos(request, slug):
@@ -220,50 +286,20 @@ def fallos_activos(request, slug):
         .order_by(F("ultimo_estado_operativo_en").desc(nulls_last=True), "nave__nombre", "recurso__nombre")
     )
 
-    nave_id = request.GET.get("nave", "").strip()
-    area_id = request.GET.get("area", "").strip()
-    periodicidad_id = request.GET.get("periodicidad", "").strip()
-    fecha_desde_str = request.GET.get("fecha_desde", "").strip()
-    fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
-    agrupar_por = request.GET.get("agrupar", "").strip()
-    if agrupar_por not in {"", "nave", "area", "periodo"}:
-        agrupar_por = ""
-
     solo_nuevos = request.GET.get("solo_nuevos") == "1"
     if solo_nuevos:
         qs = qs.filter(es_fallo_nuevo=True)
 
-    if nave_id:
-        try:
-            qs = qs.filter(nave_id=int(nave_id))
-        except ValueError:
-            nave_id = ""
-
-    if area_id:
-        try:
-            qs = qs.filter(recurso__area_id=int(area_id))
-        except ValueError:
-            area_id = ""
-
-    if periodicidad_id:
-        try:
-            qs = qs.filter(recurso__periodicidad_id=int(periodicidad_id))
-        except ValueError:
-            periodicidad_id = ""
-
-    if fecha_desde_str:
-        try:
-            fecha_desde = date.fromisoformat(fecha_desde_str)
-            qs = qs.filter(ultimo_estado_operativo_en__date__gte=fecha_desde)
-        except ValueError:
-            fecha_desde_str = ""
-
-    if fecha_hasta_str:
-        try:
-            fecha_hasta = date.fromisoformat(fecha_hasta_str)
-            qs = qs.filter(ultimo_estado_operativo_en__date__lte=fecha_hasta)
-        except ValueError:
-            fecha_hasta_str = ""
+    qs, f = _aplicar_filtros_fallos(request, qs)
+    nave_id = f["nave_id"]
+    area_id = f["area_id"]
+    periodicidad_id = f["periodicidad_id"]
+    fecha_desde_str = f["fecha_desde_str"]
+    fecha_hasta_str = f["fecha_hasta_str"]
+    agrupar_por = f["agrupar_por"]
+    q_nombre = f["q_nombre"]
+    q_codigo = f["q_codigo"]
+    matriz_id = f["matriz_id"]
 
     fallos_filtrados_total = qs.count()
     _params = request.GET.copy()
@@ -351,6 +387,9 @@ def fallos_activos(request, slug):
             "periodicidad_id": periodicidad_id,
             "fecha_desde_str": fecha_desde_str,
             "fecha_hasta_str": fecha_hasta_str,
+            "q_nombre": q_nombre,
+            "q_codigo": q_codigo,
+            "matriz_id": matriz_id,
             "fallos_filtrados_total": fallos_filtrados_total,
             "page_obj": page_obj,
             "pagination_params": pagination_params,
@@ -382,46 +421,16 @@ def fallos_resueltos(request, slug):
         .order_by(F("ultimo_estado_operativo_en").desc(nulls_last=True), "nave__nombre", "recurso__nombre")
     )
 
-    nave_id = request.GET.get("nave", "").strip()
-    area_id = request.GET.get("area", "").strip()
-    periodicidad_id = request.GET.get("periodicidad", "").strip()
-    fecha_desde_str = request.GET.get("fecha_desde", "").strip()
-    fecha_hasta_str = request.GET.get("fecha_hasta", "").strip()
-    agrupar_por = request.GET.get("agrupar", "").strip()
-    if agrupar_por not in {"", "nave", "area", "periodo"}:
-        agrupar_por = ""
-
-    if nave_id:
-        try:
-            qs = qs.filter(nave_id=int(nave_id))
-        except ValueError:
-            nave_id = ""
-
-    if area_id:
-        try:
-            qs = qs.filter(recurso__area_id=int(area_id))
-        except ValueError:
-            area_id = ""
-
-    if periodicidad_id:
-        try:
-            qs = qs.filter(recurso__periodicidad_id=int(periodicidad_id))
-        except ValueError:
-            periodicidad_id = ""
-
-    if fecha_desde_str:
-        try:
-            fecha_desde = date.fromisoformat(fecha_desde_str)
-            qs = qs.filter(ultimo_estado_operativo_en__date__gte=fecha_desde)
-        except ValueError:
-            fecha_desde_str = ""
-
-    if fecha_hasta_str:
-        try:
-            fecha_hasta = date.fromisoformat(fecha_hasta_str)
-            qs = qs.filter(ultimo_estado_operativo_en__date__lte=fecha_hasta)
-        except ValueError:
-            fecha_hasta_str = ""
+    qs, f = _aplicar_filtros_fallos(request, qs)
+    nave_id = f["nave_id"]
+    area_id = f["area_id"]
+    periodicidad_id = f["periodicidad_id"]
+    fecha_desde_str = f["fecha_desde_str"]
+    fecha_hasta_str = f["fecha_hasta_str"]
+    agrupar_por = f["agrupar_por"]
+    q_nombre = f["q_nombre"]
+    q_codigo = f["q_codigo"]
+    matriz_id = f["matriz_id"]
 
     resueltos_filtrados_total = qs.count()
     _params = request.GET.copy()
@@ -508,6 +517,9 @@ def fallos_resueltos(request, slug):
             "periodicidad_id": periodicidad_id,
             "fecha_desde_str": fecha_desde_str,
             "fecha_hasta_str": fecha_hasta_str,
+            "q_nombre": q_nombre,
+            "q_codigo": q_codigo,
+            "matriz_id": matriz_id,
             "resueltos_filtrados_total": resueltos_filtrados_total,
             "page_obj": page_obj,
             "pagination_params": pagination_params,

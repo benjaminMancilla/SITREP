@@ -1,11 +1,38 @@
 {% comment %}
 Variables: slug, naves, areas, periodicidades, nave_id, area_id, periodicidad_id,
            fecha_desde_str, fecha_hasta_str, agrupar_por, limpiar_url_name,
-           solo_nuevos (opcional, solo lo usa fallos_activos.html)
+           solo_nuevos (opcional, solo lo usa fallos_activos.html),
+           q_nombre, q_codigo (texto libre), matriz_id (deep-link por id interno,
+           sin campo visible, solo se preserva si vino por querystring)
 {% endcomment %}
 <form method="get" class="rounded-lg border border-surface-border bg-white p-4 shadow-sm">
     {% if solo_nuevos %}<input type="hidden" name="solo_nuevos" value="1">{% endif %}
+    {% if matriz_id %}<input type="hidden" name="matriz_id" value="{{ matriz_id }}">{% endif %}
     <div class="flex flex-wrap items-end gap-3">
+        <div>
+            <label for="q_nombre" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Nombre</label>
+            <input
+                id="q_nombre"
+                type="text"
+                name="q_nombre"
+                value="{{ q_nombre }}"
+                placeholder="Buscar por nombre..."
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+        </div>
+
+        <div>
+            <label for="q_codigo" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Código</label>
+            <input
+                id="q_codigo"
+                type="text"
+                name="q_codigo"
+                value="{{ q_codigo }}"
+                placeholder="Buscar por código..."
+                class="min-h-10 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand focus:bg-white"
+            >
+        </div>
+
         <div>
             <label for="nave" class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-muted">Nave</label>
             <select
