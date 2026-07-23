@@ -88,7 +88,7 @@
 <!-- Skeleton -->
 {#if loading}
   <div class="overflow-hidden rounded-lg border border-surface-border bg-white">
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto scrollbar-none">
       <table class="min-w-full" style="border-collapse: separate; border-spacing: 0;">
         <thead class="bg-neutral-bg">
           <tr>
@@ -133,7 +133,7 @@
 <!-- Tabla heatmap -->
 {:else}
   <div class="overflow-hidden rounded-lg border border-surface-border bg-white">
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto scrollbar-none">
       <table class="min-w-full text-sm" style="border-collapse: separate; border-spacing: 0;">
         <thead class="bg-neutral-bg">
           <tr>
