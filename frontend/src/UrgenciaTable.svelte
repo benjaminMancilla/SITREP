@@ -36,12 +36,10 @@
 
   const getCell = (nave, key) => nave.periodos[key] ?? null
 
-  const HEAT = { fail: '#fe3a34', warn: '#feb800', ok: '#33c75a' }
-
   function urgency(u) {
-    if (u >= 0.65) return { bg: HEAT.fail, text: 'text-fail', bar: HEAT.fail }
-    if (u >= 0.35) return { bg: HEAT.warn, text: 'text-warn', bar: HEAT.warn }
-    return { bg: HEAT.ok, text: 'text-ok', bar: HEAT.ok }
+    if (u >= 0.65) return { chip: 'bg-fail-bg border-fail-border text-fail', text: 'text-fail', bar: '#b91c1c' }
+    if (u >= 0.35) return { chip: 'bg-warn-bg border-warn-border text-warn', text: 'text-warn', bar: '#b45309' }
+    return { chip: 'bg-ok-bg border-ok-border text-ok', text: 'text-ok', bar: '#15803d' }
   }
 
   function rowBg(ni, hovered) {
@@ -102,6 +100,7 @@
                 <div class="h-3 w-14 mx-auto animate-pulse rounded bg-surface-border"></div>
               </th>
             {/each}
+            <th class="w-4 border-b border-surface-border" aria-hidden="true"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-surface-border">
@@ -117,6 +116,7 @@
               {#each [1,2,3] as _}
                 <td><div class="h-14 animate-pulse bg-surface-border opacity-30"></div></td>
               {/each}
+              <td aria-hidden="true"></td>
             </tr>
           {/each}
         </tbody>
@@ -145,35 +145,33 @@
                 {col.label}
               </th>
             {/each}
+            <th class="w-4 border-b border-surface-border" aria-hidden="true"></th>
           </tr>
         </thead>
         <tbody>
           {#each pagedNaves as nave, ni (nave.id)}
-            <tr
-              style:background-color={rowBg(ni, hoveredRow === ni)}
-              onmouseenter={() => hoveredRow = ni}
-              onmouseleave={() => hoveredRow = null}
-            >
+            <tr style:background-color={rowBg(ni, false)}>
               <td
                 class="sticky left-0 z-10 px-4 py-0 transition-colors duration-100"
                 style:background-color={rowBg(ni, hoveredRow === ni)}
+                onmouseenter={() => hoveredRow = ni}
+                onmouseleave={() => hoveredRow = null}
               >
-                <a href={naveUrl(nave.id)} class="block py-3">
-                  <p class="font-semibold text-navy text-[13px] leading-tight hover:underline">{nave.nombre}</p>
+                <a href={naveUrl(nave.id)} class="block py-3 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                  <p class="font-semibold text-navy text-[13px] leading-tight transition-colors hover:text-brand">{nave.nombre}</p>
                   <p class="font-mono text-[10px] text-ink-muted mt-0.5">{nave.matricula}</p>
                 </a>
               </td>
 
               {#each columns as col (col.key)}
                 {@const cell = getCell(nave, col.key)}
-                <td class="p-0.5 text-center align-middle">
+                <td class="p-1 text-center align-middle">
                   {#if cell}
                     {#if cell.estado === 'en_curso'}
                       {@const u = urgency(cell.urgencia)}
                       <a
                         href={periodoUrl(nave.id, cell.periodo_id)}
-                        class="cell-heat"
-                        style:background-color={u.bg}
+                        class="cell-badge {u.chip}"
                         onmouseenter={(e) => showTooltip(e, cell, col)}
                         onmouseleave={hideTooltip}
                       >
@@ -187,13 +185,16 @@
                             <span class="font-mono text-[10px] font-semibold text-orange-600 leading-none">{cell.fallos_nuevos}</span>
                           </span>
                         {/if}
-                        <span class="font-mono font-medium text-[15px] leading-none text-white">
+                        <span class="font-mono font-thin text-[15px] leading-none">
                           {Math.round(cell.cobertura * 100)}%
                         </span>
                       </a>
 
                     {:else}
-                      <a href={periodoUrl(nave.id, cell.periodo_id)} class="flex flex-col items-center justify-center h-14 px-3 gap-1 hover:bg-neutral-bg">
+                      <a
+                        href={periodoUrl(nave.id, cell.periodo_id)}
+                        class="flex flex-col items-center justify-center h-14 px-3 gap-1 transition-colors duration-150 hover:bg-neutral-bg focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                      >
                         <span class="flex items-center gap-1 text-ok">
                           <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                             <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" stroke-width="1.8"
@@ -211,6 +212,7 @@
                   {/if}
                 </td>
               {/each}
+              <td aria-hidden="true"></td>
             </tr>
           {/each}
         </tbody>
@@ -321,8 +323,8 @@
 {/if}
 
 <style>
-  /* Celda heatmap — sin bar, solo color + valor */
-  .cell-heat {
+  /* Celda urgencia — chip pastel: fondo/borde/texto por bucket, sin bloque a sangre completa */
+  .cell-badge {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -330,11 +332,32 @@
     justify-content: center;
     height: 3.5rem;
     padding-inline: 0.75rem;
+    border-radius: 6px;
+    border-width: 1px;
+    border-style: solid;
     cursor: pointer;
     text-decoration: none;
-    /* Borde blanco sutil entre celdas */
-    outline: 1px solid rgba(255, 255, 255, 0.45);
-    outline-offset: -1px;
+    transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), filter 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .cell-badge:hover {
+    filter: brightness(0.97) saturate(1.1);
+    transform: translateY(-1px);
+  }
+
+  .cell-badge:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+    filter: brightness(0.97) saturate(1.1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cell-badge {
+      transition: filter 160ms ease;
+    }
+    .cell-badge:hover {
+      transform: none;
+    }
   }
 
   /* Badge fallos nuevos */
