@@ -837,6 +837,7 @@ def nave_periodo_detalle(request, slug, nave_id, periodo_id):
             "inventory:nave_periodo_pdf",
             kwargs={"slug": slug, "nave_id": nave.id, "periodo_id": periodo.id},
         )
+    volver_url = reverse("inventory:nave_detalle", kwargs={"slug": slug, "nave_id": nave.id})
 
     return render(
         request,
@@ -852,6 +853,7 @@ def nave_periodo_detalle(request, slug, nave_id, periodo_id):
             "error_recurso_id": None,
             "error_msg": "",
             "periodo_pdf_url": periodo_pdf_url,
+            "volver_url": volver_url,
             "slug": slug,
         },
     )

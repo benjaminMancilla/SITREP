@@ -2,7 +2,50 @@
 
 {% block nav_active %}naves{% endblock %}
 {% block page_title %}SITREP | {{ nave.nombre }} · {{ periodo.periodicidad.nombre }}{% endblock %}
-{% block topbar_title %}{{ nave.nombre }}{% endblock %}
+
+{% block topbar_left %}
+<div class="flex min-w-0 flex-1 items-center gap-3">
+    <a
+        href="{{ volver_url }}"
+        class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-2.5 py-1.5 text-xs font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
+    >
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M9 3L5 7L9 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Volver
+    </a>
+
+    {% if periodo_pdf_url %}
+        {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=periodo_pdf_url areas_grupos=areas_grupos %}
+    {% endif %}
+
+    <div class="hidden h-6 w-px shrink-0 bg-surface-border sm:block"></div>
+
+    <div class="min-w-0 flex-1">
+        <div class="truncate text-[13px] font-semibold leading-tight text-navy">
+            {{ periodo.periodicidad.nombre }}
+            {% if numero_periodo %}
+                <span class="font-normal text-ink-muted">· {{ numero_periodo_label }} {{ numero_periodo }}</span>
+            {% endif %}
+        </div>
+        <div class="truncate text-[11px] leading-tight text-ink-muted">
+            {{ nave.nombre }} · {{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}
+        </div>
+    </div>
+
+    <div class="hidden shrink-0 items-center gap-2 md:flex">
+        <div class="h-1.5 w-[90px] overflow-hidden rounded-full bg-surface-border">
+            <div
+                class="h-full rounded-full bg-brand transition-all"
+                style="width: {% if recursos_lista %}{% widthratio fichas_completadas_count recursos_lista|length 100 %}{% else %}0{% endif %}%"
+            ></div>
+        </div>
+        <span class="whitespace-nowrap text-xs font-medium text-ink-muted">
+            <strong class="text-navy">{{ fichas_completadas_count }}</strong>/{{ recursos_lista|length }}
+        </span>
+    </div>
+</div>
+{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -48,7 +91,6 @@
 {% endblock %}
 
 {% block page_content %}
-{% url 'inventory:nave_detalle' slug=slug nave_id=nave.id as volver_url %}
 {% include 'components/ficha/periodo_ficha_detalle_body.html' with volver_url=volver_url pdf_url=periodo_pdf_url solo_lectura=True %}
 {% endblock %}
 

@@ -23,6 +23,7 @@ Overrides explícitos pasados por el wrapper:
     @recurso-modificado.window="registrarCambio($event.detail.recursoId, $event.detail.payload)"
     class="min-h-screen bg-surface"
 >
+    {% if not solo_lectura %}
     <header class="sticky top-0 z-30 border-b border-surface-border bg-white px-6" style="min-height:60px">
         <div class="mx-auto flex h-[60px] max-w-6xl items-center gap-4">
             <a
@@ -60,17 +61,16 @@ Overrides explícitos pasados por el wrapper:
                 <span class="whitespace-nowrap text-xs font-medium text-ink-muted">
                     <strong class="text-navy">{{ fichas_completadas_count }}</strong>/{{ recursos_lista|length }}
                 </span>
-                {% if not solo_lectura %}
                 <span
                     x-show="totalCambios > 0"
                     x-cloak
                     class="whitespace-nowrap rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-[11px] font-semibold text-warn"
                     x-text="totalCambios + ' sin guardar'"
                 ></span>
-                {% endif %}
             </div>
         </div>
     </header>
+    {% endif %}
 
     {% if not solo_lectura %}
     <div
