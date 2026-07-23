@@ -1,4 +1,7 @@
 <script>
+  import IconWarning from './icons/IconWarning.svelte'
+  import IconCheck from './icons/IconCheck.svelte'
+
   let { naves = [], puedeEditar = false, detalleUrlTemplate = '', editarUrlTemplate = '' } = $props()
 
   const PER_PAGE = 15
@@ -98,36 +101,30 @@
               </td>
               <td class="px-4 py-3.5 text-center">
                 <span
-                  class="inline-flex items-center gap-1 rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold"
-                  class:border-fail-border={nave.fallosActivos > 0}
+                  class="inline-flex items-center gap-1 justify-center rounded-[4px] px-2.5 py-1 text-[11px] font-semibold"
                   class:bg-fail-bg={nave.fallosActivos > 0}
                   class:text-fail={nave.fallosActivos > 0}
-                  class:border-neutral-border={nave.fallosActivos === 0}
                   class:bg-neutral-bg={nave.fallosActivos === 0}
                   class:text-neutral={nave.fallosActivos === 0}
-                >{#if nave.fallosActivos > 0}<span class="h-1.5 w-1.5 rounded-full bg-fail"></span>{/if}{nave.fallosActivos}</span>
+                >{#if nave.fallosActivos > 0}<IconWarning />{/if}{nave.fallosActivos}</span>
               </td>
               <td class="px-4 py-3.5 text-center">
                 <span
-                  class="inline-flex items-center gap-1 rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold"
-                  class:border-warn-border={nave.fallosNuevos > 0}
+                  class="inline-flex items-center gap-1 justify-center rounded-[4px] px-2.5 py-1 text-[11px] font-semibold"
                   class:bg-warn-bg={nave.fallosNuevos > 0}
                   class:text-warn={nave.fallosNuevos > 0}
-                  class:border-neutral-border={nave.fallosNuevos === 0}
                   class:bg-neutral-bg={nave.fallosNuevos === 0}
                   class:text-neutral={nave.fallosNuevos === 0}
-                >{#if nave.fallosNuevos > 0}<span class="h-1.5 w-1.5 rounded-full bg-warn"></span>{/if}{nave.fallosNuevos}</span>
+                >{#if nave.fallosNuevos > 0}<IconWarning />{/if}{nave.fallosNuevos}</span>
               </td>
               <td class="px-4 py-3.5 text-center">
                 <span
-                  class="inline-flex items-center rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold"
-                  class:border-ok-border={nave.resoluciones > 0}
+                  class="inline-flex items-center gap-1 justify-center rounded-[4px] px-2.5 py-1 text-[11px] font-semibold"
                   class:bg-ok-bg={nave.resoluciones > 0}
                   class:text-ok={nave.resoluciones > 0}
-                  class:border-neutral-border={nave.resoluciones === 0}
                   class:bg-neutral-bg={nave.resoluciones === 0}
                   class:text-neutral={nave.resoluciones === 0}
-                >{nave.resoluciones}</span>
+                >{#if nave.resoluciones > 0}<IconCheck />{/if}{nave.resoluciones}</span>
               </td>
               <td class="px-4 py-3.5 font-mono text-[11px] text-ink-secondary">{formatFecha(nave.ultimaFichaEn)}</td>
               <td class="px-4 py-3.5">
