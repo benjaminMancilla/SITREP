@@ -17,7 +17,7 @@ from sitrep.fleet.services import FleetQueryService
 
 from ..models import FichaRegistro, MatrizNaveRecurso, PeriodoRevision
 from .. import presenters
-from ..services import TenantQueryService
+from ..services import MotorFichas, TenantQueryService
 from .pdf import generar_pdf_periodo
 
 
@@ -833,6 +833,69 @@ def nave_periodo_detalle(request, slug, nave_id, periodo_id):
                 "inventory:nave_periodo_pdf",
                 kwargs={"slug": slug, "nave_id": nave.id, "periodo_id": periodo.id},
             ),
+        },
+    )
+
+
+@tenant_member_required
+@requiere_tierra
+def nave_recurso_ficha(request, slug, nave_id, periodo_id, recurso_id):
+    """
+    Vista de solo lectura para tierra. Reutiliza el mismo template que usa
+    mar para registrar la ficha (kiosco_recurso_ficha.html) en modo
+    solo_lectura=True, así cualquier cambio en la ficha se refleja igual
+    para tierra y para mar.
+    """
+    if request.method != "GET":
+        return HttpResponseNotAllowed(["GET"])
+
+    nave = TenantQueryService.get_nave_activa(request.naviera, nave_id)
+    if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
+        return HttpResponseForbidden("Acceso denegado.")
+
+    periodo = get_object_or_404(PeriodoRevision, pk=periodo_id, nave=nave)
+    matriz = get_object_or_404(
+        MatrizNaveRecurso.objects.select_related("recurso"),
+        nave=nave,
+        recurso_id=recurso_id,
+        es_visible=True,
+        recurso__periodicidad_id=periodo.periodicidad_id,
+    )
+    recurso = matriz.recurso
+    ficha = TenantQueryService.get_ficha_de_periodo_y_recurso(periodo, recurso)
+    tiene_ficha = ficha is not None
+
+    estado_operativo_form = ficha.estado_operativo if ficha else False
+    observacion_general_form = ficha.observacion_general if ficha else ""
+    payload_checklist_form = MotorFichas.normalizar_payload_checklist(
+        ficha.payload_checklist if ficha else {}
+    )
+    definicion = MotorFichas.obtener_definicion_checklist(recurso, matriz.cantidad, ficha=ficha)
+    checklist_items = MotorFichas.construir_checklist_items(definicion, payload_checklist_form)
+    periodo_anterior_json = presenters.construir_periodo_anterior_json(None, checklist_items)
+
+    return render(
+        request,
+        "inspection/kiosco/kiosco_recurso_ficha.html",
+        {
+            "nave": nave,
+            "periodo": periodo,
+            "matriz": matriz,
+            "recurso": recurso,
+            "ficha": ficha,
+            "tiene_ficha": tiene_ficha,
+            "slug": slug,
+            "error": None,
+            "estado_operativo_form": estado_operativo_form,
+            "observacion_general_form": observacion_general_form,
+            "checklist_items": checklist_items,
+            "periodo_anterior_json": periodo_anterior_json,
+            "solo_lectura": True,
+            "volver_url": reverse(
+                "inventory:nave_periodo_detalle",
+                kwargs={"slug": slug, "nave_id": nave.id, "periodo_id": periodo.id},
+            ),
+            "volver_label": "Volver al período",
         },
     )
 

@@ -376,5 +376,6 @@ def kiosco_recurso_ficha(request, slug, periodo_id, recurso_id):
             "observacion_general_form": observacion_general_form,
             "checklist_items": checklist_items,
             "periodo_anterior_json": periodo_anterior_json,
+            "volver_url": f"/{slug}/kiosco/periodos/{periodo.id}/",
         },
     )

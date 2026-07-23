@@ -22,6 +22,11 @@ urlpatterns = [
         name='nave_periodo_detalle',
     ),
     path(
+        'naves/<int:nave_id>/periodos/<int:periodo_id>/recursos/<int:recurso_id>/ficha/',
+        views.nave_recurso_ficha,
+        name='nave_recurso_ficha',
+    ),
+    path(
         'naves/<int:nave_id>/periodos/<int:periodo_id>/pdf/',
         views.nave_periodo_pdf,
         name='nave_periodo_pdf',

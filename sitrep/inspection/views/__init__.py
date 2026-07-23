@@ -9,7 +9,8 @@ from sitrep.accounts.views import (  # noqa: F401
 )
 from .tierra import (  # noqa: F401
     dashboard_tierra, fallos_activos, fallos_resueltos, fallos_feed,
-    calendario, periodos_vencidos, nave_detalle, nave_periodo_detalle, nave_periodo_pdf,
+    calendario, periodos_vencidos, nave_detalle, nave_periodo_detalle,
+    nave_recurso_ficha, nave_periodo_pdf,
 )
 from .kiosco import (  # noqa: F401
     dashboard_kiosco, kiosco_periodo_detalle, kiosco_periodo_pdf,

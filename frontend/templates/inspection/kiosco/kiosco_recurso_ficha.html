@@ -144,18 +144,19 @@
     <header class="sticky top-0 z-30 border-b border-surface-border bg-white px-4 sm:px-6" style="min-height:68px">
         <div class="mx-auto grid h-[68px] max-w-4xl grid-cols-[auto,minmax(0,1fr),auto] items-center gap-3">
             <a
-                href="{% url 'inventory:kiosco_periodo_detalle' slug=slug periodo_id=periodo.id %}"
+                href="{{ volver_url }}"
                 class="inline-flex items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
             >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                     <path d="M9 3L5 7L9 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-                Volver al período
+                {{ volver_label|default:"Volver al período" }}
             </a>
 
             <div class="min-w-0 text-center">
                 <div class="flex items-center justify-center gap-2">
                     <div class="truncate text-base font-bold text-navy">{{ recurso.nombre }}</div>
+                    {% if not solo_lectura %}
                     <button
                         type="button"
                         x-show="hayFallosAnteriores()"
@@ -171,6 +172,7 @@
                         </svg>
                         Cargar registro anterior
                     </button>
+                    {% endif %}
                 </div>
                 <div class="truncate text-[12px] text-ink-muted">
                     {{ periodo.periodicidad.nombre }} · {{ nave.nombre }} · {{ nave.matricula }}
@@ -214,6 +216,9 @@
                     </div>
                 {% endif %}
 
+                {% if solo_lectura %}
+                <div class="space-y-5">
+                {% else %}
                 <form
                     method="post"
                     action="{% url 'inventory:kiosco_recurso_ficha' slug=slug periodo_id=periodo.id recurso_id=recurso.id %}"
@@ -221,11 +226,37 @@
                     class="space-y-5"
                 >
                     {% csrf_token %}
+                {% endif %}
 
                     {% if checklist_items %}
                         <section class="space-y-3">
                             <div class="text-[11px] font-bold uppercase tracking-[0.09em] text-ink-muted">Checklist</div>
                             {% for item in checklist_items %}
+                            {% if solo_lectura %}
+                            <div class="overflow-hidden rounded-lg border {% if item.checked == True %}border-ok-border bg-ok-bg{% elif item.checked == False %}border-fail-border bg-fail-bg{% else %}border-surface-border bg-[#fafcff]{% endif %}">
+                                <div class="flex items-center gap-3 px-4 py-3">
+                                    <span class="flex-1 text-[15px] font-medium text-ink">{{ item.label }}</span>
+                                    {% if item.checked == True %}
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-white px-2.5 py-0.5 text-xs font-medium text-ok">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Cumplió
+                                        </span>
+                                    {% elif item.checked == False %}
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-white px-2.5 py-0.5 text-xs font-medium text-fail">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Falló
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-white px-2.5 py-0.5 text-xs font-medium text-neutral">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Sin registrar
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                {% if item.checked == False %}
+                                <div class="px-4 pb-3 text-[13px] {% if item.observacion %}text-ink-secondary{% else %}text-ink-muted italic{% endif %}">
+                                    {{ item.observacion|default:"Sin observación." }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
                             <div
                                 :class="{
                                     'req-pendiente': checklist[{{ item.index }}].pendienteConfirmar,
@@ -350,6 +381,7 @@
                                 >
                                 <input type="hidden" name="obs_{{ item.index }}" :value="checklist[{{ item.index }}].obs">
                             </div>
+                            {% endif %}
                             {% endfor %}
                         </section>
                     {% else %}
@@ -358,6 +390,19 @@
                         </div>
                     {% endif %}
 
+                    {% if solo_lectura %}
+                    <div class="flex items-center justify-between rounded-lg border-[1.5px] border-surface-border bg-[#f8fafc] p-4">
+                        <span class="text-[15px] font-semibold text-ink">Recurso operativo</span>
+                        {% if estado_operativo_form %}
+                            {% include 'components/badge_estado.html' with estado='operativo' %}
+                        {% else %}
+                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>
+                                No operativo
+                            </span>
+                        {% endif %}
+                    </div>
+                    {% else %}
                     <div
                         :class="{
                             'border-warn-border bg-warn-bg': hayFallo,
@@ -403,6 +448,7 @@
                             Este recurso no tiene requisitos. Puedes marcarlo directamente como operativo.
                         </p>
                     </div>
+                    {% endif %}
 
                     {% if ficha %}
                         <p class="text-xs text-ink-muted">
@@ -425,6 +471,7 @@
                         </p>
                     {% endif %}
 
+                    {% if not solo_lectura %}
                     <button
                         type="submit"
                         :disabled="guardando"
@@ -433,11 +480,17 @@
                         <span x-show="!guardando">{% if tiene_ficha %}Guardar cambios{% else %}Guardar ficha{% endif %}</span>
                         <span x-show="guardando" x-cloak>Guardando…</span>
                     </button>
+                    {% endif %}
+                {% if solo_lectura %}
+                </div>
+                {% else %}
                 </form>
+                {% endif %}
             </div>
         </section>
     </main>
 
+    {% if not solo_lectura %}
     <div
         x-show="modalCarga"
         x-cloak
@@ -528,5 +581,6 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
