@@ -8,6 +8,6 @@ if (el) {
   const { slug, fallosUrl, fallosResueltosUrl } = el.dataset
   mount(FailureFeed, {
     target: el,
-    props: { slug, fallosUrl, fallosResueltosUrl, windowDays: DIAS },
+    props: { slug, fallosUrl, fallosResueltosUrl, windowDays: DIAS, detallado: true },
   })
 }

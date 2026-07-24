@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
 
-  let { slug, fallosUrl = null, fallosResueltosUrl = null, windowDays = 3 } = $props()
+  let { slug, fallosUrl = null, fallosResueltosUrl = null, windowDays = 3, detallado = false } = $props()
 
   const PER_PAGE = 5
 
@@ -9,6 +9,7 @@
   let error = $state(null)
   let events = $state([])
   let page = $state(1)
+  let expandedIds = $state(new Set())
 
   onMount(async () => {
     try {
@@ -41,6 +42,12 @@
     if (!base) return null
     const sep = base.includes('?') ? '&' : '?'
     return `${base}${sep}matriz_id=${ev.id}`
+  }
+
+  function toggleExpand(id) {
+    const next = new Set(expandedIds)
+    next.has(id) ? next.delete(id) : next.add(id)
+    expandedIds = next
   }
 
   function naveLine(ev) {
@@ -93,12 +100,17 @@
     <ul class="divide-y divide-surface-border">
       {#each paged as ev (ev.id)}
         {@const url = eventoUrl(ev)}
-        <li class="relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-bg">
+        <li
+          class="relative flex gap-3 px-4 py-3 transition-colors hover:bg-neutral-bg"
+          class:items-center={!detallado}
+          class:items-start={detallado}
+        >
           {#if url}
             <a href={url} class="absolute inset-0" aria-label="Ver {ev.item} en {ev.nave}"></a>
           {/if}
           <span
             class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+            class:mt-0.5={detallado}
             class:bg-fail-bg={ev.tipo === 'nuevo'}
             class:bg-ok-bg={ev.tipo === 'resuelto'}
           >
@@ -118,6 +130,30 @@
           <div class="min-w-0 flex-1">
             <p class="truncate text-[13px] font-bold leading-snug text-ink" title={ev.item}>{ev.item}</p>
             <p class="truncate text-[13px] leading-snug text-ink-secondary" title={naveLine(ev)}>{naveLine(ev)}</p>
+
+            {#if detallado && ev.tipo === 'nuevo' && ev.requisitosFallidos.length > 0}
+              {@const expanded = expandedIds.has(ev.id)}
+              {@const extra = ev.requisitosFallidos.length - 1}
+              {@const visibles = expanded ? ev.requisitosFallidos : ev.requisitosFallidos.slice(0, 1)}
+              <div class="mt-1.5 space-y-1.5">
+                {#each visibles as r}
+                  <div class="max-w-full rounded-[4px] border border-fail-border bg-fail-bg/40 px-2 py-1.5">
+                    <p class="truncate text-[12px] font-semibold text-ink" title={r.requisito}>{r.requisito}</p>
+                    <p class="truncate text-[11px] text-ink-secondary" title={r.observacion}>{r.observacion}</p>
+                  </div>
+                {/each}
+              </div>
+              {#if extra > 0}
+                <button
+                  type="button"
+                  onclick={() => toggleExpand(ev.id)}
+                  class="relative z-10 mt-1 inline-flex items-center rounded-full border border-surface-border bg-white px-2 py-0.5 text-[10px] font-semibold text-ink-secondary transition hover:border-brand hover:text-brand"
+                >
+                  {expanded ? 'Ver menos' : `+ ${extra} falla${extra === 1 ? '' : 's'} adicional${extra === 1 ? '' : 'es'}`}
+                </button>
+              {/if}
+            {/if}
+
             <p class="mt-1 truncate font-mono text-[11px] text-ink-muted">{relativeTime(ev.timestamp)} · {ev.usuario}</p>
           </div>
         </li>
