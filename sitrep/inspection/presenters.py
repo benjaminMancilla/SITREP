@@ -383,6 +383,7 @@ def construir_hitos_inminentes(naviera, naves=None):
         cobertura = 1.0 if total_recursos == 0 else min(1.0, fichas_ok / total_recursos)
         hitos.append({
             "id": periodo.id,
+            "naveId": periodo.nave_id,
             "nave": naves_por_id[periodo.nave_id].nombre,
             "periodicidad": periodo.periodicidad.nombre,
             "avance": round(cobertura * 100),
