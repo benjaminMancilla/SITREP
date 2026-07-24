@@ -4,11 +4,14 @@
   let { slug, fallosUrl = null, fallosResueltosUrl = null, windowDays = 3, detallado = false } = $props()
 
   const PER_PAGE = 5
+  const LAZY_CHUNK = 50
+  const PAGE_SIZE = 200 // ponytail: only the detallado (Feed page) variant lazy-loads/paginates this way, dashboard keeps PER_PAGE
 
   let loading = $state(true)
   let error = $state(null)
   let events = $state([])
   let page = $state(1)
+  let visibleCount = $state(LAZY_CHUNK)
   let expandedIds = $state(new Set())
 
   onMount(async () => {
@@ -25,8 +28,19 @@
     }
   })
 
-  let totalPages = $derived(Math.max(1, Math.ceil(events.length / PER_PAGE)))
-  let paged = $derived(events.slice((page - 1) * PER_PAGE, page * PER_PAGE))
+  let pageSize = $derived(detallado ? PAGE_SIZE : PER_PAGE)
+  let totalPages = $derived(Math.max(1, Math.ceil(events.length / pageSize)))
+  let pageItems = $derived(events.slice((page - 1) * pageSize, page * pageSize))
+  let paged = $derived(detallado ? pageItems.slice(0, visibleCount) : pageItems)
+
+  $effect(() => {
+    page
+    visibleCount = LAZY_CHUNK
+  })
+
+  function cargarMas() {
+    visibleCount = Math.min(visibleCount + LAZY_CHUNK, pageItems.length)
+  }
 
   function relativeTime(ts) {
     const diffMin = Math.round((Date.now() - ts) / 60000)
@@ -160,9 +174,21 @@
       {/each}
     </ul>
 
+    {#if detallado && visibleCount < pageItems.length}
+      <div class="border-t border-surface-border px-4 py-2.5 text-center">
+        <button
+          type="button"
+          onclick={cargarMas}
+          class="inline-flex items-center rounded-md border border-surface-border bg-white px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-brand hover:text-brand"
+        >
+          Cargar más ({pageItems.length - visibleCount} restantes)
+        </button>
+      </div>
+    {/if}
+
     {#if totalPages > 1}
       <div class="flex items-center justify-between border-t border-surface-border bg-neutral-bg px-4 py-2.5">
-        <p class="text-[11px] text-ink-muted">{paged.length} de {events.length} eventos</p>
+        <p class="text-[11px] text-ink-muted">{paged.length} de {detallado ? pageItems.length : events.length} eventos</p>
         <div class="flex items-center gap-1">
           <button
             onclick={() => page = Math.max(1, page - 1)}
