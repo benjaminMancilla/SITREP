@@ -24,13 +24,21 @@
     return cols
   })
 
-  const monthLabels = $derived.by(() =>
-    weeks.map((week, i) => {
+  const MONTH_LABEL_MIN_GAP = 3 // columnas mínimas entre etiquetas, evita solapes tipo "julago"
+
+  const monthLabels = $derived.by(() => {
+    const labels = new Array(weeks.length).fill('')
+    let ultimoIndex = -Infinity
+    weeks.forEach((week, i) => {
       const mes = new Date(week[0].date).getMonth()
       const mesPrevio = i > 0 ? new Date(weeks[i - 1][0].date).getMonth() : null
-      return mes !== mesPrevio ? MESES_LABEL[mes] : ''
+      if (mes !== mesPrevio && i - ultimoIndex >= MONTH_LABEL_MIN_GAP) {
+        labels[i] = MESES_LABEL[mes]
+        ultimoIndex = i
+      }
     })
-  )
+    return labels
+  })
 
   function showTooltip(e, day) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -56,36 +64,38 @@
   </div>
 
   <div class="overflow-x-auto px-4 py-4">
-    <div class="inline-flex gap-1">
-      <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
-        {#each DIAS_LABEL as label}
-          <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
-        {/each}
-      </div>
-      <div>
-        <div class="mb-1 flex gap-0.5">
-          {#each monthLabels as label}
-            <div class="w-3.5 shrink-0 whitespace-nowrap font-mono text-[9px] text-ink-muted">{label}</div>
+    <div class="flex justify-center">
+      <div class="mx-auto inline-flex gap-1">
+        <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
+          {#each DIAS_LABEL as label}
+            <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
           {/each}
         </div>
-        <div class="flex gap-0.5">
-          {#each weeks as week}
-            <div class="flex flex-col gap-0.5">
-              {#each week as d}
-                <div
-                  class="h-3.5 w-3.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
-                  style:background-color={d.count > 0 ? intensity(d.count) : null}
-                  role="button"
-                  tabindex="0"
-                  aria-label={`${fmtDDMM(d.date)}: ${d.count} ficha${d.count === 1 ? '' : 's'}`}
-                  onmouseenter={(e) => showTooltip(e, d)}
-                  onmouseleave={hideTooltip}
-                  onfocus={(e) => showTooltip(e, d)}
-                  onblur={hideTooltip}
-                ></div>
-              {/each}
-            </div>
-          {/each}
+        <div>
+          <div class="mb-1 flex gap-0.5">
+            {#each monthLabels as label}
+              <div class="w-3.5 shrink-0 whitespace-nowrap font-mono text-[9px] text-ink-muted">{label}</div>
+            {/each}
+          </div>
+          <div class="flex gap-0.5">
+            {#each weeks as week}
+              <div class="flex flex-col gap-0.5">
+                {#each week as d}
+                  <div
+                    class="h-3.5 w-3.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
+                    style:background-color={d.count > 0 ? intensity(d.count) : null}
+                    role="button"
+                    tabindex="0"
+                    aria-label={`${fmtDDMM(d.date)}: ${d.count} ficha${d.count === 1 ? '' : 's'}`}
+                    onmouseenter={(e) => showTooltip(e, d)}
+                    onmouseleave={hideTooltip}
+                    onfocus={(e) => showTooltip(e, d)}
+                    onblur={hideTooltip}
+                  ></div>
+                {/each}
+              </div>
+            {/each}
+          </div>
         </div>
       </div>
     </div>
