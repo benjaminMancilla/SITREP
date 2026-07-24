@@ -199,6 +199,24 @@ def dashboard_tierra(request, slug):
     )
 
 
+def _fallos_nuevos_total_sin_filtro(naviera, naves_scope):
+    """Cuenta de fallos nuevos para el badge de la tab "Nuevos".
+
+    Usado por las 3 vistas de fallos_tabs (activos/resueltos/feed) para que
+    el contador se muestre igual sin importar en cuál estén paradas.
+    """
+    qs = MatrizNaveRecurso.objects.filter(
+        nave__naviera=naviera,
+        nave__is_active=True,
+        es_visible=True,
+        ultimo_estado_operativo=False,
+        es_fallo_nuevo=True,
+    )
+    if naves_scope is not None:
+        qs = qs.filter(nave__in=naves_scope)
+    return qs.count()
+
+
 def _aplicar_filtros_fallos(request, qs):
     """Aplica los filtros GET comunes a fallos_activos/fallos_resueltos.
 
@@ -369,7 +387,7 @@ def fallos_activos(request, slug):
 
     total_fallos = fallos_base.count()
     naves_afectadas = fallos_base.values("nave").distinct().count()
-    fallos_nuevos_total_sin_filtro = fallos_base.filter(es_fallo_nuevo=True).count()
+    fallos_nuevos_total_sin_filtro = _fallos_nuevos_total_sin_filtro(naviera, naves_scope)
 
     return render(
         request,
@@ -405,13 +423,14 @@ def fallos_activos(request, slug):
 @requiere_tierra
 def fallos_resueltos(request, slug):
     naviera = request.naviera
+    naves_scope = FleetQueryService.get_naves_scope(request.user, naviera)
     filtros_base = MatrizNaveRecurso.objects.filter(
         nave__naviera=naviera,
         nave__is_active=True,
         es_visible=True,
     )
-    if request.user.rol == "capitan":
-        filtros_base = filtros_base.filter(nave__in=FleetQueryService.get_naves_capitan(request.user, naviera))
+    if naves_scope is not None:
+        filtros_base = filtros_base.filter(nave__in=naves_scope)
     resueltos_base = filtros_base.filter(ultimo_estado_operativo=True, ultimo_estado_operativo_anterior=False)
     qs = (
         resueltos_base.select_related(
@@ -489,8 +508,8 @@ def fallos_resueltos(request, slug):
         grupos = [{"label": None, "items": resueltos}]
 
     naves = Nave.objects.filter(naviera=naviera, is_active=True).order_by("nombre")
-    if request.user.rol == "capitan":
-        naves = naves.filter(id__in=FleetQueryService.get_naves_capitan(request.user, naviera))
+    if naves_scope is not None:
+        naves = naves.filter(id__in=naves_scope)
     areas = Area.objects.filter(
         id__in=filtros_base.exclude(recurso__area_id__isnull=True).values_list("recurso__area_id", flat=True)
     ).order_by(F("orden").asc(nulls_last=True), "nombre")
@@ -500,6 +519,7 @@ def fallos_resueltos(request, slug):
 
     total_resueltos = resueltos_base.count()
     naves_afectadas = resueltos_base.values("nave").distinct().count()
+    fallos_nuevos_total_sin_filtro = _fallos_nuevos_total_sin_filtro(naviera, naves_scope)
 
     return render(
         request,
@@ -513,6 +533,7 @@ def fallos_resueltos(request, slug):
             "naves": naves,
             "areas": areas,
             "periodicidades": periodicidades,
+            "fallos_nuevos_total_sin_filtro": fallos_nuevos_total_sin_filtro,
             "nave_id": nave_id,
             "area_id": area_id,
             "periodicidad_id": periodicidad_id,
@@ -531,7 +552,14 @@ def fallos_resueltos(request, slug):
 @tenant_member_required
 @requiere_tierra
 def fallos_feed(request, slug):
-    return render(request, "inspection/tierra/fallos_feed.html", {"slug": slug})
+    naviera = request.naviera
+    naves_scope = FleetQueryService.get_naves_scope(request.user, naviera)
+    fallos_nuevos_total_sin_filtro = _fallos_nuevos_total_sin_filtro(naviera, naves_scope)
+    return render(
+        request,
+        "inspection/tierra/fallos_feed.html",
+        {"slug": slug, "fallos_nuevos_total_sin_filtro": fallos_nuevos_total_sin_filtro},
+    )
 
 
 @tenant_member_required

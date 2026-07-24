@@ -1,5 +1,8 @@
 {% comment %}
 Variables: slug, tab_activo — 'activos' | 'nuevos' | 'resueltos' | 'feed'
+fallos_nuevos_total_sin_filtro debe venir en el contexto de las 3 vistas
+(fallos_activos, fallos_resueltos, fallos_feed) para que el badge de
+"Nuevos" no desaparezca según en qué tab se esté parado.
 {% endcomment %}
 <div class="mb-4 flex items-center gap-1 border-b border-surface-border">
     <a
