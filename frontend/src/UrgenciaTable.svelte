@@ -64,30 +64,30 @@
     periodoDetalleUrlTemplate.replace('__NAVE_ID__', String(naveId)).replace('__PERIODO_ID__', String(periodoId))
 </script>
 
-<!-- Título + leyenda -->
-<div class="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-  <div>
-    <h2 class="text-sm font-bold text-navy">Urgencia por Periodicidad</h2>
-    <p class="mt-0.5 text-[11px] text-ink-muted">
-      Cobertura de fichas en períodos activos · actualizado ahora
-    </p>
+<div class="overflow-hidden rounded-lg border border-surface-border bg-white">
+  <!-- Título + leyenda -->
+  <div class="flex flex-col gap-3 border-b border-surface-border px-4 py-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <h2 class="text-sm font-bold text-navy">Urgencia por Periodicidad</h2>
+      <p class="mt-0.5 text-[11px] text-ink-muted">
+        Cobertura de fichas en períodos activos · actualizado ahora
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 lg:gap-4">
+      <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+        <span class="inline-block h-2 w-2 rounded-sm" style="background:#33c75a"></span>Baja &lt;35%
+      </span>
+      <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+        <span class="inline-block h-2 w-2 rounded-sm" style="background:#feb800"></span>Media 35–65%
+      </span>
+      <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+        <span class="inline-block h-2 w-2 rounded-sm" style="background:#fe3a34"></span>Alta &gt;65%
+      </span>
+    </div>
   </div>
-  <div class="flex flex-wrap items-center gap-3 lg:gap-4">
-    <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
-      <span class="inline-block h-2 w-2 rounded-sm" style="background:#33c75a"></span>Baja &lt;35%
-    </span>
-    <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
-      <span class="inline-block h-2 w-2 rounded-sm" style="background:#feb800"></span>Media 35–65%
-    </span>
-    <span class="flex items-center gap-1.5 text-[11px] text-ink-muted">
-      <span class="inline-block h-2 w-2 rounded-sm" style="background:#fe3a34"></span>Alta &gt;65%
-    </span>
-  </div>
-</div>
 
-<!-- Skeleton -->
-{#if loading}
-  <div class="overflow-hidden rounded-lg border border-surface-border bg-white">
+  <!-- Skeleton -->
+  {#if loading}
     <div class="overflow-x-auto scrollbar-none">
       <table class="min-w-full" style="border-collapse: separate; border-spacing: 0;">
         <thead class="bg-neutral-bg">
@@ -122,17 +122,15 @@
         </tbody>
       </table>
     </div>
-  </div>
 
-<!-- Error -->
-{:else if error}
-  <div class="rounded-lg border border-fail-border bg-fail-bg px-4 py-3 text-[13px] text-fail">
-    No se pudieron cargar los datos de urgencia: {error}
-  </div>
+  <!-- Error -->
+  {:else if error}
+    <div class="m-4 rounded-lg border border-fail-border bg-fail-bg px-4 py-3 text-[13px] text-fail">
+      No se pudieron cargar los datos de urgencia: {error}
+    </div>
 
-<!-- Tabla heatmap -->
-{:else}
-  <div class="overflow-hidden rounded-lg border border-surface-border bg-white">
+  <!-- Tabla heatmap -->
+  {:else}
     <div class="overflow-x-auto scrollbar-none">
       <table class="min-w-full text-sm" style="border-collapse: separate; border-spacing: 0;">
         <thead class="bg-neutral-bg">
@@ -272,8 +270,8 @@
         </div>
       </div>
     </div>
-  </div>
-{/if}
+  {/if}
+</div>
 
 <!-- Tooltip fixed: escapa del overflow container usando position fixed -->
 {#if tooltip}
