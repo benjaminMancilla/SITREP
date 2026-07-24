@@ -1,0 +1,43 @@
+{# ── Formulario de contacto (compartido: homepage y páginas informativas) ─────── #}
+<form id="contacto-form" method="post" action="{% url 'contacto_submit' %}" class="mt-5 space-y-4">
+  {% csrf_token %}
+  <div>
+    <label for="{{ contacto_form.nombre.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Nombre</label>
+    {{ contacto_form.nombre }}
+  </div>
+  <div>
+    <label for="{{ contacto_form.email.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Email</label>
+    {{ contacto_form.email }}
+  </div>
+  <div>
+    <label for="{{ contacto_form.naviera.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Naviera</label>
+    {{ contacto_form.naviera }}
+  </div>
+  <div>
+    <label for="{{ contacto_form.mensaje.id_for_label }}" class="text-[11px] font-semibold uppercase tracking-[0.10em] text-ink-secondary">Mensaje</label>
+    {{ contacto_form.mensaje }}
+  </div>
+  <div class="absolute left-[-9999px]" aria-hidden="true">
+    <label for="{{ contacto_form.pagina_web.id_for_label }}">Sitio web</label>
+    {{ contacto_form.pagina_web }}
+  </div>
+  <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
+  <button
+    type="submit"
+    id="contacto-submit"
+    class="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+  >
+    <svg id="contacto-spinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+    <span id="contacto-submit-label">Enviar</span>
+  </button>
+</form>
+<script>
+  document.getElementById('contacto-form').addEventListener('submit', function () {
+    document.getElementById('contacto-submit').disabled = true;
+    document.getElementById('contacto-spinner').classList.remove('hidden');
+    document.getElementById('contacto-submit-label').textContent = 'Enviando…';
+  });
+</script>
