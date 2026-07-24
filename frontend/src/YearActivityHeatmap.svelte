@@ -85,8 +85,8 @@
 
   {#if loading}
     <div class="overflow-x-auto px-4 py-4">
-      <div class="flex justify-center">
-        <div class="mx-auto inline-flex gap-1">
+      <div class="flex justify-[safe_center]">
+        <div class="inline-flex gap-1">
           <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
             {#each DIAS_LABEL as label}
               <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
@@ -114,8 +114,8 @@
     </div>
   {:else}
     <div class="overflow-x-auto px-4 py-4">
-      <div class="flex justify-center">
-        <div class="mx-auto inline-flex gap-1">
+      <div class="flex justify-[safe_center]">
+        <div class="inline-flex gap-1">
           <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
             {#each DIAS_LABEL as label}
               <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>

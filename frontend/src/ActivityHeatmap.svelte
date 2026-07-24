@@ -60,7 +60,7 @@
   </div>
 
   {#if loading}
-    <div class="overflow-x-auto scrollbar-none px-4 py-4">
+    <div class="overflow-x-auto px-4 py-4">
       <div class="min-w-fit space-y-1">
         <div class="flex items-center gap-3">
           <div class="w-32 shrink-0"></div>
@@ -100,7 +100,7 @@
   {:else if naves.length === 0}
     <div class="px-4 py-8 text-center text-[13px] text-ink-muted">No se encontraron naves.</div>
   {:else}
-    <div class="overflow-x-auto scrollbar-none px-4 py-4">
+    <div class="overflow-x-auto px-4 py-4">
       <div class="min-w-fit space-y-1">
         <!-- Monday date markers, each centered over its week's first column -->
         <div class="flex items-center gap-3">

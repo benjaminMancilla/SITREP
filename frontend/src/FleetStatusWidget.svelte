@@ -13,7 +13,7 @@
   } = $props()
 
   const PER_PAGE = 8
-  const GRID_COLS = 'grid-cols-[minmax(0,1fr)_92px_92px_100px_140px]'
+  const GRID_COLS = 'grid-cols-[minmax(0,1fr)_60px_60px_72px] md:grid-cols-[minmax(0,1fr)_92px_92px_100px_140px]'
   const SKELETON_ROWS = [0, 1, 2, 3]
 
   let loading = $state(true)
@@ -98,7 +98,7 @@
       <span class="text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Fallas</span>
       <span class="text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Nuevos</span>
       <span class="text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Resueltos</span>
-      <span class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Actualización</span>
+      <span class="hidden md:block text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Actualización</span>
     </div>
     <ul class="divide-y divide-surface-border">
       {#each SKELETON_ROWS as ni}
@@ -110,7 +110,7 @@
           <div class="h-6 w-14 animate-pulse justify-self-center rounded bg-surface-border"></div>
           <div class="h-6 w-14 animate-pulse justify-self-center rounded bg-surface-border"></div>
           <div class="h-6 w-16 animate-pulse justify-self-center rounded bg-surface-border"></div>
-          <div class="h-3 w-24 animate-pulse rounded bg-surface-border"></div>
+          <div class="hidden md:block h-3 w-24 animate-pulse rounded bg-surface-border"></div>
         </li>
       {/each}
     </ul>
@@ -127,7 +127,7 @@
       <span class="text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Fallas</span>
       <span class="text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Nuevos</span>
       <span class="text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Resueltos</span>
-      <span class="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Actualización</span>
+      <span class="hidden md:block text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted">Actualización</span>
     </div>
 
     <ul class="divide-y divide-surface-border">
@@ -187,7 +187,7 @@
             {#if nave.resoluciones > 0}<IconCheck />{/if}{nave.resoluciones}
           </a>
 
-          <span class="text-[13px] text-ink-secondary">{formatFecha(nave.ultimaFichaEn)}</span>
+          <span class="hidden md:block text-[13px] text-ink-secondary">{formatFecha(nave.ultimaFichaEn)}</span>
         </li>
       {/each}
     </ul>

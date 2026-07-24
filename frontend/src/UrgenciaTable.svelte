@@ -88,11 +88,11 @@
 
   <!-- Skeleton -->
   {#if loading}
-    <div class="overflow-x-auto scrollbar-none">
+    <div class="overflow-x-auto">
       <table class="min-w-full" style="border-collapse: separate; border-spacing: 0;">
         <thead class="bg-neutral-bg">
           <tr>
-            <th class="sticky left-0 z-10 bg-neutral-bg px-4 py-2.5 border-b border-r border-surface-border w-44">
+            <th class="sticky left-0 z-10 bg-neutral-bg px-4 py-2.5 border-b border-r border-surface-border w-40">
               <div class="h-3 w-16 animate-pulse rounded bg-surface-border"></div>
             </th>
             {#each [1,2,3] as _}
@@ -131,11 +131,11 @@
 
   <!-- Tabla heatmap -->
   {:else}
-    <div class="overflow-x-auto scrollbar-none">
+    <div class="overflow-x-auto">
       <table class="min-w-full text-sm" style="border-collapse: separate; border-spacing: 0;">
         <thead class="bg-neutral-bg">
           <tr>
-            <th class="sticky left-0 z-10 bg-neutral-bg px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted border-b border-surface-border">
+            <th class="sticky left-0 z-10 bg-neutral-bg px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-muted border-b border-surface-border w-40">
               Nave
             </th>
             {#each columns as col (col.key)}
@@ -156,8 +156,8 @@
                 onmouseleave={() => hoveredRow = null}
               >
                 <a href={naveUrl(nave.id)} class="block py-3 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                  <p class="font-semibold text-navy text-[13px] leading-tight transition-colors hover:text-brand">{nave.nombre}</p>
-                  <p class="font-mono text-[10px] text-ink-muted mt-0.5">{nave.matricula}</p>
+                  <p class="truncate font-semibold text-navy text-[13px] leading-tight transition-colors hover:text-brand">{nave.nombre}</p>
+                  <p class="truncate font-mono text-[10px] text-ink-muted mt-0.5">{nave.matricula}</p>
                 </a>
               </td>
 
