@@ -68,7 +68,7 @@
   <!-- Título + leyenda -->
   <div class="flex flex-col gap-3 border-b border-surface-border px-4 py-3 lg:flex-row lg:items-end lg:justify-between">
     <div>
-      <h2 class="text-sm font-bold text-navy">Urgencia por Periodicidad</h2>
+      <h2 class="text-[15px] font-bold text-navy">Urgencia por Periodicidad</h2>
       <p class="mt-0.5 text-[11px] text-ink-muted">
         Cobertura de fichas en períodos activos · actualizado ahora
       </p>
