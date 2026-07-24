@@ -1,0 +1,154 @@
+{% extends 'legal/_base.html' %}
+
+{% block title %}Precios — SITREP{% endblock %}
+
+{% block nav_precios %}bg-navy/5 font-semibold text-navy{% endblock %}
+
+{% block doc_version %}1.0{% endblock %}
+{% block doc_date %}24 de julio de 2026{% endblock %}
+{% block doc_title %}Precios{% endblock %}
+{% block doc_intro %}
+<p class="mt-3 text-[14px] leading-6 text-ink-secondary">
+  Estructura de tarifas por tramo de flota. Valores netos en pesos chilenos, facturados mensualmente por nave
+  activa conforme a la cláusula 11 de los <a href="{% url 'legal_terminos' %}" class="text-brand hover:text-brand-dark">Términos y condiciones</a>.
+</p>
+<a
+  href="#contacto"
+  class="mt-5 inline-flex items-center rounded-xl bg-navy px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-navy-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light focus-visible:ring-offset-2"
+>
+  Solicitar integración
+</a>
+{% endblock %}
+{% block doc_contact_email %}contacto@sitrep.cl{% endblock %}
+{% block doc_contact_email_display %}contacto@sitrep.cl{% endblock %}
+
+{% block legal_content %}
+
+<h2>Tarifa por tramo de flota</h2>
+<p>
+  El precio por nave disminuye a medida que crece la flota integrada. El tramo se determina por el número total de
+  Naves Activas del Cliente, según se define en la cláusula 11.2 de los Términos y condiciones.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Tramo de flota</th>
+      <th>Precio por nave</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Hasta 5 naves</td><td>$250.000 CLP</td></tr>
+    <tr><td>Hasta 10 naves</td><td>$200.000 CLP</td></tr>
+    <tr><td>Desde 11 naves</td><td>$150.000 CLP</td></tr>
+  </tbody>
+</table>
+<p><strong>* Valores netos.</strong> No incluyen IVA, el que se agrega conforme a la ley.</p>
+<p>
+  <strong>Nota:</strong> el precio unitario del tramo aplica para la totalidad de las naves suscritas. Al cambiar de
+  tramo, la nueva tarifa se aplica de forma retroactiva a toda la flota integrada, a partir del ciclo de facturación
+  siguiente y con prorrateo por días de uso.
+</p>
+
+<h2>Qué incluye</h2>
+<ul>
+  <li><strong>Integración y configuración:</strong> creación de la cuenta corporativa y carga de la flota inicial,
+    sin costo adicional.</li>
+  <li><strong>Usuarios ilimitados:</strong> acceso para toda la tripulación y el personal de tierra, sin cobro por
+    asiento.</li>
+  <li><strong>Capacitación continua:</strong> sesiones de inducción en vivo y soporte técnico directo para
+    administradores.</li>
+</ul>
+
+<h2>Condiciones comerciales</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Condición</th>
+      <th>Detalle</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Método de pago</td><td>Exclusivamente vía transferencia bancaria, contra recepción de factura electrónica.</td></tr>
+    <tr><td>Ciclo de facturación</td><td>Mensual.</td></tr>
+    <tr><td>Plazo de pago</td><td>30 días corridos desde la emisión del DTE.</td></tr>
+  </tbody>
+</table>
+<p>
+  Estas condiciones se detallan en la cláusula 11 (Precio y facturación) de los
+  <a href="{% url 'legal_terminos' %}">Términos y condiciones</a>.
+</p>
+
+<h2>Preguntas frecuentes</h2>
+
+<details>
+  <summary>¿Qué ocurre si integro una nueva nave a mitad de mes?</summary>
+  <p>
+    La nave se factura con prorrateo por los días de uso restantes del ciclo. Si su incorporación cambia el tramo de
+    la flota, la nueva tarifa por nave se aplica a toda la flota integrada desde el ciclo de facturación siguiente,
+    conforme a la cláusula 11.3 de los Términos y condiciones.
+  </p>
+</details>
+<details>
+  <summary>¿Existen plazos forzosos o contratos de amarre?</summary>
+  <p>
+    No. El contrato rige por ciclos mensuales sucesivos y se renueva automáticamente, sin plazo mínimo de
+    permanencia. Cualquiera de las partes puede darlo por terminado con un aviso escrito de al menos 30 días
+    corridos de anticipación (cláusula 16.1).
+  </p>
+</details>
+<details>
+  <summary>¿Cómo informo la baja o suspensión de una nave?</summary>
+  <p>
+    Desde la Plataforma, con un usuario de rol administrador. La nave deja de contar como Nave Activa a
+    partir del primer día hábil del ciclo de facturación siguiente a la baja (cláusula 11.2), lo que puede ajustar
+    el tramo tarifario de la flota restante.
+  </p>
+</details>
+<details>
+  <summary>¿Qué pasa cuando suspendo una nave?</summary>
+  <p>
+    La nave se marca como inactiva ("dada de baja" según los T&amp;C) en el sistema. El acceso de los usuarios a la
+    información de esa nave se interrumpe inmediatamente y la facturación se prorratea hasta el día de la
+    suspensión efectiva. Los datos históricos recopilados (fichas de registro) se conservan de forma segura
+    conforme a la Matriz de Retención del DPA (Anexo B.1), generalmente por 5 años, permitiendo su consulta pero
+    no la edición ni creación de nuevos registros. Si esta baja implica subir al tramo de precio superior (ej:
+    bajar de 6 a 5 naves, aumentando el costo unitario por nave), la nueva tarifa se aplicará a toda la flota
+    restante a partir del ciclo de facturación siguiente, conforme a la cláusula 11.3 de los T&amp;C.
+  </p>
+</details>
+<details>
+  <summary>¿Hay un mínimo de naves para contratar?</summary>
+  <p>
+    Sí, el mínimo para suscribirse y mantener la cuenta corporativa activa es de 1 nave. El valor mensual se
+    regirá por el tramo tarifario inicial ("Hasta 5 naves"). Si una naviera suspende la totalidad de su flota en
+    la plataforma (quedando con 0 naves activas), la suscripción corporativa se considerará pausada o terminada y
+    se suspenderá el acceso a la cuenta matriz, debiendo reactivarse al menos una nave para retomar el servicio.
+  </p>
+</details>
+
+<h2>Privacidad y cumplimiento</h2>
+<p>
+  SITREP opera bajo estrictos protocolos de privacidad, cumpliendo con la Ley N° 19.628 sobre protección de la vida
+  privada. Consulta nuestros <a href="{% url 'legal_terminos' %}">Términos y condiciones</a> y nuestro
+  <a href="{% url 'legal_dpa' %}">Acuerdo de Procesamiento de Datos (DPA)</a>.
+</p>
+
+{% endblock %}
+
+{% block secondary_form %}
+<div id="contacto" class="mt-6 scroll-mt-20 rounded-2xl border border-surface-border bg-white p-8 sm:p-10">
+  <h2 class="text-[18px] font-bold text-navy">Solicitar integración</h2>
+  <p class="mt-2 text-[14px] leading-6 text-ink-secondary" style="max-width: 60ch">
+    Cuéntanos el tamaño de tu flota y te ayudamos a definir el tramo y la puesta en marcha. También puedes
+    escribirnos directamente a <a href="mailto:contacto@sitrep.cl" class="text-brand hover:text-brand-dark">contacto@sitrep.cl</a>.
+  </p>
+
+  {% if messages %}
+    {% for message in messages %}
+      <p class="mt-4 rounded-lg border px-3 py-2 text-[13px] {% if message.tags == 'success' %}border-ok-border bg-ok-bg text-ok{% else %}border-fail-border bg-fail-bg text-fail{% endif %}">{{ message }}</p>
+    {% endfor %}
+  {% endif %}
+
+  {% include "partials/contacto_form.html" %}
+</div>
+{% endblock %}

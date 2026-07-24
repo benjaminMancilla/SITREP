@@ -79,6 +79,13 @@ def contacto(request):
     return redirect(f"{reverse('homepage')}#contacto")
 
 
+def precios(request):
+    return render(request, "legal/precios.html", {
+        "contacto_form": ContactoForm(),
+        "turnstile_site_key": settings.TURNSTILE_SITE_KEY,
+    })
+
+
 def _legal_page(request, template_name, slug):
     stashed = request.session.pop(ARCO_SESSION_KEY, None)
     arco_form = ArcoForm(QueryDict(stashed)) if stashed else ArcoForm()
