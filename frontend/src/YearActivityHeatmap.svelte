@@ -5,12 +5,10 @@
   const MAX_COUNT = 6
   // Mismos pasos de color que ActivityHeatmap — DESIGN.md blue family, sin hex inventado.
   const STEPS = ['#3b82f6', '#1d4ed8', '#1e40af', '#0f2d4a']
-  const LEGEND = ['#f0f4f8', ...STEPS]
   const DIAS_LABEL = ['Lun', '', 'Mié', '', 'Vie', '', '']
   const MESES_LABEL = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
   function intensity(count) {
-    if (count === 0) return '#f0f4f8'
     const idx = Math.min(STEPS.length - 1, Math.ceil((count / MAX_COUNT) * STEPS.length) - 1)
     return STEPS[Math.max(0, idx)]
   }
@@ -49,7 +47,8 @@
     </div>
     <div class="flex items-center gap-1.5 text-[10px] text-ink-muted">
       <span>Sin actividad</span>
-      {#each LEGEND as c}
+      <span class="h-2.5 w-2.5 rounded-[2px] bg-slate-100"></span>
+      {#each STEPS as c}
         <span class="h-2.5 w-2.5 rounded-[2px]" style:background-color={c}></span>
       {/each}
       <span>Alta</span>
@@ -57,25 +56,25 @@
   </div>
 
   <div class="overflow-x-auto px-4 py-4">
-    <div class="inline-flex gap-1.5">
-      <div class="flex shrink-0 flex-col gap-1 pt-[18px]">
+    <div class="inline-flex gap-1">
+      <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
         {#each DIAS_LABEL as label}
           <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
         {/each}
       </div>
       <div>
-        <div class="mb-1 flex gap-1">
+        <div class="mb-1 flex gap-0.5">
           {#each monthLabels as label}
             <div class="w-3.5 shrink-0 whitespace-nowrap font-mono text-[9px] text-ink-muted">{label}</div>
           {/each}
         </div>
-        <div class="flex gap-1">
+        <div class="flex gap-0.5">
           {#each weeks as week}
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-0.5">
               {#each week as d}
                 <div
-                  class="h-3.5 w-3.5 cursor-default rounded-[2px] ring-1 ring-inset ring-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
-                  style:background-color={intensity(d.count)}
+                  class="h-3.5 w-3.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
+                  style:background-color={d.count > 0 ? intensity(d.count) : null}
                   role="button"
                   tabindex="0"
                   aria-label={`${fmtDDMM(d.date)}: ${d.count} ficha${d.count === 1 ? '' : 's'}`}

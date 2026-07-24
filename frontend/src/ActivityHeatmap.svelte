@@ -5,10 +5,8 @@
   const MAX_COUNT = 15
   // DESIGN.md blue family only — no invented hex. Baseline is Instrument Grey.
   const STEPS = ['#3b82f6', '#1d4ed8', '#1e40af', '#0f2d4a'] // brand-light -> brand -> brand-dark -> navy
-  const LEGEND = ['#f0f4f8', ...STEPS]
 
   function intensity(count) {
-    if (count === 0) return '#f0f4f8'
     const idx = Math.min(STEPS.length - 1, Math.ceil((count / MAX_COUNT) * STEPS.length) - 1)
     return STEPS[Math.max(0, idx)]
   }
@@ -28,12 +26,13 @@
 <div class="rounded-lg border border-surface-border bg-white">
   <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-border px-4 py-3">
     <div>
-      <h2 class="text-[15px] font-bold text-navy">Heatmap de Actividad</h2>
+      <h2 class="text-[15px] font-bold text-navy">Actividad Diaria</h2>
       <p class="mt-0.5 text-[11px] text-ink-muted">Fichas registradas · últimas {weeks} semanas</p>
     </div>
     <div class="flex items-center gap-1.5 text-[10px] text-ink-muted">
       <span>Sin actividad</span>
-      {#each LEGEND as c}
+      <span class="h-2.5 w-2.5 rounded-[2px] bg-slate-100"></span>
+      {#each STEPS as c}
         <span class="h-2.5 w-2.5 rounded-[2px]" style:background-color={c}></span>
       {/each}
       <span>Alta</span>
@@ -44,17 +43,17 @@
     <div class="px-4 py-8 text-center text-[13px] text-ink-muted">No se encontraron naves.</div>
   {:else}
     <div class="overflow-x-auto px-4 py-4">
-      <div class="min-w-fit space-y-1.5">
-        <!-- Monday date markers -->
+      <div class="min-w-fit space-y-1">
+        <!-- Monday date markers, each centered over its week's first column -->
         <div class="flex items-center gap-3">
           <div class="w-32 shrink-0"></div>
-          <div class="flex gap-1.5">
+          <div class="flex gap-0.5">
             {#each Array(weeks) as _, week}
-              <div class="relative flex gap-1">
+              <div class="relative flex gap-0.5">
                 {#each Array(7) as _, day}
                   <div class="h-3.5 w-3.5">
                     {#if day === 0 && naves[0]}
-                      <span class="absolute -top-0.5 left-0 whitespace-nowrap font-mono text-[9px] leading-none text-ink-muted">
+                      <span class="absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] leading-none text-ink-muted">
                         {fmtDDMM(naves[0].days[week * 7].date)}
                       </span>
                     {/if}
@@ -70,13 +69,13 @@
             <div class="w-32 shrink-0">
               <p class="truncate text-[12px] font-medium text-ink">{nave.nombre}</p>
             </div>
-            <div class="flex gap-1.5">
+            <div class="flex gap-0.5">
               {#each Array(weeks) as _, week}
-                <div class="flex gap-1">
+                <div class="flex gap-0.5">
                   {#each nave.days.slice(week * 7, week * 7 + 7) as d}
                     <div
-                      class="h-3.5 w-3.5 cursor-default rounded-[2px] ring-1 ring-inset ring-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
-                      style:background-color={intensity(d.count)}
+                      class="h-3.5 w-3.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
+                      style:background-color={d.count > 0 ? intensity(d.count) : null}
                       role="button"
                       tabindex="0"
                       aria-label={`${fmtDDMM(d.date)}: ${d.count} ficha${d.count === 1 ? '' : 's'}`}
