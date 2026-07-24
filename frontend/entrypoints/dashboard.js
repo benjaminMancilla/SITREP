@@ -35,21 +35,16 @@ if (feedEl) {
 const timelineEl = document.getElementById('svelte-hitos-inminentes')
 if (timelineEl) {
   const { slug, calendarioUrl, periodoDetalleUrlTemplate } = timelineEl.dataset
-  fetch(`/${slug}/api/v1/hitos/inminentes/`)
-    .then((res) => res.json())
-    .then((hitos) => {
-      const mapped = hitos.map((h) => ({ ...h, fecha: new Date(h.fecha).getTime() }))
-      mount(VencimientosTimeline, {
-        target: timelineEl,
-        props: {
-          hitos: mapped,
-          calendarioUrl,
-          periodoDetalleUrlTemplate: periodoDetalleUrlTemplate
-            .replace('987654321', '__NAVE_ID__')
-            .replace('123456789', '__PERIODO_ID__'),
-        },
-      })
-    })
+  mount(VencimientosTimeline, {
+    target: timelineEl,
+    props: {
+      slug,
+      calendarioUrl,
+      periodoDetalleUrlTemplate: periodoDetalleUrlTemplate
+        .replace('987654321', '__NAVE_ID__')
+        .replace('123456789', '__PERIODO_ID__'),
+    },
+  })
 }
 
 const fleetEl = document.getElementById('svelte-fleet-status')

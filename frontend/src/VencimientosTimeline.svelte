@@ -1,8 +1,27 @@
 <script>
-  let { hitos = [], visiblePerGroup = 3, calendarioUrl = null, periodoDetalleUrlTemplate = '' } = $props()
+  import { onMount } from 'svelte'
+
+  let { slug, visiblePerGroup = 3, calendarioUrl = null, periodoDetalleUrlTemplate = '' } = $props()
 
   const DAY = 86400000
   const now = Date.now()
+
+  let loading = $state(true)
+  let error = $state(null)
+  let hitos = $state([])
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`/${slug}/api/v1/hitos/inminentes/`, { credentials: 'same-origin' })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json()
+      hitos = data.map((h) => ({ ...h, fecha: new Date(h.fecha).getTime() }))
+    } catch (e) {
+      error = e.message
+    } finally {
+      loading = false
+    }
+  })
 
   function bucketOf(fecha) {
     const diffDays = Math.round((fecha - now) / DAY)
@@ -66,7 +85,32 @@
     {/if}
   </div>
 
-  {#if hitos.length === 0}
+  {#if loading}
+    <div class="px-4 py-4">
+      <ol>
+        {#each [0, 1, 2] as i}
+          <li class="flex gap-3">
+            <div class="flex w-2 shrink-0 flex-col items-center">
+              <span class="mt-1.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-surface-border"></span>
+              {#if i < 2}
+                <span class="mt-1 w-px flex-1 bg-surface-border"></span>
+              {/if}
+            </div>
+            <div class="min-w-0 flex-1 space-y-1.5 pb-4">
+              <div class="h-3 w-28 animate-pulse rounded bg-surface-border"></div>
+              <div class="h-2.5 w-20 animate-pulse rounded bg-surface-border"></div>
+              <div class="h-2.5 w-36 animate-pulse rounded bg-surface-border"></div>
+            </div>
+          </li>
+        {/each}
+      </ol>
+    </div>
+  {:else if error}
+    <div class="px-4 py-8 text-center">
+      <p class="text-[13px] font-medium text-fail">No se pudieron cargar los hitos</p>
+      <p class="mt-1 text-[11px] text-ink-muted">{error}</p>
+    </div>
+  {:else if hitos.length === 0}
     <div class="px-4 py-8 text-center">
       <p class="text-[13px] font-medium text-ok">Sin vencimientos en los próximos 14 días</p>
     </div>
