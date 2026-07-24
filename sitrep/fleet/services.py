@@ -138,22 +138,33 @@ class FleetQueryService:
     def get_actividad_diaria(naviera, nave_ids=None, dias=42):
         """Conteo de fichas por nave y día, acotado a los últimos `dias` (Monday-
         aligned). Una sola query GROUP BY — nunca carga fichas como objetos, el
-        costo escala con naves x dias, no con el historial completo de la flota."""
+        costo escala con naves x dias, no con el historial completo de la flota.
+
+        Agrupa por `ultima_actividad` (fecha_revision o modificado_en, lo que sea
+        más reciente) y no solo por fecha_revision: una ficha ya creada que se
+        edita (modificar_ficha) no cambia su fecha_revision, así que contar solo
+        por esa columna deja invisibles las ediciones — el mismo criterio que ya
+        usa get_naves_con_estado para ultima_ficha_en."""
         from sitrep.inspection.models import FichaRegistro
 
         hoy = timezone.localdate()
         lunes = hoy - timedelta(days=hoy.weekday())
         inicio = lunes - timedelta(days=dias - 7)
 
-        qs = FichaRegistro.objects.filter(
+        qs = FichaRegistro.objects.annotate(
+            ultima_actividad=Greatest(
+                "fecha_revision",
+                Coalesce("modificado_en", "fecha_revision"),
+            ),
+        ).filter(
             periodo__nave__naviera=naviera,
-            fecha_revision__date__gte=inicio,
+            ultima_actividad__date__gte=inicio,
         )
         if nave_ids is not None:
             qs = qs.filter(periodo__nave_id__in=nave_ids)
 
         filas = (
-            qs.annotate(dia=TruncDate("fecha_revision"))
+            qs.annotate(dia=TruncDate("ultima_actividad"))
             .values("periodo__nave_id", "dia")
             .annotate(count=Count("id"))
         )

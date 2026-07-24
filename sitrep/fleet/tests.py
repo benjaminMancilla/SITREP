@@ -412,6 +412,16 @@ class TestGetActividadDiaria(TenantFixturesMixin, TestCase):
 
         self.assertNotIn(self.nave_a.id, conteos)
 
+    def test_ficha_editada_cuenta_por_fecha_de_modificacion(self):
+        vieja = timezone.now() - timedelta(days=100)
+        ficha = self._crear_ficha(self.nave_a, vieja)
+        hoy = timezone.now()
+        FichaRegistro.objects.filter(id=ficha.id).update(modificado_en=hoy)
+
+        inicio, conteos = FleetQueryService.get_actividad_diaria(self.naviera_a, dias=42)
+
+        self.assertEqual(conteos[self.nave_a.id][hoy.date()], 1)
+
 
 class TestFleetActividadView(TenantFixturesMixin, TestCase):
     def test_scoped_a_naviera(self):
