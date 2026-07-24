@@ -69,15 +69,7 @@ if (fleetEl) {
 const heatmapEl = document.getElementById('svelte-activity-heatmap')
 if (heatmapEl) {
   const { slug } = heatmapEl.dataset
-  fetch(`/${slug}/api/v1/naves/actividad/?semanas=${HEATMAP_WEEKS}`)
-    .then((res) => res.json())
-    .then((naves) => {
-      const mapped = naves.map((n) => ({
-        ...n,
-        days: n.days.map((d) => ({ ...d, date: new Date(d.date).getTime() })),
-      }))
-      mount(ActivityHeatmap, { target: heatmapEl, props: { naves: mapped, weeks: HEATMAP_WEEKS } })
-    })
+  mount(ActivityHeatmap, { target: heatmapEl, props: { slug, weeks: HEATMAP_WEEKS } })
 }
 
 // ponytail: reliability scatter deferred (feat/reliability-fleet, feat/reliability-nave not built yet) —

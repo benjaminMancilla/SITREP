@@ -1,10 +1,30 @@
 <script>
-  let { naves = [], weeks = 6 } = $props()
+  import { onMount } from 'svelte'
+
+  let { slug, weeks = 6 } = $props()
   let tooltip = $state(null)
 
   const MAX_COUNT = 15
   // DESIGN.md blue family only — no invented hex. Baseline is Instrument Grey.
   const STEPS = ['#3b82f6', '#1d4ed8', '#1e40af', '#0f2d4a'] // brand-light -> brand -> brand-dark -> navy
+  const SKELETON_ROWS = [0, 1, 2, 3]
+
+  let loading = $state(true)
+  let error = $state(null)
+  let naves = $state([])
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`/${slug}/api/v1/naves/actividad/?semanas=${weeks}`, { credentials: 'same-origin' })
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json()
+      naves = data.map((n) => ({ ...n, days: n.days.map((d) => ({ ...d, date: new Date(d.date).getTime() })) }))
+    } catch (e) {
+      error = e.message
+    } finally {
+      loading = false
+    }
+  })
 
   function intensity(count) {
     const idx = Math.min(STEPS.length - 1, Math.ceil((count / MAX_COUNT) * STEPS.length) - 1)
@@ -39,7 +59,45 @@
     </div>
   </div>
 
-  {#if naves.length === 0}
+  {#if loading}
+    <div class="overflow-x-auto px-4 py-4">
+      <div class="min-w-fit space-y-1">
+        <div class="flex items-center gap-3">
+          <div class="w-32 shrink-0"></div>
+          <div class="flex gap-0.5">
+            {#each Array(weeks) as _}
+              <div class="flex gap-0.5">
+                {#each Array(7) as _}
+                  <div class="h-3.5 w-3.5"></div>
+                {/each}
+              </div>
+            {/each}
+          </div>
+        </div>
+        {#each SKELETON_ROWS as _}
+          <div class="flex items-center gap-3">
+            <div class="w-32 shrink-0">
+              <div class="h-3 w-20 animate-pulse rounded bg-surface-border"></div>
+            </div>
+            <div class="flex gap-0.5">
+              {#each Array(weeks) as _}
+                <div class="flex gap-0.5">
+                  {#each Array(7) as _}
+                    <div class="h-3.5 w-3.5 animate-pulse rounded-[2px] bg-surface-border"></div>
+                  {/each}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {:else if error}
+    <div class="px-4 py-8 text-center">
+      <p class="text-[13px] font-medium text-fail">No se pudo cargar el heatmap de actividad</p>
+      <p class="mt-1 text-[11px] text-ink-muted">{error}</p>
+    </div>
+  {:else if naves.length === 0}
     <div class="px-4 py-8 text-center text-[13px] text-ink-muted">No se encontraron naves.</div>
   {:else}
     <div class="overflow-x-auto px-4 py-4">
