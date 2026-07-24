@@ -1,4 +1,4 @@
-import VencimientosTimeline from '../src/VencimientosTimeline.svelte'
+import VencimientosCalendario from '../src/VencimientosCalendario.svelte'
 import { mount } from 'svelte'
 
 const el = document.getElementById('svelte-hitos-inminentes')
@@ -8,6 +8,6 @@ if (el) {
     .then((res) => res.json())
     .then((hitos) => {
       const mapped = hitos.map((h) => ({ ...h, fecha: new Date(h.fecha).getTime() }))
-      mount(VencimientosTimeline, { target: el, props: { hitos: mapped } })
+      mount(VencimientosCalendario, { target: el, props: { hitos: mapped } })
     })
 }
