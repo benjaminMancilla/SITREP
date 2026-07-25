@@ -61,29 +61,29 @@
 
   {#if loading}
     <div class="overflow-x-auto px-4 py-4">
-      <div class="min-w-fit space-y-1">
-        <div class="flex items-center gap-3">
-          <div class="w-32 shrink-0"></div>
+      <div class="mx-auto w-fit space-y-1">
+        <div class="flex items-center gap-2">
+          <div class="w-24 shrink-0"></div>
           <div class="flex gap-0.5">
             {#each Array(weeks) as _}
               <div class="flex gap-0.5">
                 {#each Array(7) as _}
-                  <div class="h-3.5 w-3.5"></div>
+                  <div class="h-2.5 w-2.5"></div>
                 {/each}
               </div>
             {/each}
           </div>
         </div>
         {#each SKELETON_ROWS as _}
-          <div class="flex items-center gap-3">
-            <div class="w-32 shrink-0">
-              <div class="h-3 w-20 animate-pulse rounded bg-surface-border"></div>
+          <div class="flex items-center gap-2">
+            <div class="w-24 shrink-0">
+              <div class="h-3 w-16 animate-pulse rounded bg-surface-border"></div>
             </div>
             <div class="flex gap-0.5">
               {#each Array(weeks) as _}
                 <div class="flex gap-0.5">
                   {#each Array(7) as _}
-                    <div class="h-3.5 w-3.5 animate-pulse rounded-[2px] bg-surface-border"></div>
+                    <div class="h-2.5 w-2.5 animate-pulse rounded-[2px] bg-surface-border"></div>
                   {/each}
                 </div>
               {/each}
@@ -101,15 +101,15 @@
     <div class="px-4 py-8 text-center text-[13px] text-ink-muted">No se encontraron naves.</div>
   {:else}
     <div class="overflow-x-auto px-4 py-4">
-      <div class="min-w-fit space-y-1">
+      <div class="mx-auto w-fit space-y-1">
         <!-- Monday date markers, each centered over its week's first column -->
-        <div class="flex items-center gap-3">
-          <div class="w-32 shrink-0"></div>
+        <div class="flex items-center gap-2">
+          <div class="w-24 shrink-0"></div>
           <div class="flex gap-0.5">
             {#each Array(weeks) as _, week}
               <div class="relative flex gap-0.5">
                 {#each Array(7) as _, day}
-                  <div class="h-3.5 w-3.5">
+                  <div class="h-2.5 w-2.5">
                     {#if day === 0 && naves[0]}
                       <span class="absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] leading-none text-ink-muted">
                         {fmtDDMM(naves[0].days[week * 7].date)}
@@ -123,8 +123,8 @@
         </div>
 
         {#each naves as nave (nave.id)}
-          <div class="flex items-center gap-3">
-            <div class="w-32 shrink-0">
+          <div class="flex items-center gap-2">
+            <div class="w-24 shrink-0">
               <p class="truncate text-[12px] font-medium text-ink">{nave.nombre}</p>
             </div>
             <div class="flex gap-0.5">
@@ -132,7 +132,7 @@
                 <div class="flex gap-0.5">
                   {#each nave.days.slice(week * 7, week * 7 + 7) as d}
                     <div
-                      class="h-3.5 w-3.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
+                      class="h-2.5 w-2.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
                       style:background-color={d.count > 0 ? intensity(d.count) : null}
                       role="button"
                       tabindex="0"

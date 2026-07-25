@@ -85,24 +85,22 @@
 
   {#if loading}
     <div class="overflow-x-auto px-4 py-4">
-      <div class="flex justify-[safe_center]">
-        <div class="inline-flex gap-1">
-          <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
-            {#each DIAS_LABEL as label}
-              <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
+      <div class="mx-auto flex w-fit gap-1">
+        <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
+          {#each DIAS_LABEL as label}
+            <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
+          {/each}
+        </div>
+        <div>
+          <div class="mb-1 h-[14px]"></div>
+          <div class="flex gap-0.5">
+            {#each Array(SKELETON_WEEKS) as _}
+              <div class="flex flex-col gap-0.5">
+                {#each Array(7) as _}
+                  <div class="h-3.5 w-3.5 animate-pulse rounded-[2px] bg-surface-border"></div>
+                {/each}
+              </div>
             {/each}
-          </div>
-          <div>
-            <div class="mb-1 h-[14px]"></div>
-            <div class="flex gap-0.5">
-              {#each Array(SKELETON_WEEKS) as _}
-                <div class="flex flex-col gap-0.5">
-                  {#each Array(7) as _}
-                    <div class="h-3.5 w-3.5 animate-pulse rounded-[2px] bg-surface-border"></div>
-                  {/each}
-                </div>
-              {/each}
-            </div>
           </div>
         </div>
       </div>
@@ -114,38 +112,36 @@
     </div>
   {:else}
     <div class="overflow-x-auto px-4 py-4">
-      <div class="flex justify-[safe_center]">
-        <div class="inline-flex gap-1">
-          <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
-            {#each DIAS_LABEL as label}
-              <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
+      <div class="mx-auto flex w-fit gap-1">
+        <div class="flex shrink-0 flex-col gap-0.5 pt-[18px]">
+          {#each DIAS_LABEL as label}
+            <div class="h-3.5 text-[9px] leading-[14px] text-ink-muted">{label}</div>
+          {/each}
+        </div>
+        <div>
+          <div class="mb-1 flex gap-0.5">
+            {#each monthLabels as label}
+              <div class="w-3.5 shrink-0 whitespace-nowrap font-mono text-[9px] text-ink-muted">{label}</div>
             {/each}
           </div>
-          <div>
-            <div class="mb-1 flex gap-0.5">
-              {#each monthLabels as label}
-                <div class="w-3.5 shrink-0 whitespace-nowrap font-mono text-[9px] text-ink-muted">{label}</div>
-              {/each}
-            </div>
-            <div class="flex gap-0.5">
-              {#each weeks as week}
-                <div class="flex flex-col gap-0.5">
-                  {#each week as d}
-                    <div
-                      class="h-3.5 w-3.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
-                      style:background-color={d.count > 0 ? intensity(d.count) : null}
-                      role="button"
-                      tabindex="0"
-                      aria-label={`${fmtDDMM(d.date)}: ${d.count} ficha${d.count === 1 ? '' : 's'}`}
-                      onmouseenter={(e) => showTooltip(e, d)}
-                      onmouseleave={hideTooltip}
-                      onfocus={(e) => showTooltip(e, d)}
-                      onblur={hideTooltip}
-                    ></div>
-                  {/each}
-                </div>
-              {/each}
-            </div>
+          <div class="flex gap-0.5">
+            {#each weeks as week}
+              <div class="flex flex-col gap-0.5">
+                {#each week as d}
+                  <div
+                    class="h-3.5 w-3.5 cursor-default rounded-[2px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand {d.count > 0 ? 'ring-1 ring-inset ring-black/5' : 'bg-slate-100'}"
+                    style:background-color={d.count > 0 ? intensity(d.count) : null}
+                    role="button"
+                    tabindex="0"
+                    aria-label={`${fmtDDMM(d.date)}: ${d.count} ficha${d.count === 1 ? '' : 's'}`}
+                    onmouseenter={(e) => showTooltip(e, d)}
+                    onmouseleave={hideTooltip}
+                    onfocus={(e) => showTooltip(e, d)}
+                    onblur={hideTooltip}
+                  ></div>
+                {/each}
+              </div>
+            {/each}
           </div>
         </div>
       </div>
