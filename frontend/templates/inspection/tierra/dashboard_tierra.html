@@ -12,46 +12,48 @@
 {% block page_content %}
 <div>
     <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <!-- Header: título + mini-kpis. Solo sobre el eje izquierdo; el eje derecho corre a lo largo de ambas filas -->
-        <div class="lg:col-start-1 lg:row-start-1">
-            <h1 class="text-xl font-bold text-navy">Dashboard de {% if naviera %}{{ naviera.nombre }}{% else %}{{ request.naviera.nombre }}{% endif %}</h1>
-            <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <a href="{{ naves_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
-                    <span class="font-mono font-semibold text-navy">{{ page_obj.paginator.count }}</span> naves activas
-                </a>
-                <span class="text-surface-border">·</span>
-                <a href="{{ usuarios_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
-                    <span class="font-mono font-semibold text-navy">{{ total_usuarios }}</span> usuarios
-                </a>
-                <span class="text-surface-border">·</span>
-                <a href="{{ dispositivos_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
-                    <span class="font-mono font-semibold text-navy">{{ total_dispositivos }}</span> dispositivos
-                </a>
+        <!-- Columna izquierda: header + Eje 2. Un solo grid item para que su alto no dependa del de la columna derecha -->
+        <div class="min-w-0 space-y-6 lg:col-start-1">
+            <div>
+                <h1 class="text-xl font-bold text-navy">Dashboard de {% if naviera %}{{ naviera.nombre }}{% else %}{{ request.naviera.nombre }}{% endif %}</h1>
+                <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <a href="{{ naves_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+                        <span class="font-mono font-semibold text-navy">{{ page_obj.paginator.count }}</span> naves activas
+                    </a>
+                    <span class="text-surface-border">·</span>
+                    <a href="{{ usuarios_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+                        <span class="font-mono font-semibold text-navy">{{ total_usuarios }}</span> usuarios
+                    </a>
+                    <span class="text-surface-border">·</span>
+                    <a href="{{ dispositivos_url }}" class="text-[11px] text-ink-muted transition hover:text-navy">
+                        <span class="font-mono font-semibold text-navy">{{ total_dispositivos }}</span> dispositivos
+                    </a>
+                </div>
+            </div>
+
+            <!-- EJE 2 · Cumplimiento y estado: cómo estamos operando. Sticky, scroll interno propio -->
+            <div class="space-y-6 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1 scrollbar-none">
+                <div
+                    id="svelte-urgencia"
+                    data-slug="{{ slug }}"
+                    data-nave-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
+                    data-periodo-detalle-url-template="{% url 'inventory:nave_periodo_detalle' slug=slug nave_id=987654321 periodo_id=123456789 %}"
+                ></div>
+                <div
+                    id="svelte-fleet-status"
+                    data-slug="{{ slug }}"
+                    data-naves-url="{% url 'inventory:listar_naves' slug=slug %}"
+                    data-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
+                    data-fallos-activos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321"
+                    data-fallos-nuevos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321&solo_nuevos=1"
+                    data-fallos-resueltos-url-template="{% url 'inventory:fallos_resueltos' slug=slug %}?nave=987654321"
+                ></div>
+                <div id="svelte-activity-heatmap" data-slug="{{ slug }}"></div>
             </div>
         </div>
 
-        <!-- EJE 2 · Cumplimiento y estado: cómo estamos operando. Debajo del header, sticky, scroll interno propio -->
-        <div class="min-w-0 space-y-6 lg:col-start-1 lg:row-start-2 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1 scrollbar-none">
-            <div
-                id="svelte-urgencia"
-                data-slug="{{ slug }}"
-                data-nave-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
-                data-periodo-detalle-url-template="{% url 'inventory:nave_periodo_detalle' slug=slug nave_id=987654321 periodo_id=123456789 %}"
-            ></div>
-            <div
-                id="svelte-fleet-status"
-                data-slug="{{ slug }}"
-                data-naves-url="{% url 'inventory:listar_naves' slug=slug %}"
-                data-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
-                data-fallos-activos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321"
-                data-fallos-nuevos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321&solo_nuevos=1"
-                data-fallos-resueltos-url-template="{% url 'inventory:fallos_resueltos' slug=slug %}?nave=987654321"
-            ></div>
-            <div id="svelte-activity-heatmap" data-slug="{{ slug }}"></div>
-        </div>
-
-        <!-- EJE 1 · Acción rápida: qué acaba de pasar. Flujo normal, controla el scroll de la página. Corre a lo largo de ambas filas -->
-        <div class="min-w-0 space-y-6 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+        <!-- EJE 1 · Acción rápida: qué acaba de pasar. Flujo normal, controla el scroll de la página -->
+        <div class="min-w-0 space-y-6 lg:col-start-2">
             <div
                 id="svelte-failure-feed"
                 data-slug="{{ slug }}"
