@@ -11,9 +11,9 @@
 
 {% block page_content %}
 <div>
-    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <!-- Columna izquierda: header + Eje 2. Un solo grid item para que su alto no dependa del de la columna derecha -->
-        <div class="min-w-0 space-y-6 lg:col-start-1">
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <!-- Columna izquierda: header + Eje 2. flex-col para que solo el bloque sticky absorba el alto de la fila (igualado al de la derecha vía grid stretch), el header nunca se estira -->
+        <div class="min-w-0 flex flex-col gap-6 lg:col-start-1">
             <div>
                 <h1 class="text-xl font-bold text-navy">Dashboard de {% if naviera %}{{ naviera.nombre }}{% else %}{{ request.naviera.nombre }}{% endif %}</h1>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -32,7 +32,7 @@
             </div>
 
             <!-- EJE 2 · Cumplimiento y estado: cómo estamos operando. Sticky, scroll interno propio -->
-            <div class="space-y-6 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1 scrollbar-none">
+            <div class="min-h-0 flex-1 space-y-6 lg:sticky lg:top-[60px] lg:max-h-[calc(100vh_-_84px)] lg:overflow-y-auto lg:pr-1 scrollbar-none">
                 <div
                     id="svelte-urgencia"
                     data-slug="{{ slug }}"
