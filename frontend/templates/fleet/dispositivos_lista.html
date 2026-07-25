@@ -48,11 +48,32 @@
     </div>
 
     <form method="get" class="mb-3.5 flex flex-wrap items-center gap-2.5">
-        {% include 'components/search_input.html' with placeholder="Buscar por dispositivo o nave…" value=q %}
-        {% if q %}
+        {% include 'components/search_input.html' with placeholder="Buscar por dispositivo…" value=q %}
+        <select
+            name="nave"
+            onchange="this.form.submit()"
+            class="h-9 rounded-md border border-surface-border bg-white px-3 text-[13px] text-ink outline-none focus:border-brand"
+        >
+            <option value="">Todas las naves</option>
+            {% for nave in naves_filtro %}
+            <option value="{{ nave.id }}" {% if nave_id == nave.id|stringformat:'s' %}selected{% endif %}>{{ nave.nombre }}</option>
+            {% endfor %}
+        </select>
+        <label class="inline-flex items-center gap-1.5 text-[12px] text-ink-secondary">
+            <input
+                type="checkbox"
+                name="mostrar_revocados"
+                value="1"
+                onchange="this.form.submit()"
+                {% if mostrar_revocados %}checked{% endif %}
+                class="h-3.5 w-3.5 rounded-[3px] border-surface-border accent-navy"
+            >
+            Mostrar revocados
+        </label>
+        {% if q or nave_id or mostrar_revocados %}
         <a href="?" class="text-[12px] text-ink-muted transition hover:text-ink">Limpiar</a>
         {% endif %}
-        <span class="ml-auto text-[12px] text-ink-muted">{{ page_obj.paginator.count }} dispositivos</span>
+        <span class="ml-auto text-[12px] text-ink-muted">{{ total_dispositivos }} dispositivo{{ total_dispositivos|pluralize }}</span>
     </form>
 
     <div class="overflow-hidden rounded-lg border border-surface-border bg-white shadow-sm">
@@ -62,24 +83,30 @@
                 <thead class="bg-neutral-bg text-ink-muted">
                     <tr>
                         <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Dispositivo</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Nave asignada</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Estado</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Registrado</th>
                         <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for dispositivo in page_obj %}
-                    <tr class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
-                        <td class="px-4 py-3.5">
-                            <p class="font-semibold text-navy">{{ dispositivo.nombre }}</p>
+                    {% for nave in page_obj %}
+                    <tr class="border-t-2 border-b border-surface-border bg-surface">
+                        <td colspan="4" class="px-4 py-2.5">
+                            <div class="flex items-center gap-2">
+                                <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-navy" aria-hidden="true"></span>
+                                <span class="text-[14px] font-bold text-navy">{{ nave.nombre }}</span>
+                                {% if nave.total_dispositivos == 0 %}
+                                <span class="inline-flex items-center rounded-[4px] border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">Sin dispositivo asignado</span>
+                                {% else %}
+                                <span class="text-[11px] text-ink-muted">{{ nave.dispositivos_visibles|length }} dispositivo{{ nave.dispositivos_visibles|length|pluralize }}</span>
+                                {% endif %}
+                            </div>
                         </td>
-                        <td class="px-4 py-3.5">
-                            {% if dispositivo.nave %}
-                                <span class="text-[13px] text-ink">{{ dispositivo.nave.nombre }}</span>
-                            {% else %}
-                                <span class="inline-flex items-center rounded-[4px] border border-neutral-border bg-neutral-bg px-2 py-0.5 text-[11px] font-semibold text-neutral">Sin asignar</span>
-                            {% endif %}
+                    </tr>
+                    {% for dispositivo in nave.dispositivos_visibles %}
+                    <tr class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
+                        <td class="py-3.5 pr-4 pl-10">
+                            <p class="font-semibold text-navy">{{ dispositivo.nombre }}</p>
                         </td>
                         <td class="px-4 py-3.5">
                             {% if dispositivo.is_active %}
@@ -105,11 +132,20 @@
                             </div>
                         </td>
                     </tr>
+                    {% empty %}
+                    {% if nave.total_dispositivos > 0 %}
+                    <tr class="border-b border-surface-border bg-white last:border-b-0">
+                        <td colspan="4" class="px-4 py-6 text-center text-[12px] text-ink-muted">
+                            Todos los dispositivos de esta nave están revocados. Activa «Mostrar revocados» para verlos.
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% include 'components/pagination.html' with page_obj=page_obj pagination_params=pagination_params item_label="dispositivos" %}
+        {% include 'components/pagination.html' with page_obj=page_obj pagination_params=pagination_params item_label="naves" %}
         {% else %}
         <div class="px-5 py-8 text-center text-sm text-ink-muted">
             No se encontraron dispositivos con los filtros aplicados.

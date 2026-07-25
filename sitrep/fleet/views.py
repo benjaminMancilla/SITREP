@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Count, Prefetch, Q
 from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 
@@ -161,21 +161,45 @@ def desactivar_nave(request, slug, nave_id):
 @requiere_tierra
 def listar_dispositivos(request, slug):
     q = request.GET.get("q", "").strip()
-    dispositivos = TenantQueryService.get_dispositivos(request.naviera)
+    nave_id = request.GET.get("nave", "").strip()
+    mostrar_revocados = request.GET.get("mostrar_revocados") == "1"
+
+    naves_filtro = FleetQueryService.get_naves_activas(request.naviera)
     naves_scope = FleetQueryService.get_naves_scope(request.user, request.naviera)
     if naves_scope is not None:
-        dispositivos = dispositivos.filter(nave__in=naves_scope)
+        naves_filtro = naves_filtro.filter(id__in=naves_scope)
+    naves_filtro = naves_filtro.order_by("nombre")
+
+    naves = naves_filtro.filter(id=nave_id) if nave_id else naves_filtro
+
+    dispositivos = Dispositivo.objects.filter(nave__in=naves)
+    if not mostrar_revocados:
+        dispositivos = dispositivos.filter(is_active=True)
     if q:
-        dispositivos = dispositivos.filter(Q(nombre__icontains=q) | Q(nave__nombre__icontains=q))
+        dispositivos = dispositivos.filter(nombre__icontains=q)
+
+    naves = list(
+        naves.annotate(total_dispositivos=Count("dispositivos")).prefetch_related(
+            Prefetch("dispositivos", queryset=dispositivos.order_by("-creado_en"), to_attr="dispositivos_visibles")
+        )
+    )
+    if q:
+        # con búsqueda activa una nave sin coincidencias es ruido, no una nave sin hardware
+        naves = [nave for nave in naves if nave.dispositivos_visibles]
+
     _params = request.GET.copy()
     _params.pop("page", None)
     return render(
         request,
         "fleet/dispositivos_lista.html",
         {
-            "page_obj": paginate(dispositivos.order_by("nave__nombre", "nombre"), request.GET.get("page"), 10),
+            "page_obj": paginate(naves, request.GET.get("page"), 100),
             "pagination_params": _params.urlencode(),
             "q": q,
+            "nave_id": nave_id,
+            "mostrar_revocados": mostrar_revocados,
+            "naves_filtro": naves_filtro,
+            "total_dispositivos": sum(len(nave.dispositivos_visibles) for nave in naves),
             "slug": slug,
         },
     )
