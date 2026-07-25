@@ -82,6 +82,7 @@ def contacto(request):
 def precios(request):
     return render(request, "legal/precios.html", {
         "contacto_form": ContactoForm(),
+        "pagos_form": ContactoForm(auto_id="pagos-id-%s"),
         "turnstile_site_key": settings.TURNSTILE_SITE_KEY,
     })
 
