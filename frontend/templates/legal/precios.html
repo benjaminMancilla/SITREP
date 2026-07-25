@@ -4,8 +4,8 @@
 
 {% block nav_precios %}bg-navy/5 font-semibold text-navy{% endblock %}
 
-{% block doc_version %}1.0{% endblock %}
-{% block doc_date %}24 de julio de 2026{% endblock %}
+{% block doc_version %}1.1{% endblock %}
+{% block doc_date %}25 de julio de 2026{% endblock %}
 {% block doc_title %}Precios{% endblock %}
 {% block doc_intro %}
 <p class="mt-3 text-[14px] leading-6 text-ink-secondary">
@@ -38,8 +38,8 @@
   </thead>
   <tbody>
     <tr><td>Hasta 5 naves</td><td>$250.000 CLP</td></tr>
-    <tr><td>Hasta 10 naves</td><td>$200.000 CLP</td></tr>
-    <tr><td>Desde 11 naves</td><td>$150.000 CLP</td></tr>
+    <tr><td>Más de 5 y menos de 15 naves</td><td>$200.000 CLP</td></tr>
+    <tr><td>Desde 15 naves</td><td>$150.000 CLP</td></tr>
   </tbody>
 </table>
 <p><strong>* Valores netos.</strong> No incluyen IVA, el que se agrega conforme a la ley.</p>
@@ -70,7 +70,7 @@
   <tbody>
     <tr><td>Método de pago</td><td>Exclusivamente vía transferencia bancaria, contra recepción de factura electrónica.</td></tr>
     <tr><td>Ciclo de facturación</td><td>Mensual.</td></tr>
-    <tr><td>Plazo de pago</td><td>30 días corridos desde la emisión del DTE.</td></tr>
+    <tr><td>Plazo de pago</td><td>15 días corridos desde la emisión del DTE.</td></tr>
   </tbody>
 </table>
 <p>
@@ -125,6 +125,26 @@
     se suspenderá el acceso a la cuenta matriz, debiendo reactivarse al menos una nave para retomar el servicio.
   </p>
 </details>
+<details id="atraso-pago">
+  <summary>¿Qué ocurre si hay un retraso en el pago del servicio?</summary>
+  <p>
+    Entendemos que los procesos administrativos corporativos pueden presentar demoras. Si el pago no se recibe en
+    la fecha de vencimiento, la cuenta de la naviera pasará a un estado de "Atrasado" (<em>past_due</em>).
+  </p>
+  <p>
+    Durante este estado, el servicio no se cortará y todas las funcionalidades de la plataforma permanecerán 100%
+    operativas. Solo se mostrarán recordatorios visuales dentro de la plataforma a los usuarios administradores.
+  </p>
+  <p>
+    El servicio se mantendrá activo sin interrupciones por un período de gracia equivalente a tu plazo de pago
+    acordado (es decir, con el plazo estándar de 15 días corridos, tendrás un margen adicional de 15 días
+    corridos antes de una eventual suspensión). Ante inconvenientes, situaciones excepcionales o demoras
+    justificadas, te pedimos contactar oportunamente a
+    <a href="mailto:pagos@sitrep.cl">pagos@sitrep.cl</a> o completar el
+    <a href="#pagos">formulario de contacto por pagos</a> para coordinar los tiempos de regularización y evitar
+    cualquier corte operativo en tus naves.
+  </p>
+</details>
 
 <h2>Privacidad y cumplimiento</h2>
 <p>
@@ -150,5 +170,22 @@
   {% endif %}
 
   {% include "partials/contacto_form.html" %}
+</div>
+
+<div id="pagos" class="mt-6 scroll-mt-20 rounded-2xl border border-surface-border bg-white p-8 sm:p-10">
+  <h2 class="text-[18px] font-bold text-navy">Consultas por atrasos o problemas de pago</h2>
+  <p class="mt-2 text-[14px] leading-6 text-ink-secondary" style="max-width: 60ch">
+    Si tu naviera enfrenta un atraso o un inconveniente con el pago del servicio, cuéntanos los detalles y
+    coordinamos la regularización. También puedes escribirnos directamente a
+    <a href="mailto:pagos@sitrep.cl" class="text-brand hover:text-brand-dark">pagos@sitrep.cl</a>.
+  </p>
+
+  {% if messages %}
+    {% for message in messages %}
+      <p class="mt-4 rounded-lg border px-3 py-2 text-[13px] {% if message.tags == 'success' %}border-ok-border bg-ok-bg text-ok{% else %}border-fail-border bg-fail-bg text-fail{% endif %}">{{ message }}</p>
+    {% endfor %}
+  {% endif %}
+
+  {% include "partials/contacto_form.html" with contacto_form=pagos_form form_id="pagos" %}
 </div>
 {% endblock %}
