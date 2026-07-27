@@ -217,8 +217,10 @@
             </div>
 
             <div class="p-6 lg:p-8">
-                {% block page_header %}{% endblock %}
-                {% block page_content %}{% block content %}{% endblock %}{% endblock %}
+                <div class="{% block content_container_class %}mx-auto w-full max-w-7xl{% endblock %}">
+                    {% block page_header %}{% endblock %}
+                    {% block page_content %}{% block content %}{% endblock %}{% endblock %}
+                </div>
             </div>
         </main>
 </div>
