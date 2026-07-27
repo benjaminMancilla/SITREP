@@ -1,12 +1,22 @@
 <script>
   import IconWarning from './icons/IconWarning.svelte'
   import IconCheck from './icons/IconCheck.svelte'
+  import RowActionsMenu from './RowActionsMenu.svelte'
 
-  let { naves = [], puedeEditar = false, detalleUrlTemplate = '', editarUrlTemplate = '' } = $props()
+  let {
+    naves = [],
+    puedeEditar = false,
+    detalleUrlTemplate = '',
+    editarUrlTemplate = '',
+    fallosActivosUrlTemplate = '',
+    fallosNuevosUrlTemplate = '',
+    fallosResueltosUrlTemplate = '',
+  } = $props()
 
   const PER_PAGE = 15
   let query = $state('')
   let page = $state(1)
+  let hoveredNaveId = $state(null)
 
   let filtered = $derived.by(() => {
     if (!query.trim()) return naves
@@ -32,11 +42,21 @@
     }))
   }
 
+  function accionesFor(nave) {
+    if (!puedeEditar) return []
+    return [
+      { label: 'Editar', href: urlFor(editarUrlTemplate, nave.id) },
+      { label: 'Desactivar', variant: 'danger', onclick: () => pedirDesactivar(nave) },
+    ]
+  }
+
   function formatFecha(iso) {
     if (!iso) return 'Sin fichas'
-    return new Date(iso).toLocaleString('es-CL', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    })
+    const d = new Date(iso)
+    const dia = d.toLocaleDateString('es-CL', { day: 'numeric' })
+    const mes = d.toLocaleDateString('es-CL', { month: 'short' }).replace('.', '')
+    const hora = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })
+    return `${dia} ${mes.charAt(0).toUpperCase()}${mes.slice(1)}, ${hora}`
   }
 </script>
 
@@ -67,74 +87,73 @@
         <thead class="bg-neutral-bg text-ink-muted">
           <tr>
             <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Nave</th>
-            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Eslora</th>
-            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Arqueo bruto</th>
-            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Cap. personas</th>
-            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Períodos abiertos</th>
-            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos activos</th>
-            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallos nuevos</th>
+            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallas activas</th>
+            <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Fallas nuevas</th>
             <th class="px-4 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.07em]">Resoluciones</th>
-            <th class="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Última ficha</th>
-            <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]">Acciones</th>
+            <th class="hidden md:table-cell px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em]">Actualización</th>
+            <th class="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.07em]"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           {#each paged as nave (nave.id)}
-            <tr class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff] hover:!bg-[#f0f7ff]">
-              <td class="px-4 py-3.5">
-                <a href={urlFor(detalleUrlTemplate, nave.id)} class="font-semibold text-navy transition hover:text-brand">{nave.nombre}</a>
-                <p class="font-mono text-[11px] text-ink-muted">{nave.matricula}</p>
-              </td>
-              <td class="px-4 py-3.5 text-center text-[13px] text-ink">{Number(nave.eslora)}</td>
-              <td class="px-4 py-3.5 text-center text-[13px] text-ink">{nave.arqueoBruto}</td>
-              <td class="px-4 py-3.5 text-center text-[13px] text-ink">{nave.capacidadPersonas}</td>
-              <td class="px-4 py-3.5 text-center">
-                <span
-                  class="inline-flex items-center rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold"
-                  class:border-info-border={nave.periodosAbiertos > 0}
-                  class:bg-info-bg={nave.periodosAbiertos > 0}
-                  class:text-info={nave.periodosAbiertos > 0}
-                  class:border-neutral-border={nave.periodosAbiertos === 0}
-                  class:bg-neutral-bg={nave.periodosAbiertos === 0}
-                  class:text-neutral={nave.periodosAbiertos === 0}
-                >{nave.periodosAbiertos}</span>
+            <tr class="border-b border-surface-border bg-white transition last:border-b-0 even:bg-[#fafcff]">
+              <td class="px-2 py-1.5">
+                <div
+                  class="rounded-sm px-2 py-2 transition-colors duration-100"
+                  style:background-color={hoveredNaveId === nave.id ? '#f0f7ff' : 'transparent'}
+                  onmouseenter={() => hoveredNaveId = nave.id}
+                  onmouseleave={() => hoveredNaveId = null}
+                >
+                  <a
+                    href={urlFor(detalleUrlTemplate, nave.id)}
+                    class="block rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  >
+                    <p class="font-semibold text-navy transition-colors hover:text-brand">{nave.nombre}</p>
+                    <p class="font-mono text-[11px] text-ink-muted">{nave.matricula}</p>
+                  </a>
+                </div>
               </td>
               <td class="px-4 py-3.5 text-center">
-                <span
-                  class="inline-flex items-center gap-1 justify-center rounded-[4px] px-2.5 py-1 text-[11px] font-semibold"
+                <a
+                  href={urlFor(fallosActivosUrlTemplate, nave.id)}
+                  title="Fallas activas"
+                  aria-label="{nave.fallosActivos} falla{nave.fallosActivos === 1 ? '' : 's'} activas en {nave.nombre}"
+                  class="fault-badge inline-flex items-center justify-center gap-1 rounded-[4px] px-2.5 py-1 font-mono text-[11px] font-semibold"
                   class:bg-fail-bg={nave.fallosActivos > 0}
                   class:text-fail={nave.fallosActivos > 0}
                   class:bg-neutral-bg={nave.fallosActivos === 0}
                   class:text-neutral={nave.fallosActivos === 0}
-                >{#if nave.fallosActivos > 0}<IconWarning />{/if}{nave.fallosActivos}</span>
+                >{#if nave.fallosActivos > 0}<IconWarning />{/if}{nave.fallosActivos}</a>
               </td>
               <td class="px-4 py-3.5 text-center">
-                <span
-                  class="inline-flex items-center gap-1 justify-center rounded-[4px] px-2.5 py-1 text-[11px] font-semibold"
+                <a
+                  href={urlFor(fallosNuevosUrlTemplate, nave.id)}
+                  title="Fallas nuevas"
+                  aria-label="{nave.fallosNuevos} falla{nave.fallosNuevos === 1 ? '' : 's'} nuevas en {nave.nombre}"
+                  class="fault-badge inline-flex items-center justify-center gap-1 rounded-[4px] px-2.5 py-1 font-mono text-[11px] font-semibold"
                   class:bg-warn-bg={nave.fallosNuevos > 0}
                   class:text-warn={nave.fallosNuevos > 0}
                   class:bg-neutral-bg={nave.fallosNuevos === 0}
                   class:text-neutral={nave.fallosNuevos === 0}
-                >{#if nave.fallosNuevos > 0}<IconWarning />{/if}{nave.fallosNuevos}</span>
+                >{#if nave.fallosNuevos > 0}<IconWarning />{/if}{nave.fallosNuevos}</a>
               </td>
               <td class="px-4 py-3.5 text-center">
-                <span
-                  class="inline-flex items-center gap-1 justify-center rounded-[4px] px-2.5 py-1 text-[11px] font-semibold"
+                <a
+                  href={urlFor(fallosResueltosUrlTemplate, nave.id)}
+                  title="Fallas resueltas"
+                  aria-label="{nave.resoluciones} resuelta{nave.resoluciones === 1 ? '' : 's'} en {nave.nombre}"
+                  class="fault-badge inline-flex items-center justify-center gap-1 rounded-[4px] px-2.5 py-1 font-mono text-[11px] font-semibold"
                   class:bg-ok-bg={nave.resoluciones > 0}
                   class:text-ok={nave.resoluciones > 0}
                   class:bg-neutral-bg={nave.resoluciones === 0}
                   class:text-neutral={nave.resoluciones === 0}
-                >{#if nave.resoluciones > 0}<IconCheck />{/if}{nave.resoluciones}</span>
+                >{#if nave.resoluciones > 0}<IconCheck />{/if}{nave.resoluciones}</a>
               </td>
-              <td class="px-4 py-3.5 font-mono text-[11px] text-ink-secondary">{formatFecha(nave.ultimaFichaEn)}</td>
-              <td class="px-4 py-3.5">
-                <div class="flex flex-wrap justify-end gap-1.5">
-                  <a href={urlFor(detalleUrlTemplate, nave.id)} class="btn-ghost-info inline-flex items-center rounded-md border border-info-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-info transition">Ver detalle</a>
-                  {#if puedeEditar}
-                    <a href={urlFor(editarUrlTemplate, nave.id)} class="btn-ghost-warn inline-flex items-center rounded-md border border-warn-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-warn transition">Editar</a>
-                    <button type="button" onclick={() => pedirDesactivar(nave)} class="btn-ghost-fail inline-flex items-center rounded-md border border-fail-border bg-white px-2.5 py-1.5 text-[11px] font-semibold text-fail transition">Desactivar</button>
-                  {/if}
-                </div>
+              <td class="hidden md:table-cell px-4 py-3.5 text-[13px] text-ink-secondary">{formatFecha(nave.ultimaFichaEn)}</td>
+              <td class="px-4 py-3.5 text-right">
+                {#if puedeEditar}
+                  <RowActionsMenu actions={accionesFor(nave)} label="Más acciones sobre {nave.nombre}" />
+                {/if}
               </td>
             </tr>
           {/each}
@@ -154,3 +173,30 @@
     {/if}
   {/if}
 </div>
+
+<style>
+  /* Convención "eleva y oscurece" para celdas clickeables — ver DESIGN.md § Clickable Rows & Cells */
+  .fault-badge {
+    transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), filter 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .fault-badge:hover {
+    filter: brightness(0.97) saturate(1.1);
+    transform: translateY(-1px);
+  }
+
+  .fault-badge:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+    filter: brightness(0.97) saturate(1.1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fault-badge {
+      transition: filter 160ms ease;
+    }
+    .fault-badge:hover {
+      transform: none;
+    }
+  }
+</style>

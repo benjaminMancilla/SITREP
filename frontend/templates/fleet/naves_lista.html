@@ -61,6 +61,9 @@
         data-puede-editar="{{ puede_editar|yesno:'true,false' }}"
         data-detalle-url-template="{% url 'inventory:nave_detalle' slug=slug nave_id=987654321 %}"
         data-editar-url-template="{% url 'inventory:editar_nave' slug=slug nave_id=987654321 %}"
+        data-fallos-activos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321"
+        data-fallos-nuevos-url-template="{% url 'inventory:fallos_activos' slug=slug %}?nave=987654321&solo_nuevos=1"
+        data-fallos-resueltos-url-template="{% url 'inventory:fallos_resueltos' slug=slug %}?nave=987654321"
     ></div>
 
     {% include 'components/confirm_modal.html' with titulo="Desactivar nave" descripcion="La nave será desactivada y dejará de aparecer en el sistema. Los registros históricos se conservan." confirm_label="Desactivar nave" %}
