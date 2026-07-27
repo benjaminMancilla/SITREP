@@ -5,6 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SITREP{% endblock %}</title>
+    <script>
+        (function() {
+            document.documentElement.classList.add('sidebar-init-pending');
+            try {
+                if (localStorage.getItem('sitrep:sidebarCollapsed') === '1') {
+                    document.documentElement.classList.add('sidebar-collapsed-init');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="{% static 'img/logo_color.svg' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -59,6 +69,16 @@
         .btn-ghost-fail:hover  { border-color: #dc2626; background: #dc2626; color: #fff; }
         .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
         .scrollbar-none::-webkit-scrollbar { display: none; }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
+        html.sidebar-init-pending #app-sidebar { transform: translateX(-100%); }
+        @media (min-width: 1024px) {
+            html.sidebar-init-pending #app-shell { padding-left: 15rem; }
+            html.sidebar-init-pending #app-sidebar { transform: translateX(0); }
+            html.sidebar-init-pending.sidebar-collapsed-init #app-shell { padding-left: 0; }
+            html.sidebar-init-pending.sidebar-collapsed-init #app-sidebar { transform: translateX(-100%); }
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>

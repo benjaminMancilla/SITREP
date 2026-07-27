@@ -8,17 +8,57 @@
 {% block layout %}
 {% with tenant_slug=slug|default:request.naviera.slug %}
 <div
-    class="min-h-screen bg-surface lg:pl-60"
-    x-data="{ navActive: '' }"
-    x-init="navActive = ($refs.navActive.textContent || '').trim()"
+    id="app-shell"
+    class="min-h-screen bg-surface"
+    :class="{ 'lg:pl-0': desktopCollapsed, 'lg:pl-60': !desktopCollapsed, 'transition-[padding] duration-200 ease-out': ready }"
+    x-data="{ navActive: '', mobileOpen: false, desktopCollapsed: localStorage.getItem('sitrep:sidebarCollapsed') === '1', ready: false }"
+    x-init="
+        navActive = ($refs.navActive.textContent || '').trim();
+        $watch('desktopCollapsed', v => localStorage.setItem('sitrep:sidebarCollapsed', v ? '1' : '0'));
+        $nextTick(() => {
+            ready = true;
+            document.documentElement.classList.remove('sidebar-collapsed-init', 'sidebar-init-pending');
+        });
+    "
+    @keydown.escape.window="mobileOpen = false"
 >
     <span x-ref="navActive" class="hidden">{% block nav_active %}{% endblock %}</span>
 
-    <aside class="w-full bg-navy text-white lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col lg:overflow-y-auto">
+    <div
+        x-show="mobileOpen"
+        x-cloak
+        x-transition.opacity
+        class="fixed inset-0 z-40 bg-navy/50 backdrop-blur-sm lg:hidden"
+        @click="mobileOpen = false"
+    ></div>
+
+    <aside
+        id="app-sidebar"
+        class="fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col overflow-y-auto bg-navy text-white lg:z-30 lg:w-60 lg:max-w-none"
+        :class="{
+            'translate-x-0': mobileOpen, '-translate-x-full': !mobileOpen,
+            'lg:translate-x-0': !desktopCollapsed, 'lg:-translate-x-full': desktopCollapsed,
+            'transition-transform duration-200 ease-out': ready
+        }"
+        role="navigation"
+        aria-label="Navegación principal"
+    >
         <div class="flex h-full flex-col p-5">
             <div class="border-b border-white/10 pb-5">
-                {% url 'inventory:tenant_home' slug=tenant_slug as brand_href %}
-                {% include 'components/brand_logo.html' with brand_href=brand_href brand_show_name=True brand_logo_size="h-8 w-8" %}
+                <div class="flex items-start justify-between gap-2">
+                    {% url 'inventory:tenant_home' slug=tenant_slug as brand_href %}
+                    {% include 'components/brand_logo.html' with brand_href=brand_href brand_show_name=True brand_logo_size="h-8 w-8" %}
+                    <button
+                        type="button"
+                        @click="mobileOpen = false"
+                        class="shrink-0 rounded-md p-1.5 text-white/50 transition hover:bg-white/[0.08] hover:text-white/80 lg:hidden"
+                        aria-label="Cerrar menú"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
                 <div class="mt-4 rounded-[5px] bg-white/[0.07] px-2.5 py-2">
                     <p class="text-[10px] uppercase tracking-[0.08em] text-white/40">Naviera</p>
                     <p class="mt-0.5 text-xs font-semibold text-white/90">
@@ -33,7 +73,7 @@
                 </div>
             </div>
 
-            <nav class="mt-3 space-y-0.5 px-0">
+            <nav class="mt-3 space-y-0.5 px-0" @click="mobileOpen = false">
                 <a
                     href="{% url 'inventory:tenant_home' slug=tenant_slug %}"
                     class="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-[9px] text-[13px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/80"
@@ -196,7 +236,18 @@
     </aside>
 
     <main class="flex-1 bg-surface">
-            <div class="sticky top-0 z-30 flex h-[52px] w-full items-center justify-between gap-4 border-b border-surface-border bg-white px-6 lg:px-8 shadow-sm">
+            <div class="sticky top-0 z-30 flex h-[52px] w-full items-center gap-3 border-b border-surface-border bg-white px-4 lg:px-8 shadow-sm">
+                <button
+                    type="button"
+                    @click="window.matchMedia('(min-width: 1024px)').matches ? (desktopCollapsed = !desktopCollapsed) : (mobileOpen = !mobileOpen)"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-secondary transition hover:bg-surface hover:text-ink"
+                    aria-label="Alternar barra lateral"
+                >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="1" y="2" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+                        <line x1="6" y1="2" x2="6" y2="14" stroke="currentColor" stroke-width="1.3"/>
+                    </svg>
+                </button>
                 <div class="hidden min-w-0 flex-1 lg:flex lg:items-center">
                     {% block topbar_left %}
                     <div class="flex items-center gap-2 text-xs text-ink-muted">
