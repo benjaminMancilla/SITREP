@@ -28,6 +28,14 @@
                 this.$watch('_mostrarBannerRecuperacion', () => {
                     this.$nextTick(() => this._recalcularOffsetSticky());
                 });
+                let resizeRaf = null;
+                window.addEventListener('resize', () => {
+                    if (resizeRaf) return;
+                    resizeRaf = requestAnimationFrame(() => {
+                        resizeRaf = null;
+                        this._recalcularOffsetSticky();
+                    });
+                });
                 sitrepToastDesdeQuery('guardado', 'Cambios guardados');
                 this.$nextTick(() => {
                     this._restaurarEstadoVista();
@@ -129,8 +137,10 @@
             },
 
             _recalcularOffsetSticky() {
+                const topbar = document.querySelector('.ficha-topbar-swap');
                 const banner = document.querySelector('[data-recuperacion-banner]');
-                this._stickyAreaOffset = 64 + (this._mostrarBannerRecuperacion && banner ? banner.offsetHeight : 0);
+                const topbarHeight = topbar ? topbar.offsetHeight : 64;
+                this._stickyAreaOffset = topbarHeight + (this._mostrarBannerRecuperacion && banner ? banner.offsetHeight : 0);
             },
 
             _offsetStickyAreas() {
