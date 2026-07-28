@@ -16,7 +16,7 @@ def catalogo_admin(request, slug):
         "naves": FleetQueryService.get_naves_activas(request.naviera),
         "categorias": Recurso.CATEGORIA_CHOICES,
         "tipos": Recurso.TIPO_CHOICES,
-        "periodicidades": Periodicidad.objects.all(),
+        "periodicidades": Periodicidad.objects.all().order_by("duracion_dias", "nombre"),
         "areas": Area.objects.all(),
     }
     return render(request, "catalog/catalogo_admin.html", context)

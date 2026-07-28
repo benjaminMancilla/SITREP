@@ -57,7 +57,9 @@ def dashboard_kiosco(request, slug):
     filtros_historial = _obtener_filtros_historial_desde_request(request)
 
     periodos_abiertos = list(
-        TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("fecha_inicio", "id")
+        TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by(
+            "periodicidad__duracion_dias", "periodicidad__nombre"
+        )
     )
     historial = list(
         TenantQueryService.get_periodos_historial_de_nave(
@@ -68,7 +70,7 @@ def dashboard_kiosco(request, slug):
             periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
         )
     )
-    periodicidades = Periodicidad.objects.all().order_by("nombre")
+    periodicidades = Periodicidad.objects.all().order_by("duracion_dias", "nombre")
     fichas_completadas_por_periodo = contar_fichas_completas_por_periodo(
         [periodo.id for periodo in periodos_abiertos]
     )

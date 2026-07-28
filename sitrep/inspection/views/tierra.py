@@ -770,7 +770,9 @@ def nave_detalle(request, slug, nave_id):
     if not FleetQueryService.nave_en_scope(request.user, request.naviera, nave.id):
         return HttpResponseForbidden("Acceso denegado.")
     filtros_historial = _obtener_filtros_historial_desde_request(request)
-    periodos_abiertos = TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by("-fecha_inicio")
+    periodos_abiertos = TenantQueryService.get_periodos_abiertos_de_nave(nave).order_by(
+        "periodicidad__duracion_dias", "periodicidad__nombre"
+    )
     historial = TenantQueryService.get_periodos_historial_de_nave(
         nave,
         fecha_desde=filtros_historial["fecha_desde"],
@@ -778,7 +780,7 @@ def nave_detalle(request, slug, nave_id):
         estado=filtros_historial["estado_filtro"] or None,
         periodicidad_id=filtros_historial["periodicidad_id_filtro"] or None,
     )
-    periodicidades = Periodicidad.objects.all().order_by("nombre")
+    periodicidades = Periodicidad.objects.all().order_by("duracion_dias", "nombre")
     periodos_abiertos_detalle = presenters.construir_periodos_resumen(nave, periodos_abiertos)
     historial_total = historial.count()
     _params = request.GET.copy()
