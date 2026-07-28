@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte'
+  import { localDateMs } from './dateOnly.js'
 
   let { slug, visiblePerGroup = 3, calendarioUrl = null, periodoDetalleUrlTemplate = '' } = $props()
 
@@ -15,7 +16,7 @@
       const res = await fetch(`/${slug}/api/v1/hitos/inminentes/`, { credentials: 'same-origin' })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
-      hitos = data.map((h) => ({ ...h, fecha: new Date(h.fecha).getTime() }))
+      hitos = data.map((h) => ({ ...h, fecha: localDateMs(h.fecha) }))
     } catch (e) {
       error = e.message
     } finally {

@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte'
+  import { localDateMs } from './dateOnly.js'
 
   let { slug, naveId } = $props()
   let tooltip = $state(null)
@@ -20,7 +21,7 @@
       const res = await fetch(`/${slug}/api/v1/naves/${naveId}/actividad/`, { credentials: 'same-origin' })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
-      days = data.map((d) => ({ ...d, date: new Date(d.date).getTime() }))
+      days = data.map((d) => ({ ...d, date: localDateMs(d.date) }))
     } catch (e) {
       error = e.message
     } finally {
