@@ -24,52 +24,118 @@ Overrides explícitos pasados por el wrapper:
     class="min-h-screen bg-surface"
 >
     {% if not solo_lectura %}
-    <header class="sticky top-0 z-30 border-b border-surface-border bg-white px-6" style="min-height:60px">
-        <div class="mx-auto flex h-[60px] max-w-6xl items-center gap-4">
-            <a
-                href="{{ volver_url }}"
-                class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
-            >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                    <path d="M9 3L5 7L9 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                Volver
-            </a>
-            {% if pdf_url %}
-                {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=pdf_url areas_grupos=areas_grupos %}
-            {% endif %}
+    <div class="sticky top-0 z-30 border-b border-surface-border bg-white">
+        {% comment %}
+        Bonus (fácil de sacar): crossfade entre las dos variantes de topbar al cruzar
+        el breakpoint `sm`, en vez de un salto seco. Para revertir: borrar el bloque
+        <style> de ficha-topbar-swap/-variant en kiosco_periodo_detalle.html y cambiar
+        las dos clases de variante de abajo por `sm:hidden` / `hidden sm:flex`.
+        {% endcomment %}
+        <div class="ficha-topbar-swap">
+            <div class="ficha-topbar-variant ficha-topbar-variant--compact px-3">
+                <div class="mx-auto flex h-full max-w-6xl items-center gap-3">
+                    <a
+                        href="{{ volver_url }}"
+                        aria-label="Volver"
+                        class="flex shrink-0 items-center justify-center rounded-md border border-surface-border bg-white p-2 text-ink-muted transition hover:bg-neutral-bg hover:text-ink pointer-coarse:p-2.5"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                            <path d="M9 3L5 7L9 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
 
-            <div class="min-w-0 flex-1">
-                <div class="truncate text-base font-bold text-navy">
-                    {{ periodo.periodicidad.nombre }}
-                    {% if numero_periodo %}
-                        <span class="ml-1 text-sm font-normal text-ink-muted">· {{ numero_periodo_label }} {{ numero_periodo }}</span>
-                    {% endif %}
+                    <span class="min-w-0 flex-1 truncate text-[15px] font-bold text-navy">
+                        {{ periodo.periodicidad.nombre }}
+                    </span>
+
+                    <div class="flex shrink-0 items-center gap-2">
+                        <div class="h-1.5 w-[56px] overflow-hidden rounded-full bg-surface-border">
+                            <div
+                                class="h-full rounded-full bg-brand transition-all"
+                                style="width: {% if recursos_lista %}{% widthratio fichas_completadas_count recursos_lista|length 100 %}{% else %}0{% endif %}%"
+                            ></div>
+                        </div>
+                        <span class="whitespace-nowrap text-[11px] font-medium text-ink-muted">
+                            <strong class="text-navy">{{ fichas_completadas_count }}</strong>/{{ recursos_lista|length }}
+                        </span>
+                        <span
+                            x-show="totalCambios > 0"
+                            x-cloak
+                            class="whitespace-nowrap rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-[11px] font-semibold text-warn"
+                            x-text="totalCambios + ' sin guardar'"
+                        ></span>
+                    </div>
                 </div>
-                <div class="text-[12px] text-ink-muted">
+            </div>
+
+            <div class="ficha-topbar-variant ficha-topbar-variant--full px-6">
+                <div class="mx-auto flex h-full max-w-6xl items-center gap-4">
+                    <a
+                        href="{{ volver_url }}"
+                        class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                            <path d="M9 3L5 7L9 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Volver
+                    </a>
+                    {% if pdf_url %}
+                        {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=pdf_url areas_grupos=areas_grupos %}
+                    {% endif %}
+
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate text-base font-bold text-navy">
+                            {{ periodo.periodicidad.nombre }}
+                            {% if numero_periodo %}
+                                <span class="ml-1 text-sm font-normal text-ink-muted">· {{ numero_periodo_label }} {{ numero_periodo }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="truncate text-[12px] text-ink-muted">
+                            {{ nave.nombre }} · {{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}
+                        </div>
+                    </div>
+
+                    <div class="flex shrink-0 items-center gap-2.5">
+                        <div class="h-1.5 w-[120px] overflow-hidden rounded-full bg-surface-border">
+                            <div
+                                class="h-full rounded-full bg-brand transition-all"
+                                style="width: {% if recursos_lista %}{% widthratio fichas_completadas_count recursos_lista|length 100 %}{% else %}0{% endif %}%"
+                            ></div>
+                        </div>
+                        <span class="whitespace-nowrap text-xs font-medium text-ink-muted">
+                            <strong class="text-navy">{{ fichas_completadas_count }}</strong>/{{ recursos_lista|length }}
+                        </span>
+                        <span
+                            x-show="totalCambios > 0"
+                            x-cloak
+                            class="whitespace-nowrap rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-[11px] font-semibold text-warn"
+                            x-text="totalCambios + ' sin guardar'"
+                        ></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="border-b border-surface-border bg-white px-3 py-3 sm:hidden">
+        <div class="mx-auto flex max-w-6xl items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+                {% if numero_periodo %}
+                    <div class="truncate text-[13px] font-semibold text-ink-secondary">
+                        {{ numero_periodo_label }} {{ numero_periodo }}
+                    </div>
+                {% endif %}
+                <div class="truncate text-[12px] text-ink-muted">
                     {{ nave.nombre }} · {{ periodo.fecha_inicio|date:"d/m/Y" }} – {{ periodo.fecha_termino|date:"d/m/Y" }}
                 </div>
             </div>
-
-            <div class="flex shrink-0 items-center gap-2.5">
-                <div class="h-1.5 w-[120px] overflow-hidden rounded-full bg-surface-border">
-                    <div
-                        class="h-full rounded-full bg-brand transition-all"
-                        style="width: {% if recursos_lista %}{% widthratio fichas_completadas_count recursos_lista|length 100 %}{% else %}0{% endif %}%"
-                    ></div>
+            {% if pdf_url %}
+                <div class="shrink-0">
+                    {% include 'components/ficha/imprimir_periodo_boton.html' with pdf_url=pdf_url areas_grupos=areas_grupos %}
                 </div>
-                <span class="whitespace-nowrap text-xs font-medium text-ink-muted">
-                    <strong class="text-navy">{{ fichas_completadas_count }}</strong>/{{ recursos_lista|length }}
-                </span>
-                <span
-                    x-show="totalCambios > 0"
-                    x-cloak
-                    class="whitespace-nowrap rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-[11px] font-semibold text-warn"
-                    x-text="totalCambios + ' sin guardar'"
-                ></span>
-            </div>
+            {% endif %}
         </div>
-    </header>
+    </div>
     {% endif %}
 
     {% if not solo_lectura %}
@@ -77,9 +143,9 @@ Overrides explícitos pasados por el wrapper:
         x-show="_mostrarBannerRecuperacion"
         x-cloak
         data-recuperacion-banner
-        class="sticky top-[64px] z-[25] border-b border-warn-border bg-warn-bg px-6 py-3"
+        class="sticky top-12 z-[25] border-b border-warn-border bg-warn-bg px-4 py-3 sm:top-[60px] sm:px-6"
     >
-        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2 text-sm font-medium text-warn">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
@@ -97,7 +163,7 @@ Overrides explícitos pasados por el wrapper:
                         _borradorPendiente = null;
                         _mostrarBannerRecuperacion = false;
                     "
-                    class="rounded-md border border-warn-border bg-white px-3 py-1.5 text-xs font-semibold text-warn transition hover:bg-amber-50"
+                    class="rounded-md border border-warn-border bg-white px-3 py-1.5 text-xs font-semibold text-warn transition hover:bg-amber-50 pointer-coarse:px-3.5 pointer-coarse:py-2.5"
                 >
                     Recuperar cambios
                 </button>
@@ -108,7 +174,7 @@ Overrides explícitos pasados por el wrapper:
                         _borradorPendiente = null;
                         _mostrarBannerRecuperacion = false;
                     "
-                    class="rounded-md border border-surface-border bg-white px-3 py-1.5 text-xs font-semibold text-ink-muted transition hover:bg-surface"
+                    class="rounded-md border border-surface-border bg-white px-3 py-1.5 text-xs font-semibold text-ink-muted transition hover:bg-surface pointer-coarse:px-3.5 pointer-coarse:py-2.5"
                 >
                     Descartar
                 </button>
@@ -117,7 +183,7 @@ Overrides explícitos pasados por el wrapper:
     </div>
     {% endif %}
 
-    <main class="mx-auto max-w-6xl px-4 py-5 pb-28 sm:px-6">
+    <main class="mx-auto max-w-6xl px-3 py-5 pb-28 sm:px-6">
         <div class="px-1 pb-3">
             <div class="relative">
                 <svg
@@ -134,7 +200,7 @@ Overrides explícitos pasados por el wrapper:
                     x-model="busqueda"
                     @input="alCambiarBusqueda()"
                     placeholder="Buscar recurso..."
-                    class="w-full rounded-lg border border-surface-border bg-white py-2 pl-9 pr-9 text-[13px] text-ink outline-none transition focus:border-brand focus:ring-1 focus:ring-brand/20"
+                    class="w-full rounded-lg border border-surface-border bg-white py-2 pl-9 pr-9 text-[13px] text-ink outline-none transition focus:border-brand focus:ring-1 focus:ring-brand/20 pointer-coarse:py-3"
                 >
                 <button
                     type="button"
@@ -197,20 +263,20 @@ Overrides explícitos pasados por el wrapper:
                             class="overflow-hidden rounded-[10px] border-[1.5px] bg-white transition-all {% if not item.tiene_ficha or item.estado_ficha == 'pendiente' %}border-surface-border{% elif item.estado_operativo == True %}border-ok-border{% elif item.estado_operativo == False %}border-fail-border{% else %}border-warn-border{% endif %}"
                         >
                             <div
-                                class="flex w-full items-center gap-4 px-5 py-[18px] transition hover:bg-[#f8fafc]"
+                                class="flex w-full flex-wrap items-center gap-3 px-4 py-3 transition hover:bg-[#f8fafc] sm:flex-nowrap sm:gap-4 sm:px-5 sm:py-[18px]"
                                 :class="abierto ? 'bg-[#fafcff]' : ''"
                             >
                                 <button
                                     type="button"
                                     @click="abierto = !abierto"
-                                    class="flex min-w-0 flex-1 items-center gap-4 text-left"
+                                    class="order-1 flex min-w-0 flex-1 items-center gap-3 text-left sm:gap-4"
                                 >
                                     <span class="h-9 w-1 shrink-0 rounded-sm {% if not item.tiene_ficha or item.estado_ficha == 'pendiente' %}bg-neutral-border{% elif item.estado_operativo == True %}bg-ok{% elif item.estado_operativo == False %}bg-fail{% else %}bg-warn{% endif %}"></span>
 
-                                    <span class="w-16 shrink-0 font-mono text-[10px] tracking-wide text-ink-muted">{{ item.recurso.codigo }}</span>
+                                    <span class="w-12 shrink-0 font-mono text-[10px] tracking-wide text-ink-muted sm:w-16">{{ item.recurso.codigo }}</span>
 
-                                    <div class="flex min-w-0 flex-1 flex-col gap-1">
-                                        <span class="block min-w-0 flex-1 text-base font-bold text-navy">{{ item.recurso.nombre }}</span>
+                                    <div class="flex min-w-0 flex-1 flex-col gap-0.5 sm:gap-1">
+                                        <span class="block min-w-0 flex-1 text-[15px] font-bold text-navy sm:text-base">{{ item.recurso.nombre }}</span>
                                         {% if item.tiene_ficha and item.ficha.usuario %}
                                             <div class="font-mono text-[11px] text-ink-muted">
                                                 Registrado por
@@ -231,7 +297,8 @@ Overrides explícitos pasados por el wrapper:
                                     x-cloak
                                     :disabled="soloLectura"
                                     @click.stop="expandirYAbrirModalCarga()"
-                                    class="group flex shrink-0 items-center rounded-md border border-warn-border bg-warn-bg px-2.5 py-1.5 text-[11px] font-semibold text-warn transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                    :class="abierto ? 'flex' : 'hidden sm:flex'"
+                                    class="group order-3 w-full shrink-0 items-center justify-center rounded-md border border-warn-border bg-warn-bg px-3 py-2.5 text-[12px] font-semibold text-warn transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 sm:order-2 sm:w-auto sm:justify-start sm:px-2.5 sm:py-1.5 sm:text-[11px]"
                                 >
                                     <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                                         <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
@@ -242,50 +309,48 @@ Overrides explícitos pasados por el wrapper:
                                     <span class="load-action-label">Cargar registro anterior</span>
                                 </button>
 
-                                <span class="flex shrink-0 items-center gap-3">
-                                    <span class="flex shrink-0 items-center">
-                                        <template x-if="estadoTentativo() === 'operativo'">
-                                            <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-ok-bg px-2.5 py-0.5 text-xs font-medium text-ok">
-                                                <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Operativo
-                                            </span>
-                                        </template>
-                                        <template x-if="estadoTentativo() === 'fallo'">
-                                            <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
-                                                <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Con falla
-                                            </span>
-                                        </template>
-                                        <template x-if="estadoTentativo() === 'en_proceso'">
-                                            <span class="inline-flex items-center gap-1 rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-xs font-medium text-warn">
-                                                <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>En proceso
-                                            </span>
-                                        </template>
-                                        <template x-if="estadoTentativo() === 'pendiente'">
-                                            <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-neutral-bg px-2.5 py-0.5 text-xs font-medium text-neutral">
-                                                <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Pendiente
-                                            </span>
-                                        </template>
-                                    </span>
-
-                                    <button
-                                        type="button"
-                                        @click="abierto = !abierto"
-                                        class="text-ink-muted transition hover:text-ink"
-                                    >
-                                        <svg
-                                            viewBox="0 0 18 18"
-                                            class="h-5 w-5 transition-transform"
-                                            :class="abierto ? 'rotate-180' : ''"
-                                            fill="none"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            aria-hidden="true"
-                                        >
-                                            <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </button>
+                                <span class="order-2 hidden shrink-0 items-center sm:order-3 sm:flex">
+                                    <template x-if="estadoTentativo() === 'operativo'">
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-ok-border bg-ok-bg px-2.5 py-0.5 text-xs font-medium text-ok">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-ok"></span>Operativo
+                                        </span>
+                                    </template>
+                                    <template x-if="estadoTentativo() === 'fallo'">
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-fail-border bg-fail-bg px-2.5 py-0.5 text-xs font-medium text-fail">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-fail"></span>Con falla
+                                        </span>
+                                    </template>
+                                    <template x-if="estadoTentativo() === 'en_proceso'">
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-xs font-medium text-warn">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>En proceso
+                                        </span>
+                                    </template>
+                                    <template x-if="estadoTentativo() === 'pendiente'">
+                                        <span class="inline-flex items-center gap-1 rounded-full border border-neutral-border bg-neutral-bg px-2.5 py-0.5 text-xs font-medium text-neutral">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-neutral"></span>Pendiente
+                                        </span>
+                                    </template>
                                 </span>
+
+                                <button
+                                    type="button"
+                                    @click="abierto = !abierto"
+                                    class="order-2 flex shrink-0 items-center justify-center text-ink-muted transition hover:text-ink pointer-coarse:h-11 pointer-coarse:w-11 sm:order-4"
+                                >
+                                    <svg
+                                        viewBox="0 0 18 18"
+                                        class="h-5 w-5 transition-transform"
+                                        :class="abierto ? 'rotate-180' : ''"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        aria-hidden="true"
+                                    >
+                                        <path d="M4 7L9 12L14 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
                             </div>
 
-                            <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border px-5 py-5 sm:px-6">
+                            <div x-show="abierto" x-transition x-cloak class="border-t border-surface-border px-4 py-5 sm:px-6">
                                 {% if error_recurso_id == item.recurso.id %}
                                     <div class="mb-5 rounded-xl border border-fail-border bg-fail-bg px-4 py-3 text-sm text-fail">
                                         {{ error_msg }}
@@ -310,7 +375,7 @@ Overrides explícitos pasados por el wrapper:
                                                 }"
                                                 class="overflow-hidden rounded-lg border transition-colors"
                                             >
-                                                <div class="flex items-center gap-3 px-4 py-3">
+                                                <div class="flex flex-wrap items-center gap-2 px-4 py-3 sm:flex-nowrap sm:gap-3">
                                                     <div class="flex min-w-0 flex-1 items-center gap-2">
                                                         <span class="flex-1 text-[14px] font-medium text-ink">{{ checklist.label }}</span>
                                                     </div>
@@ -322,7 +387,7 @@ Overrides explícitos pasados por el wrapper:
                                                             x-cloak
                                                             :disabled="soloLectura"
                                                             @click="cargarObsAnterior({{ forloop.counter0 }})"
-                                                            class="group flex items-center rounded px-2 py-1 text-[11px] font-semibold text-warn transition hover:bg-amber-100 border border-warn-border bg-warn-bg disabled:cursor-not-allowed disabled:opacity-50"
+                                                            class="group flex items-center rounded px-2 py-1 text-[11px] font-semibold text-warn transition hover:bg-amber-100 border border-warn-border bg-warn-bg disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:px-3 pointer-coarse:py-2"
                                                             title="Cargar la observación del período anterior"
                                                         >
                                                             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -339,7 +404,7 @@ Overrides explícitos pasados por el wrapper:
                                                                 type="button"
                                                                 :disabled="soloLectura"
                                                                 @click="limpiarEstado({{ forloop.counter0 }})"
-                                                                class="flex h-7 w-7 items-center justify-center rounded-md transition disabled:cursor-not-allowed disabled:opacity-60"
+                                                                class="flex h-7 w-7 items-center justify-center rounded-md transition disabled:cursor-not-allowed disabled:opacity-60 pointer-coarse:h-11 pointer-coarse:w-11"
                                                                 :class="[
                                                                     checklist[{{ forloop.counter0 }}].estado === null ? 'border border-neutral-border bg-neutral-bg' : 'hover:bg-surface',
                                                                     estadoAnterior(checklist[{{ forloop.counter0 }}].key) === null
@@ -354,7 +419,7 @@ Overrides explícitos pasados por el wrapper:
                                                                 type="button"
                                                                 :disabled="soloLectura"
                                                                 @click="marcarCumple({{ forloop.counter0 }})"
-                                                                class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition disabled:cursor-not-allowed disabled:opacity-60"
+                                                                class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition disabled:cursor-not-allowed disabled:opacity-60 pointer-coarse:h-11 pointer-coarse:w-11"
                                                                 :class="[
                                                                     checklist[{{ forloop.counter0 }}].estado === true ? 'bg-ok text-white' : 'text-ok hover:bg-ok-bg',
                                                                     estadoAnterior(checklist[{{ forloop.counter0 }}].key) === true
@@ -369,7 +434,7 @@ Overrides explícitos pasados por el wrapper:
                                                                 type="button"
                                                                 :disabled="soloLectura"
                                                                 @click="marcarFalla({{ forloop.counter0 }})"
-                                                                class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition disabled:cursor-not-allowed disabled:opacity-60"
+                                                                class="flex h-7 w-7 items-center justify-center rounded-md font-bold transition disabled:cursor-not-allowed disabled:opacity-60 pointer-coarse:h-11 pointer-coarse:w-11"
                                                                 :class="[
                                                                     checklist[{{ forloop.counter0 }}].estado === false ? 'bg-fail text-white' : 'text-fail hover:bg-fail-bg',
                                                                     estadoAnterior(checklist[{{ forloop.counter0 }}].key) === false
@@ -534,14 +599,14 @@ Overrides explícitos pasados por el wrapper:
                                             <button
                                                 type="button"
                                                 @click="cerrarModalCarga()"
-                                                class="rounded-xl border border-surface-border bg-white px-5 py-2.5 text-[13px] font-semibold text-ink-secondary transition hover:bg-neutral-bg"
+                                                class="rounded-xl border border-surface-border bg-white px-5 py-2.5 text-[13px] font-semibold text-ink-secondary transition hover:bg-neutral-bg pointer-coarse:py-3.5"
                                             >
                                                 Cancelar
                                             </button>
                                             <button
                                                 type="button"
                                                 @click="confirmarCargaRegistroAnterior()"
-                                                class="flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[13px] font-bold text-white transition hover:bg-navy-light"
+                                                class="flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[13px] font-bold text-white transition hover:bg-navy-light pointer-coarse:py-3.5"
                                             >
                                                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                                                     <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.6"/>
@@ -562,7 +627,7 @@ Overrides explícitos pasados por el wrapper:
                 </div>
             </section>
             {% empty %}
-                <div class="rounded-2xl border border-surface-border bg-white px-6">
+                <div class="rounded-2xl border border-surface-border bg-white px-4 sm:px-6">
                     {% include 'components/empty_state.html' with mensaje='No hay recursos visibles para este período.' %}
                 </div>
             {% endfor %}
@@ -584,7 +649,7 @@ Overrides explícitos pasados por el wrapper:
                     type="button"
                     @click="guardarTodo()"
                     :disabled="guardandoTodo"
-                    class="rounded-xl bg-navy px-6 py-2.5 text-[13px] font-bold text-white transition hover:bg-navy-light disabled:opacity-60"
+                    class="rounded-xl bg-navy px-6 py-2.5 text-[13px] font-bold text-white transition hover:bg-navy-light disabled:opacity-60 pointer-coarse:py-3.5"
                 >
                     <span x-show="!guardandoTodo">Guardar todo</span>
                     <span x-show="guardandoTodo" x-cloak>Guardando…</span>

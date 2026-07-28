@@ -27,7 +27,7 @@ en la página (define la función Alpine imprimirPeriodo).
     <button
         type="button"
         @click="abrirModalImprimir()"
-        class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2.5 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
+        class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink pointer-coarse:py-2.5"
     >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M3 2h6l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"
@@ -107,7 +107,7 @@ en la página (define la función Alpine imprimirPeriodo).
                 <button
                     type="button"
                     @click="printModal = false"
-                    class="rounded-lg border border-surface-border bg-white px-4 py-2 text-[13px] font-semibold text-ink-secondary transition hover:bg-surface"
+                    class="rounded-lg border border-surface-border bg-white px-4 py-2 text-[13px] font-semibold text-ink-secondary transition hover:bg-surface pointer-coarse:py-3"
                 >
                     Cancelar
                 </button>
@@ -115,7 +115,7 @@ en la página (define la función Alpine imprimirPeriodo).
                     type="button"
                     @click="confirmarImprimir()"
                     :disabled="printAreasSeleccionadas.length === 0"
-                    class="rounded-lg bg-navy px-4 py-2 text-[13px] font-bold text-white transition hover:bg-navy-light disabled:opacity-60"
+                    class="rounded-lg bg-navy px-4 py-2 text-[13px] font-bold text-white transition hover:bg-navy-light disabled:opacity-60 pointer-coarse:py-3"
                 >
                     Imprimir
                 </button>
