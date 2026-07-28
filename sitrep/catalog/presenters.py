@@ -5,13 +5,21 @@ import re
 # ---------------------------------------------------------------------------
 # Constantes de confiabilidad
 # ---------------------------------------------------------------------------
-_CONFIABILIDAD_UMBRALES = [1, 7, 30, 90, 365]
-_CONFIABILIDAD_VENTANAS = [30, 30, 90, 365, 730, 1825]
+_CONFIABILIDAD_UMBRALES = [1, 7, 15, 30, 90, 365]
+_CONFIABILIDAD_VENTANAS = [30, 30, 60, 90, 365, 730, 1825]
 
 
 def ventana_confiabilidad(duracion_dias):
     indice = bisect.bisect_left(_CONFIABILIDAD_UMBRALES, duracion_dias)
     return _CONFIABILIDAD_VENTANAS[indice]
+
+
+def etiqueta_ventana_confiabilidad(dias):
+    if dias >= 365 and dias % 365 == 0:
+        anios = dias // 365
+        return f"{anios} año" if anios == 1 else f"{anios} años"
+    meses = round(dias / 30)
+    return f"{meses} mes" if meses == 1 else f"{meses} meses"
 
 
 def etiqueta_numero_periodicidad(periodicidad):

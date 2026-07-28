@@ -1,5 +1,4 @@
-﻿import bisect
-import logging
+﻿import logging
 from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, F, OuterRef
@@ -8,6 +7,7 @@ from django.utils import timezone
 from sitrep.accounts.services import AccountsQueryService
 from sitrep.catalog.models import Periodicidad
 from sitrep.catalog.services import CatalogRuleEngine, construir_label_requerimiento, CatalogoResolver
+from sitrep.catalog.presenters import ventana_confiabilidad, etiqueta_ventana_confiabilidad
 from sitrep.fleet.models import Nave
 from sitrep.fleet.services import FleetQueryService
 from .models import (
@@ -157,8 +157,6 @@ class TenantQueryService:
 
     @staticmethod
     def calcular_confiabilidad_por_periodicidad(naviera, hoy):
-        _umbrales = [1, 7, 15, 30, 90, 365]
-        _ventanas = [30, 30, 60, 90, 365, 730, 1825]
         estados_vencidos = PeriodoRevision.ESTADOS_INCOMPLETOS
         periodicidad_ids = (
             PeriodoRevision.objects.filter(nave__naviera=naviera, nave__is_active=True)
@@ -169,7 +167,7 @@ class TenantQueryService:
         for periodicidad in Periodicidad.objects.filter(id__in=periodicidad_ids).order_by(
             "duracion_dias", "nombre"
         ):
-            ventana = _ventanas[bisect.bisect_left(_umbrales, periodicidad.duracion_dias)]
+            ventana = ventana_confiabilidad(periodicidad.duracion_dias)
             desde = hoy - timedelta(days=ventana)
             total_cerrados = PeriodoRevision.objects.filter(
                 nave__naviera=naviera,
@@ -189,6 +187,7 @@ class TenantQueryService:
                 resultado.append({
                     "periodicidad": periodicidad,
                     "ventana_dias": ventana,
+                    "ventana_label": etiqueta_ventana_confiabilidad(ventana),
                     "total": total_cerrados,
                     "vencidos": vencidos_ventana,
                     "pct_cumplimiento": round(
