@@ -362,7 +362,7 @@ def construir_hitos_inminentes(naviera, naves=None):
     if brutos is None:
         return []
 
-    hoy = date.today()
+    hoy = timezone.localdate()
     lunes = hoy - timedelta(days=hoy.weekday())
     domingo_prox = lunes + timedelta(days=13)
 
