@@ -19,6 +19,7 @@ en la página (define la función Alpine imprimirPeriodo).
         ],
     })"
     class="contents"
+    x-id="['imprimir-periodo-title']"
     @click.stop
     @keydown.enter.stop
     @keydown.space.stop
@@ -26,7 +27,7 @@ en la página (define la función Alpine imprimirPeriodo).
     <button
         type="button"
         @click="abrirModalImprimir()"
-        class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
+        class="flex shrink-0 items-center gap-1.5 rounded-md border border-surface-border bg-white px-3 py-2.5 text-[13px] font-medium text-ink-muted transition hover:bg-neutral-bg hover:text-ink"
     >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M3 2h6l2 2v8a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"
@@ -45,9 +46,14 @@ en la página (define la función Alpine imprimirPeriodo).
     >
         <div class="modal-backdrop absolute inset-0" @click="printModal = false"></div>
 
-        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-xl">
+        <div
+            class="relative w-full max-w-md rounded-2xl bg-white shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            :aria-labelledby="$id('imprimir-periodo-title')"
+        >
             <div class="border-b border-surface-border px-6 py-4">
-                <h2 class="text-[15px] font-bold text-navy">Opciones de impresión</h2>
+                <h2 :id="$id('imprimir-periodo-title')" class="text-[15px] font-bold text-navy">Opciones de impresión</h2>
             </div>
 
             <div class="space-y-5 px-6 py-5">
